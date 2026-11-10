@@ -4,5 +4,12 @@
     "call": "Exchange.update_isolated_margin",
     "error_text": "No isolated position to update margin.",
     "justification": "D23. The example sets ETH to 21x cross, then 21x isolated, then adds $1 isolated margin 'to the ETH position'. It runs on a flat ETH account (run order in run_python.sh), and with no ETH position there is nothing to add margin to, so real HL rejects updateIsolatedMargin as well. With an open ETH position instead, real HL rejects the cross->isolated switch; no starting state makes every call succeed on HL. The chain is not special-cased."
+  },
+  {
+    "script": "02_trading",
+    "call": "ExchangeClient.withdraw3",
+    "error_text": "Withdrawal amount must be greater than the withdrawal fee.",
+    "justification": "HL withdraw fee is $1; amount 1 nets zero; HL exact text unverified (D25). The TS README snippet calls withdraw3({amount: \"1\"}); with HL's $1 withdrawal fee the net amount is zero, so the request is rejected. The chain is not special-cased.",
+    "text_verified_against_hl": false
   }
 ]
