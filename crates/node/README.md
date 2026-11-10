@@ -82,6 +82,8 @@ scripts/localnet.sh dev | seed | status | stop
 * `max_timeout_ms` (config.toml / `--max-timeout-ms`, default 4000, D29): pacemaker
   view-timeout cap passed to `CoreConfig::max_timeout_ms` (consensus default 10 s let
   backoff carried over from a partition exceed AC1's 10 s resume bound).
+* `snapshot_interval` is also passed to `CoreConfig::snapshot_interval` (D29: exec claims never
+  skip a snapshot height, so every snapshot root is certified).
 * `fsync_commits` (config.toml): default true; replay mode default false.
 * `tests/exec_bench.rs` (ignored): per-stage single-core cost of bench traffic
   (`cargo test --release -p node --test exec_bench -- --ignored --nocapture`).
