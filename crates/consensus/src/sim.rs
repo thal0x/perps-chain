@@ -312,6 +312,7 @@ impl Sim {
     pub fn core_config(&self, i: usize) -> CoreConfig {
         let mut c = CoreConfig::new(SIM_CHAIN_ID, SIM_GENESIS_TIME, self.validators.clone(), sim_address(i));
         c.min_block_interval_ms = self.cfg.min_block_interval_ms;
+        c.snapshot_interval = if self.cfg.snapshot_every == 0 { u64::MAX / 2 } else { self.cfg.snapshot_every };
         if let Some(t) = self.cfg.tweak {
             t(&mut c);
         }

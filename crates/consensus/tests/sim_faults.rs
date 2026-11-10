@@ -339,3 +339,61 @@ fn large_blocks_20k_txs() {
     sim.check_safety().unwrap();
 }
 
+
+#[test]
+fn every_snapshot_height_is_claimed_by_a_header() {
+    // fast cadence: execution lag varies, plain claims skip heights; claims
+    // must never skip a snapshot height (snapshot sync certifies by exact claim)
+    let mut cfg = SimConfig::new(4, 21);
+    cfg.min_block_interval_ms = 50;
+    cfg.snapshot_every = 20;
+    let mut sim = Sim::new(cfg);
+    sim.run_for(30_000);
+    let top = sim.committed_height(0);
+    let claims: Vec<u64> = (1..=top).map(|h| sim.nodes[0].store.committed_at(h).unwrap().block.header.exec_height).collect();
+    let claimed: std::collections::BTreeSet<u64> = claims.iter().copied().collect();
+    let missing: Vec<u64> = (1..top - 10).filter(|h| h % 20 == 0 && !claimed.contains(h)).collect();
+    assert!(top > 300 && missing.is_empty(), "top {top}, unclaimed snapshot heights: {missing:?}");
+    // and claims keep up with execution (lag stays small)
+    assert!(top - claims[claims.len() - 1] <= 6, "claim lag {}", top - claims[claims.len() - 1]);
+}
+
+#[test]
+fn backoff_outgrows_slow_network() {
+    // every link 1.5-2.5 s: far above the 1 s base timeout. Backoff must grow
+    // until rounds fit, and commits must happen.
+    for n in [4, 7] {
+        let mut cfg = SimConfig::new(n, 31);
+        cfg.min_delay_ms = 1_500;
+        cfg.max_delay_ms = 2_500;
+        let mut sim = Sim::new(cfg);
+        sim.run_for(180_000);
+        sim.check_safety().unwrap();
+        let h = sim.max_honest_committed();
+        println!("n={n}: {h} commits in 180 s with 1.5-2.5 s link delays");
+        assert!(h >= 20, "n={n}: only {h} commits under a slow network\n{}", report(&sim));
+        // and once the network is fast again the streak is gone quickly
+        sim.min_delay_ms = 5;
+        sim.max_delay_ms = 50;
+        let h0 = sim.max_honest_committed();
+        assert!(sim.wait_for_height(h0 + 10, 15_000).is_some(), "n={n}: slow to recover\n{}", report(&sim));
+    }
+}
+
+#[test]
+fn dead_leader_does_not_escalate_backoff() {
+    // with a crashed validator and a fast network, its views must keep
+    // costing ~base timeout, not 1.5^k
+    let mut sim = Sim::new(SimConfig::new(4, 32));
+    sim.run_for(2_000);
+    sim.crash(1);
+    sim.run_for(60_000);
+    for i in [0, 2, 3] {
+        let c = sim.core(i).unwrap();
+        assert!(c.stats().timeouts >= 10);
+    }
+    // ~4 views per round-robin cycle, one dead: > 60 blocks/min at 1 s per dead view
+    let h0 = sim.max_honest_committed();
+    sim.run_for(30_000);
+    assert!(sim.max_honest_committed() >= h0 + 30, "{}", report(&sim));
+}

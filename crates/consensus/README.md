@@ -82,8 +82,14 @@ emits `InstallSnapshot(store.latest_snapshot())` first.
   whose blocks link by parent id and whose highest proven block carries a
   direct proof. Sync responders extend a batch (≤ 64 extra) so it ends with a
   direct proof.
-* **Pacemaker**: timeout `base(1000) × 1.5^k`, cap 10 s, `k` = consecutive
-  views ended by TC, reset when a view ends by QC. After timing out, the
+* **Pacemaker**: timeout `base(1000) × 1.5^k`, cap `max_timeout_ms`
+  (default 10 s). `k` grows only on evidence of slow messages: a view ends by
+  TC and the leader's proposal arrived late (> half the timeout after view
+  entry, or after we left the view) or the TC formed > base/2 after our own
+  timeout. A view that fails with a prompt network (dead/equivocating leader,
+  drops) resets `k` to 0, as does a QC formed promptly (within
+  `min_block_interval + base/2`); a slow QC keeps `k`, so a network slower
+  than the base timeout still certifies consecutive views (D29). After timing out, the
   timeout is re-broadcast every 1 s; f+1 timeouts for the current view make a
   node join (Bracha). Nodes that see a peer behind (lower `Status.high_qc_view`
   or a timeout for an old view) relay their latest block + highest TC
@@ -116,7 +122,8 @@ default 10 000; keep it well above the snapshot interval) deletes whole old segm
 ```
 cargo test -p consensus                    # ~1 min: unit, scenarios, proptests, store, driver
 cargo test -p consensus --release --test sim_prop long_seed_sweep -- --ignored --nocapture
-    # env: HLBFT_SIM_SEEDS (default 200) seeds × n∈{4,7}, HLBFT_SIM_MS (default 300000) virtual ms each
+    # env: HLBFT_SIM_SEEDS (default 200) seeds × n∈{4,7}, HLBFT_SIM_MS (default 300000) virtual ms each,
+    #      HLBFT_SIM_BASE (seed offset, default 1000000), HLBFT_MAXTO (override max_timeout_ms)
 HLBFT_SEED=123 HLBFT_N=7 RUST_LOG=info cargo test -p consensus --test sim_prop debug_one_seed -- --ignored --nocapture
 cargo test -p consensus --release --test perf -- --ignored --nocapture   # 20k-tx block cost
 ```

@@ -76,6 +76,12 @@ pub struct Core {
     my_timeout: Option<TimeoutMsg>,
     view_deadline: u64,
     timeout_streak: u32,
+    /// Local time we entered the current view.
+    view_entered_at: u64,
+    /// Evidence in the current view that messages are slow (late proposal).
+    view_slow: bool,
+    /// Local time of our first timeout in the current view.
+    local_timeout_at: Option<u64>,
     next_rebroadcast: u64,
     next_propose_at: Option<u64>,
     next_status: u64,
@@ -109,6 +115,8 @@ pub struct Core {
     inflight: Option<Inflight>,
     sync_rr: usize,
     pending_snapshot: Option<(Address, Snapshot)>,
+    /// When the pending snapshot was received (dropped after 30 s).
+    pending_snapshot_at: u64,
     snapshot_requested: Option<(Address, u64)>,
 
     exec_claims: BTreeMap<Height, Hash32>,
@@ -177,6 +185,9 @@ impl Core {
             my_timeout: None,
             view_deadline: 0,
             timeout_streak: 0,
+            view_entered_at: 0,
+            view_slow: false,
+            local_timeout_at: None,
             next_rebroadcast: 0,
             next_propose_at: None,
             next_status: 0,
@@ -202,6 +213,7 @@ impl Core {
             inflight: None,
             sync_rr: 0,
             pending_snapshot: None,
+            pending_snapshot_at: 0,
             snapshot_requested: None,
             exec_claims: BTreeMap::new(),
             override_cache: None,
@@ -277,6 +289,7 @@ impl Core {
 
     fn startup(&mut self, env: &mut dyn ConsensusEnv) {
         self.started = true;
+        self.view_entered_at = self.now;
         self.view_deadline = self.now + self.cfg.view_timeout(0);
         self.next_rebroadcast = self.now;
         self.next_status = self.now;
@@ -405,11 +418,33 @@ impl Core {
             return;
         }
         self.view = new_view;
+        // Backoff exists to outgrow message delays. Escalate only when the
+        // view that just failed showed that messages are slow: the leader's
+        // proposal arrived late, or the TC formed well after our own timeout.
+        // A view that failed with a prompt network (dead or equivocating
+        // leader, drops) does not escalate and resets the streak, so a
+        // streak built up during a slow period does not outlive it.
+        // Likewise a QC resets the streak only if it formed promptly;
+        // a QC that needed most of a long timeout keeps it (otherwise a
+        // network slower than the base timeout can never certify two views
+        // in a row).
+        let half = self.cfg.base_timeout_ms / 2;
         if via_tc {
-            self.timeout_streak = self.timeout_streak.saturating_add(1);
+            let slow_tc = self.local_timeout_at.is_some_and(|t| self.now >= t + half);
+            if self.view_slow || slow_tc {
+                self.timeout_streak = self.timeout_streak.saturating_add(1);
+            } else {
+                self.timeout_streak = 0;
+            }
         } else {
-            self.timeout_streak = 0;
+            let slow_qc = self.view_slow || self.now >= self.view_entered_at + self.cfg.min_block_interval_ms + half;
+            if !slow_qc {
+                self.timeout_streak = 0;
+            }
         }
+        self.view_entered_at = self.now;
+        self.view_slow = false;
+        self.local_timeout_at = None;
         self.view_deadline = self.now + self.cfg.view_timeout(self.timeout_streak);
         self.my_timeout = None;
         self.next_propose_at = None;
@@ -612,6 +647,13 @@ impl Core {
         self.process_qc(&justify, env);
         let h = &block.header;
         let direct = from == h.proposer && h.proposer == self.leader(h.view);
+        if direct {
+            let half = self.cfg.view_timeout(self.timeout_streak) / 2;
+            let late_in_view = h.view == self.view && self.now >= self.view_entered_at + half;
+            if late_in_view || h.view + 1 == self.view {
+                self.view_slow = true;
+            }
+        }
         if self.blocks.contains_key(&id) {
             if direct {
                 let b = self.blocks[&id].block.clone();
@@ -795,6 +837,9 @@ impl Core {
 
     fn local_timeout(&mut self, env: &mut dyn ConsensusEnv) {
         let v = self.view;
+        if self.local_timeout_at.is_none() {
+            self.local_timeout_at = Some(self.now);
+        }
         if self.safety.last_timeout_view < v {
             self.safety.last_timeout_view = v;
             self.stats.timeouts += 1;
@@ -1056,6 +1101,25 @@ impl Core {
             eh = parent.header.exec_height;
             er = parent.header.exec_root;
         }
+        // Never jump the exec claim over a snapshot height: snapshot sync
+        // certifies a snapshot only by an exact `exec_height` claim.
+        // `base` = highest claim among recent ancestors (a lagging proposer's
+        // stale claim must not reset it).
+        let k = self.cfg.snapshot_interval.max(1);
+        let mut base = parent.header.exec_height;
+        let mut cur = parent.header.parent;
+        for _ in 0..8 {
+            let Some(e) = self.blocks.get(&cur) else { break };
+            base = base.max(e.block.header.exec_height);
+            cur = e.block.header.parent;
+        }
+        let next_snap = (base / k + 1) * k;
+        if eh > next_snap {
+            if let Some(r) = env.root_at(next_snap) {
+                eh = next_snap;
+                er = r;
+            }
+        }
         let payload_hash = crypto::payload_hash(&payload);
         let header = BlockHeader {
             chain_id: self.cfg.chain_id,
@@ -1173,8 +1237,8 @@ impl Core {
 
         if let Some((_, snap)) = self.pending_snapshot.clone() {
             if blocks.first().is_some_and(|b| b.block.header.height == snap.height + 1) {
-                self.pending_snapshot = None;
                 if snap.height <= self.committed_height {
+                    self.pending_snapshot = None;
                     return;
                 }
                 let n = self.cert_ctx().verify_committed_run(&blocks, None, &verify);
@@ -1182,9 +1246,14 @@ impl Core {
                     .iter()
                     .any(|cb| cb.block.header.exec_height == snap.height && cb.block.header.exec_root == snap.state_root);
                 if !certified {
-                    warn!(height = snap.height, "snapshot root not certified by any verified committed header; rejecting");
+                    // The certifying header is usually a few blocks past the
+                    // peer's tip: keep the snapshot pending and retry (the
+                    // stall tick re-requests from snap.height + 1); it is
+                    // dropped after 30 s.
+                    warn!(height = snap.height, "snapshot root not (yet) certified by a verified committed header");
                     return;
                 }
+                self.pending_snapshot = None;
                 info!(height = snap.height, root = %snap.state_root, "installing verified snapshot");
                 if let Err(e) = env.store().save_snapshot(&snap) {
                     error!(err = %e, "save_snapshot failed");
@@ -1261,8 +1330,12 @@ impl Core {
         if !self.snapshot_requested.as_ref().is_some_and(|(p, _)| *p == from) || s.height <= self.committed_height {
             return;
         }
+        if self.pending_snapshot.is_some() {
+            return;
+        }
         info!(peer = %from, height = s.height, "received snapshot; fetching certifying headers");
         self.pending_snapshot = Some((from, s));
+        self.pending_snapshot_at = self.now;
         self.inflight = None;
         self.start_sync(from);
     }
@@ -1305,9 +1378,9 @@ impl Core {
         }
         if self.inflight.as_ref().is_some_and(|i| self.now >= i.deadline) {
             self.inflight = None;
-            if self.pending_snapshot.is_some() {
-                self.pending_snapshot = None;
-            }
+        }
+        if self.pending_snapshot.is_some() && self.now >= self.pending_snapshot_at + 30_000 {
+            self.pending_snapshot = None;
         }
         let now = self.now;
         let retry: Vec<(BlockId, Address)> =
