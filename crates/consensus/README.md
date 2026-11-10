@@ -110,7 +110,7 @@ records `len u32 | blake3[..8] | borsh`), `safety.bin` (checksummed, tmp +
 fsync + rename + dir fsync), `snapshots/<h>.snap` (same, last 2 kept).
 Torn/corrupt tails are truncated on open; committed records reference blocks
 by id (block appended and fsynced first). Retention (`retain_heights`,
-default 100 000) deletes whole old segments.
+default 10 000; keep it well above the snapshot interval) deletes whole old segments.
 
 ## Tests
 ```

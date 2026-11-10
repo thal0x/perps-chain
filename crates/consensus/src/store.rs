@@ -118,7 +118,7 @@ pub struct FileStoreConfig {
 
 impl Default for FileStoreConfig {
     fn default() -> Self {
-        Self { retain_heights: 100_000, segment_bytes: 256 << 20, fsync_commits: true, keep_snapshots: 2 }
+        Self { retain_heights: 10_000, segment_bytes: 256 << 20, fsync_commits: true, keep_snapshots: 2 }
     }
 }
 
