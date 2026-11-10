@@ -19,12 +19,13 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 | state | crates/state | MERGED (34 tests, 1.9M actions/s single-thread) |
 | bridge | bridge/, crates/relayer | MERGED (41 forge + 26 rust); e2e script pending node |
 | sim | crates/sim | running (wave 2) |
-| node | crates/node, scripts/localnet.sh | running (wave 2) |
+| node | crates/node, scripts/localnet.sh | MERGED (4-validator net, kill -9 recovery, 13 Python examples ok); --replay-log awaits sim |
+| acceptance | scripts/acceptance.sh, acceptance/ | running (AC5, AC6 full runs) |
 | chaos | crates/chaos | running (wave 2) |
 | clearinghouse (follow-up) | insurance StateKey fix | MERGED |
 
 ## Currently failing
-- All component crates are stubs (0 tests) — expected until M1.
+- state `invariants_hold_every_block` proptest: seed 4485867090622990286 -> negative equity after liquidation pass at height 98 (AC4 bug). Regression file kept in scratchpad; clearinghouse agent fixing.
 - No acceptance evidence yet.
 
 ## Next three actions
