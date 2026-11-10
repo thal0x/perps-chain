@@ -98,7 +98,7 @@ cmd_start() {
       --accounts "$ACCOUNTS" --seed "$SEED" $fund $bench >/dev/null
   for i in $(seq 0 $((n - 1))); do
     local home="$DIR/node$i"
-    nohup "$bin" run --home "$home" "${extra[@]}" >"$home/stdout.log" 2>&1 &
+    nohup "$bin" run --home "$home" ${extra[@]+"${extra[@]}"} >"$home/stdout.log" 2>&1 &
     echo $! >"$home/hlnode.pid"
   done
   echo "started $n nodes in $DIR (api $BASE_API..$((BASE_API + n - 1)))"
