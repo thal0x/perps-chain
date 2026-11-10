@@ -24,6 +24,10 @@ pub struct NodeConfig {
     pub log_level: Option<String>,
     /// Snapshot interval in heights (default 1000).
     pub snapshot_interval: Option<u64>,
+    /// fsync the block + committed logs on every commit (default true; replay
+    /// mode defaults to false: a replay is re-run from the log, not recovered).
+    /// The consensus safety state is always fsynced before a vote leaves.
+    pub fsync_commits: Option<bool>,
     pub mempool: mempool::PoolConfig,
 }
 
@@ -145,6 +149,7 @@ pub struct Resolved {
     pub replay_log: Option<PathBuf>,
     pub log_level: String,
     pub snapshot_interval: u64,
+    pub fsync_commits: bool,
     pub mempool: mempool::PoolConfig,
 }
 
@@ -169,6 +174,7 @@ impl Resolved {
             a.key.clone().or_else(|| cfg.key.as_deref().map(|p| resolve(&home, p))).unwrap_or_else(|| home.join("validator.key"));
         let replay_log = a.replay_log.clone().or_else(|| cfg.replay_log.as_deref().map(|p| resolve(&home, p)));
         // replay mode checks invariants every block unless told otherwise (AC4)
+        let fsync_commits = cfg.fsync_commits.unwrap_or(replay_log.is_none());
         let inv_default = if replay_log.is_some() { "every" } else { "100" };
         let invariants = Invariants::parse(a.invariants.as_deref().or(cfg.invariants.as_deref()).unwrap_or(inv_default))?;
         let oracle_feed = FeedSpec::parse(a.oracle_feed.as_deref().or(cfg.oracle_feed.as_deref()).unwrap_or("synthetic:0"), &home)?;
@@ -186,6 +192,7 @@ impl Resolved {
             replay_log,
             log_level: a.log_level.clone().or(cfg.log_level.clone()).unwrap_or_else(|| "info".into()),
             snapshot_interval: cfg.snapshot_interval.unwrap_or(1000).max(1),
+            fsync_commits,
             mempool: cfg.mempool,
             home,
         })

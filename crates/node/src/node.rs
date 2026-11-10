@@ -506,7 +506,7 @@ impl Node {
         // ---- state (restored from the latest snapshot if any)
         let data = cfg.home.join("data");
         std::fs::create_dir_all(&data)?;
-        let store = FileStore::open_with(&data, FileStoreConfig::default()).context("open FileStore")?;
+        let store = FileStore::open_with(&data, FileStoreConfig { fsync_commits: cfg.fsync_commits, ..FileStoreConfig::default() }).context("open FileStore")?;
         // Replay mode runs the `sim replay` checks itself (ReplayCheck, every block by
         // default); the chain's internal checks would duplicate the work.
         let ccfg = ChainConfig {
