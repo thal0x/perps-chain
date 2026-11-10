@@ -418,6 +418,17 @@ pub fn parse_signature(v: &Value) -> Result<Sig65, String> {
         .get("v")
         .and_then(Value::as_u64)
         .ok_or("signature.v must be an integer")?;
+    sig_from_words(r, s, vv)
+}
+
+/// [`parse_signature`] from already-extracted parts.
+pub(crate) fn parse_signature_parts(r: &str, s: &str, v: u64) -> Result<Sig65, String> {
+    let r = sig_word(Some(&Value::String(r.to_string())), "r")?;
+    let s = sig_word(Some(&Value::String(s.to_string())), "s")?;
+    sig_from_words(r, s, v)
+}
+
+fn sig_from_words(r: [u8; 32], s: [u8; 32], vv: u64) -> Result<Sig65, String> {
     let v = match vv {
         27 | 28 => vv as u8,
         0 | 1 => vv as u8 + 27,
@@ -466,6 +477,18 @@ pub fn parse_exchange_request(body: &Value) -> Result<UserTx, String> {
         vault_address,
         expires_after,
     })
+}
+
+/// Parse a raw `/exchange` request body (JSON text). Equivalent to
+/// `serde_json::from_slice` + [`parse_exchange_request`] (same result and
+/// errors), but common SDK bodies take an allocation-light fast path that
+/// transcodes the action JSON straight to msgpack.
+pub fn parse_exchange_request_bytes(body: &[u8]) -> Result<UserTx, String> {
+    if let Some(tx) = crate::json::parse_exchange_request_fast(body) {
+        return Ok(tx);
+    }
+    let v: Value = serde_json::from_slice(body).map_err(|e| format!("invalid JSON: {e}"))?;
+    parse_exchange_request(&v)
 }
 
 /// Build a `/exchange` body in Python SDK key order

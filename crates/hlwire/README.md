@@ -9,11 +9,11 @@ wallets, validator/consensus digests. Exact JSON shapes: [WIRE.md](WIRE.md).
 | area | items |
 |---|---|
 | msgpack | `json_to_msgpack` (= `action_to_msgpack`), `msgpack_to_json` |
-| decode | `decode_action`, `action_type`, `is_user_signed_type`, `is_user_signed(&Action)` |
+| decode | `decode_action` (fast path), `decode_action_generic` (reference), `action_type`, `is_user_signed_type`, `is_user_signed(&Action)` |
 | wire helpers | `parse_cloid`, `cloid_to_hex`, `cloid_from_u128`, `parse_address`, `parse_wire_decimal`, `parse_px`, `parse_sz`, `parse_usd`, `parse_usd_amount` |
 | L1 signing | `l1_action_hash`, `l1_signing_digest`, `sign_l1_action` |
 | user-signed | `user_signed_digest`, `sign_user_signed_action`, `user_signed_types`, `user_signed_nonce_field`, `hyperliquid_chain`, `DEFAULT_SIGNATURE_CHAIN_ID` |
-| requests | `parse_exchange_request`, `build_exchange_request`, `parse_signature`, `sig_to_json`, `signed_l1_request`, `signed_user_request`, `user_tx_from_parts` |
+| requests | `parse_exchange_request_bytes` (raw body text; fast path, use this in the API), `parse_exchange_request_fast`, `parse_exchange_request`, `build_exchange_request`, `parse_signature`, `sig_to_json`, `signed_l1_request`, `signed_user_request`, `user_tx_from_parts` |
 | verify | `recover`, `verify`, `recover_signer(&UserTx, is_mainnet)`, `HlVerifier { is_mainnet }` (`impl interfaces::TxVerifier`) |
 | keys | `Wallet::{from_secret_hex, from_bytes, random(rng), address, sign_digest, secret_bytes, secret_hex}` |
 | validators | `validator_tx_digest`, `sign_validator_tx`, `recover_validator_tx`, `consensus_digest`, `keccak256` |
@@ -42,9 +42,17 @@ let tx = hlwire::parse_exchange_request(&body)?;
 * `serde_json` has `preserve_order` + `arbitrary_precision`; a number is a
   float iff its token has `.`/`e`/`E` (encoded float64), otherwise the
   smallest msgpack int. Ints beyond 64 bits are an error.
-* `decode_action` validates the whole msgpack once (structure + UTF-8), then
-  walks zero-allocation lazy views; `order` arrays are decoded in a single
-  streaming pass. Decimal strings are parsed exactly (no floats) with
+* `decode_action`: for order/cancel/cancelByCloid/modify/batchModify an
+  allocation-free single pass (`src/fast.rs`) validates and decodes at once,
+  parsing px/sz/cloids straight from the msgpack string bytes (the only
+  allocation is the output `Vec`). Other types use the reference decoder
+  `decode_action_generic` (validate once, then lazy views). Proptests check
+  fast == reference on random, mutated and truncated input.
+* `parse_exchange_request_bytes(body)` transcodes the JSON text straight to
+  msgpack (`src/json.rs`), no `serde_json::Value`. Anything unusual
+  (escaped/duplicate keys, floats, deep nesting, any error) falls back to
+  `serde_json::from_slice` + `parse_exchange_request`, so results and errors
+  are identical by construction (also proptested). Decimal strings are parsed exactly (no floats) with
   scientific notation accepted (Python `str(float)` amounts like `"1e-05"`).
 * Recovery uses `secp256k1` (global context); signing is RFC 6979 so our
   signatures are byte-identical to eth_account / viem (asserted by tests).
@@ -77,6 +85,9 @@ roundtrip, identical action hash / EIP-712 digest, `recover` == signer,
 decode (+ spot checks), builder roundtrip, and that tampering / the wrong
 chain breaks recovery.
 
-Bench (shared 4-core box, CPU time, release): `decode_action` 50 orders
-~30 us, `recover` ~39-55 us depending on load (libsecp256k1, ~1.0 M
+Bench (shared 4-core box under load ~10, CPU time, release):
+`decode_action` 50 orders ~7-10 us (was ~28-42 us; 307K -> 107K
+instructions under callgrind), `parse_exchange_request_bytes` for the
+50-order body ~20 us (serde_json Value path ~100 us; 980K -> 265K
+instructions), `recover` ~39-55 us depending on load (libsecp256k1, ~1.0 M
 instructions/op), `sign_digest` ~25-40 us.

@@ -410,3 +410,102 @@ fn order_wire_checked() {
         r#"{"a":0,"b":true,"p":"3000.5","s":"0.00001","r":false,"t":{"limit":{"tif":"Gtc"}}}"#
     );
 }
+
+// ---------------------------------------------------------------- fast body
+
+fn slow_body(b: &[u8]) -> Result<UserTx, String> {
+    let v: Value = serde_json::from_slice(b).map_err(|e| format!("invalid JSON: {e}"))?;
+    parse_exchange_request(&v)
+}
+
+fn check_body(b: &[u8]) -> Result<(), TestCaseError> {
+    let slow = slow_body(b);
+    if let Some(f) = parse_exchange_request_fast(b) {
+        prop_assert_eq!(Ok(f), slow.clone(), "fast path accepted {}", String::from_utf8_lossy(b));
+    }
+    prop_assert_eq!(parse_exchange_request_bytes(b), slow);
+    Ok(())
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig { cases: 512, ..ProptestConfig::default() })]
+
+    #[test]
+    fn fast_body_matches_reference(a in arb_action(), seed in any::<u64>(), nonce in any::<u64>(),
+                                   vault in proptest::option::of(arb_addr()), exp in proptest::option::of(any::<u64>()),
+                                   pretty in any::<bool>(), idx in any::<usize>(), byte in any::<u8>()) {
+        let w = Wallet::random(&mut rand_chacha::ChaCha20Rng::seed_from_u64(seed));
+        let body = if is_user_signed(&a) {
+            signed_user_request(&w, action_to_json(&a), false)
+        } else {
+            signed_l1_request(&w, action_to_json(&a), nonce, vault, exp, false)
+        };
+        let txt = if pretty { serde_json::to_string_pretty(&body).unwrap() } else { serde_json::to_string(&body).unwrap() };
+        let b = txt.as_bytes();
+        prop_assert!(parse_exchange_request_fast(b).is_some(), "fast path not taken: {}", txt);
+        check_body(b)?;
+        let mut m = b.to_vec();
+        let i = idx % m.len();
+        m[i] = byte;
+        check_body(&m)?;
+        let mut m2 = b.to_vec();
+        m2.remove(i);
+        check_body(&m2)?;
+        let mut m3 = b.to_vec();
+        m3.insert(i, byte);
+        check_body(&m3)?;
+    }
+
+    #[test]
+    fn fast_body_random_json(v in arb_json(), extra in arb_json()) {
+        let mut m = serde_json::Map::new();
+        m.insert("action".into(), serde_json::json!({"type": "x", "v": v}));
+        m.insert("nonce".into(), Value::from(5));
+        m.insert("signature".into(), serde_json::json!({"r": "0x1", "s": "0x2", "v": 27, "x": extra.clone()}));
+        m.insert("extra".into(), extra);
+        let txt = serde_json::to_string(&Value::Object(m)).unwrap();
+        check_body(txt.as_bytes())?;
+    }
+}
+
+#[test]
+fn fast_body_edge_cases() {
+    let cases: &[&str] = &[
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#" {"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}} "#,
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27},}"#,
+        r#"{"action":{"type":"noop"},"nonce":1,"nonce":2,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","type":"x"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":"\ud800"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":"😀"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":1.5},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":-0},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":18446744073709551616},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":01},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop"},"nonce":1.0,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":0},"vaultAddress":null,"expiresAfter":null}"#,
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27},"vaultAddress":"0x1719884eb866cb12b2287399b15f7db5e7d775ea","expiresAfter":7}"#,
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":29}}"#,
+        r#"{"action":{"type":5},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}} x"#,
+        "{\"action\":{\"type\":\"no\nop\"},\"nonce\":1,\"signature\":{\"r\":\"0x1\",\"s\":\"0x2\",\"v\":27}}",
+        r#"{"action":{"type":"noop","a":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        r#"{"action":{"type":"noop","x":"é\"\\\/\b\f\n\r\t","y":"é"},"nonce":1,"signature":{"r":"0x1","s":"0x2","v":27}}"#,
+        "{}",
+        "[]",
+        "",
+    ];
+    for c in cases {
+        let b = c.as_bytes();
+        let slow = slow_body(b);
+        if let Some(f) = parse_exchange_request_fast(b) {
+            assert_eq!(Ok(f), slow, "{c}");
+        }
+        assert_eq!(parse_exchange_request_bytes(b), slow, "{c}");
+    }
+    // the common shapes take the fast path
+    for i in [0, 1, 9, 13, 14, 19, 20] {
+        assert!(parse_exchange_request_fast(cases[i].as_bytes()).is_some(), "{}", cases[i]);
+    }
+}
