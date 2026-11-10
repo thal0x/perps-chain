@@ -45,6 +45,11 @@ CLONE_VER="$(python3 -c "import json;print(json.load(open('$CLONE/deno.json'))['
 [ "$CLONE_VER" = "$SDK_VER" ] || die "snippet source clone is $CLONE_VER, npm package is $SDK_VER"
 CLONE_REV="$(git -C "$CLONE" rev-parse HEAD 2>/dev/null || echo unknown)"
 
+# ---- harness self-test (D27 uncaught-final-throw rule) -------------------------
+echo "== harness self-test"
+HL_TS_DEPS="$DEPS" "$HERE/selftest/ts_harness_selftest.sh" | sed 's/^/   /'
+[ "${PIPESTATUS[0]}" = 0 ] || die "harness self-test failed"
+
 # ---- verbatim check ------------------------------------------------------------
 echo "== verbatim check (snippet source $CLONE @ $CLONE_REV, v$CLONE_VER)"
 VERB="$(python3 "$HERE/check_ts_verbatim.py" "$HERE/ts" "$CLONE")" || { echo "$VERB"; die "verbatim check failed"; }
