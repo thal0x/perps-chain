@@ -16,4 +16,5 @@ rand_chacha = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
+borsh = { workspace = true }
 tracing-subscriber = { workspace = true }

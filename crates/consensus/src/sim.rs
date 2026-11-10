@@ -675,7 +675,7 @@ impl Sim {
             vault_address: None,
             expires_after: None,
         }));
-        b2.header.payload_hash = hash_borsh(&b2.payload);
+        b2.header.payload_hash = crypto::payload_hash(&b2.payload);
         let double_vote = self.nodes[i].byz.as_ref().is_some_and(|b| b.double_vote);
         if double_vote {
             // also vote for the second block

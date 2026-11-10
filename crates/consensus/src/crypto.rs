@@ -64,6 +64,38 @@ pub fn timeout_digest(d: &TimeoutData) -> [u8; 32] {
     keccak_tagged(TIMEOUT_TAG, d)
 }
 
+/// `blake3(borsh(payload))` — identical to `interfaces::hash_borsh(&payload)`
+/// but ~2x faster on large payloads (encodes through a 64 KiB buffer instead
+/// of feeding the hasher field by field). Used for every payload hash in the
+/// core (computed exactly once per received block).
+pub fn payload_hash(payload: &[Tx]) -> Hash32 {
+    struct Buffered {
+        h: blake3::Hasher,
+        buf: Vec<u8>,
+    }
+    impl std::io::Write for Buffered {
+        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+            if self.buf.len() + b.len() > self.buf.capacity() {
+                self.h.update(&self.buf);
+                self.buf.clear();
+                if b.len() >= self.buf.capacity() {
+                    self.h.update(b);
+                    return Ok(b.len());
+                }
+            }
+            self.buf.extend_from_slice(b);
+            Ok(b.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut w = Buffered { h: blake3::Hasher::new(), buf: Vec::with_capacity(64 << 10) };
+    borsh::BorshSerialize::serialize(payload, &mut w).expect("in-memory write");
+    w.h.update(&w.buf);
+    Hash32(*w.h.finalize().as_bytes())
+}
+
 pub fn keccak256(bytes: &[u8]) -> [u8; 32] {
     Keccak256::digest(bytes).into()
 }
@@ -262,7 +294,7 @@ impl CertCtx<'_> {
             if cb.commit_proof.is_empty() || cb.commit_proof[0].data.block_id != id || cb.commit_proof[0].data.height != h.height {
                 break;
             }
-            if hash_borsh(&cb.block.payload) != h.payload_hash {
+            if payload_hash(&cb.block.payload) != h.payload_hash {
                 break;
             }
             if self.verify_qc(&cb.commit_proof[0], verify).is_err() {
@@ -353,6 +385,16 @@ mod tests {
         let mut s0 = s;
         s0.v -= 27;
         assert!(secp::verify(&d, &s0, &a));
+    }
+
+    #[test]
+    fn payload_hash_matches_hash_borsh() {
+        for n in [0usize, 1, 7, 3000] {
+            let p: Vec<Tx> = (0..n as u64)
+                .map(|k| Tx::User(UserTx { action_bytes: vec![k as u8; (k % 300) as usize], nonce: k, signature: Sig65::default(), vault_address: None, expires_after: Some(k) }))
+                .collect();
+            assert_eq!(payload_hash(&p), hash_borsh(&p));
+        }
     }
 
     #[test]

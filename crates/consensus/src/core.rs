@@ -107,6 +107,7 @@ pub struct Core {
 
     peers: BTreeMap<Address, PeerInfo>,
     inflight: Option<Inflight>,
+    sync_rr: usize,
     pending_snapshot: Option<(Address, Snapshot)>,
     snapshot_requested: Option<(Address, u64)>,
 
@@ -199,6 +200,7 @@ impl Core {
             fetching: BTreeMap::new(),
             peers: BTreeMap::new(),
             inflight: None,
+            sync_rr: 0,
             pending_snapshot: None,
             snapshot_requested: None,
             exec_claims: BTreeMap::new(),
@@ -630,7 +632,7 @@ impl Core {
             }
             *c += 1;
         }
-        if hash_borsh(&block.payload) != h.payload_hash {
+        if crypto::payload_hash(&block.payload) != h.payload_hash {
             warn!(%from, "proposal payload hash mismatch");
             return;
         }
@@ -651,7 +653,7 @@ impl Core {
 
     fn on_fetch_response(&mut self, _from: Address, b: Block, env: &mut dyn ConsensusEnv) {
         let id = b.id();
-        if !self.fetching.contains_key(&id) || hash_borsh(&b.payload) != b.header.payload_hash {
+        if !self.fetching.contains_key(&id) || crypto::payload_hash(&b.payload) != b.header.payload_hash {
             return;
         }
         self.add_block(Arc::new(b), None, env);
@@ -665,7 +667,7 @@ impl Core {
                 return *v;
             }
         }
-        let v = env.proposal_override(height).map(|(ts, p)| (ts, hash_borsh(&p)));
+        let v = env.proposal_override(height).map(|(ts, p)| (ts, crypto::payload_hash(&p)));
         self.override_cache = Some((height, v));
         v
     }
@@ -1054,7 +1056,7 @@ impl Core {
             eh = parent.header.exec_height;
             er = parent.header.exec_root;
         }
-        let payload_hash = hash_borsh(&payload);
+        let payload_hash = crypto::payload_hash(&payload);
         let header = BlockHeader {
             chain_id: self.cfg.chain_id,
             height,
@@ -1162,7 +1164,7 @@ impl Core {
     fn on_sync_response(&mut self, from: Address, blocks: Vec<CommittedBlock>, pch: Height, env: &mut dyn ConsensusEnv) {
         {
             let p = self.peers.entry(from).or_default();
-            p.committed_height = p.committed_height.max(pch);
+            p.committed_height = pch;
         }
         if self.inflight.as_ref().is_some_and(|i| i.peer == from) {
             self.inflight = None;
@@ -1290,13 +1292,13 @@ impl Core {
             self.broadcast(st);
             // stalled? sync from the most advanced peer
             if self.now >= self.last_commit_ms + self.cfg.sync_stall_ms {
-                if let Some((p, _)) = self
-                    .peers
-                    .iter()
-                    .filter(|(_, i)| i.committed_height > self.committed_height)
-                    .max_by_key(|(a, i)| (i.committed_height, std::cmp::Reverse(**a)))
-                {
-                    let p = *p;
+                // rotate over peers claiming to be ahead, so one peer lying
+                // in its Status cannot starve us
+                let ahead: Vec<Address> =
+                    self.peers.iter().filter(|(_, i)| i.committed_height > self.committed_height).map(|(a, _)| *a).collect();
+                if !ahead.is_empty() {
+                    let p = ahead[self.sync_rr % ahead.len()];
+                    self.sync_rr = self.sync_rr.wrapping_add(1);
                     self.start_sync(p);
                 }
             }

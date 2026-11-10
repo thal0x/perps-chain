@@ -339,15 +339,3 @@ fn large_blocks_20k_txs() {
     sim.check_safety().unwrap();
 }
 
-#[test]
-#[ignore]
-fn debug_two_crashed() {
-    let _ = tracing_subscriber::fmt().with_env_filter("debug").with_test_writer().try_init();
-    let mut sim = Sim::new(SimConfig::new(7, 3));
-    sim.run_for(3_000);
-    sim.crash(1);
-    sim.crash(4);
-    sim.run_for(12_000);
-    println!("{}", report(&sim));
-}
-

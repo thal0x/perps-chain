@@ -146,7 +146,7 @@ fn run_schedule(n: usize, seed: u64, duration_ms: u64) -> Result<Outcome, String
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 6, failure_persistence: None, .. ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig { cases: 16, failure_persistence: None, .. ProptestConfig::default() })]
     #[test]
     fn random_faults_n4(seed in any::<u64>()) {
         let o = run_schedule(4, seed, 120_000).map_err(TestCaseError::fail)?;
@@ -162,7 +162,7 @@ proptest! {
 
 #[test]
 fn fixed_seeds_regression() {
-    for seed in 0..4u64 {
+    for seed in 0..8u64 {
         for n in [4, 7] {
             let o = run_schedule(n, seed, 90_000).unwrap_or_else(|e| panic!("{e}"));
             assert!(o.max_resume_ms <= 10_000);
