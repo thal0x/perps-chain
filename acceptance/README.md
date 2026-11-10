@@ -1,0 +1,83 @@
+# acceptance/ — AC runners and evidence
+
+```
+scripts/acceptance.sh acN [--smoke]   # N = 1..6; full run writes acceptance/results/acN.json
+```
+A full run refuses to start with uncommitted changes in the fingerprinted sources
+(`crates bridge Cargo.lock acceptance/sdk`), because `source_fingerprint`
+(`scripts/evidence.py --fingerprint`) is taken from HEAD. `--smoke` writes
+`acceptance/tmp/acN.smoke.json` and never touches committed evidence. Both build
+`hlnode`/`hlrelayer` in release mode and run private copies from `run/bin/`.
+AC1 delegates to `scripts/chaos_smoke.sh` (hlchaos); AC2..AC4 are placeholders
+(`run_acN` in `scripts/acceptance.sh`).
+
+## AC5 — SDK compatibility (`acceptance/sdk/`)
+Each language runs on its own fresh `scripts/localnet.sh dev` (4 validators, API
+3001..3004, genesis-funded SDK example account, `seed` = 5-level MM ladder on
+every market from funded test account #0: the fixture that gives
+`basic_market_order` & co. liquidity).
+
+**Python** (`run_python.sh`): official `hyperliquid-python-sdk` at the clone's
+pinned commit (`/home/user/ext/hyperliquid-python-sdk`, venv `/home/user/.venvs/hl`).
+Examples + `example_utils.py` are copied verbatim; `sed` replaces only
+`constants.TESTNET_API_URL` with `"http://127.0.0.1:3001"`; the diff is printed
+and checked (reversing the substitution must give the original bytes).
+`config.json` = `run/localnet/sdk_config.json`. Fixed order:
+
+basic_order, basic_order_with_cloid, basic_order_modify, cancel_open_orders,
+basic_leverage_adjustment, basic_market_order, basic_tpsl, basic_schedule_cancel,
+basic_agent, basic_transfer, basic_spot_transfer, basic_spot_to_perp,
+basic_withdraw, basic_adding, basic_ws
+
+(rationale in `run_python.sh`). Observation: `py_trace/sitecustomize.py` (on
+PYTHONPATH) records every SDK HTTP request/response with the SDK method the
+example called, and every WS subscription/message identifier (SDK's own
+routing). Judge (`judge_python.py`): exit 0, no traceback; every `/exchange`
+error (top-level `status: err` or a per-order `error`) must be in
+`expected_errors.json` (script, call, exact text, HL justification; D23) and
+every allowlisted error must occur. `basic_adding` / `basic_ws` run 40 s
+(must be alive at the stop) and every subscription must receive a message
+routed to it; `ws_activity.py` (fixture, same account, at +10 s) does a market
+open/close and a perp<->spot transfer so user channels have events.
+
+**TypeScript** (`run_ts.sh`): `@nktkas/hyperliquid` 0.33.3 + `viem` 2.57.8,
+pinned in `ts/package.json` + `package-lock.json`, installed by `npm ci` in
+`/home/user/.cache/hlbft-acc-ts` (outside the repo). Scripts in `ts/` contain the
+README / docs / API-reference (`@example` JSDoc in `src/api/*/client.ts`)
+snippets between `// --- BEGIN verbatim <source>` / `// --- END verbatim`;
+`check_ts_verbatim.py` asserts each region equals the upstream snippet up to
+exactly these substitutions:
+
+| upstream | here |
+|---|---|
+| `new HttpTransport()` | `new HttpTransport({ apiUrl: "http://127.0.0.1:3001", isTestnet: true })` |
+| `new WebSocketTransport()` | `new WebSocketTransport({ url: "ws://127.0.0.1:3001/ws", isTestnet: true })` |
+| `privateKeyToAccount("0x...")` | `privateKeyToAccount(EXAMPLE_KEY)` (SDK example account, `accounts.json`) |
+| `user: "0x..."` / `destination: "0x..."` | `EXAMPLE_ADDRESS` (usdSend: the zero address) |
+| `oid: 123` / `o: 123` | `OID` (the order placed just before) |
+| `from "npm:viem/accounts"` (JSDoc, Deno) | `from "viem/accounts"` |
+
+(`hl.`-prefixed transports likewise.) `ts/_harness.mjs` (imported first) only
+observes: logs every client call, fails a script on any thrown API error not in
+the allowlist, checks HL's response `type` per action, counts subscription
+events. Order: 01_read_data, 02_trading, 04_usd_send, then 06_subscriptions
+(40 s; allMids, openOrders, l2Book, userFills, orderUpdates) during which
+03_order_modify_cancel and 05_market_order run.
+
+Evidence `results/ac5.json`: `python_passed/failed`, `ts_passed/failed`, `pass`,
+`source_fingerprint`, `summary`, `pins`, per-script verdicts with every error's
+request/response.
+
+## AC6 — bridge (`acceptance/bridge_e2e.sh`)
+anvil `--block-time 1` :8545 → `testnet-gen` (validators) → `bridge/deploy.sh`
+(VALIDATORS/POWERS = genesis validators/stakes, `DEPLOY_NAME=acceptance_e2e`,
+`MINT_AMOUNT=0`) → `testnet-gen --bridge-contract` (same seed; validator set and
+genesis bridge params checked) → 4 nodes with `--bridge-rpc` → `seed` →
+`hlrelayer relay` (dev account 9) → user = SDK example account: 1 ETH + 1000
+MockUSDC minted, `cast send` approve + deposit 1000 → L1 accountValue +1000
+exactly → Python SDK IoC buy 0.01 ETH fills against the MM ask →
+`withdraw_from_bridge(500)` → pendingWithdrawals amount 499 → relayer
+`withdrawSubmitted` → Anvil USDC +499.000000 exactly; then `forge test`.
+Evidence `results/ac6.json`: `e2e_pass`, `forge_passed/failed`, required
+families, tx hashes, balances, steps. Run dir `run/bridge_e2e` is deleted after
+the run (`KEEP_RUN=1` keeps it).
