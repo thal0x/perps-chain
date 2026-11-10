@@ -18,5 +18,6 @@ crossbeam-channel = { workspace = true }
 tokio-util = { workspace = true }
 
 [dev-dependencies]
+relayer = { workspace = true }
 reqwest = { workspace = true }
 tokio-tungstenite = "0.29"

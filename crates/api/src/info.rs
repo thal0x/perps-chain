@@ -266,15 +266,22 @@ pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
     })
 }
 
+/// Shape agreed with crates/relayer (`relayer::api::to_wire`): amount is the
+/// decimal USD received by the destination (net of fee), `created_at` in ms,
+/// signatures flattened to `{validator, r, s, v}`.
 pub fn pending_withdrawal(w: &PendingWithdrawal) -> Value {
     json!({
         "id": w.id,
         "user": fmt::addr(&w.user),
         "destination": fmt::addr(&w.destination),
-        "amount": fmt::usd(w.amount),
-        "amountRaw": w.amount.0,
-        "createdAt": w.created_at,
-        "signatures": w.signatures.iter().map(|(a, sig)| json!({"validator": fmt::addr(a), "signature": sig})).collect::<Vec<_>>(),
+        "amount": w.amount.to_wire(),
+        "created_at": w.created_at,
+        "signatures": w.signatures.iter().map(|(a, sig)| json!({
+            "validator": fmt::addr(a),
+            "r": format!("0x{}", hex::encode(sig.r)),
+            "s": format!("0x{}", hex::encode(sig.s)),
+            "v": sig.v,
+        })).collect::<Vec<_>>(),
     })
 }
 

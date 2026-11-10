@@ -156,8 +156,17 @@ async fn info_user_state() {
     assert_eq!(s.info(json!({"type": "userRole", "user": addr(9).to_hex()})).await["role"], "agent");
     assert_eq!(s.info(json!({"type": "userRole", "user": a})).await["role"], "user");
     let pw = s.info(json!({"type": "pendingWithdrawals"})).await;
-    assert_eq!(pw[0]["amount"], "499.0");
-    assert_eq!(pw[0]["signatures"][0]["signature"]["v"], 27);
+    assert_eq!(
+        pw,
+        json!([{
+            "id": 1,
+            "user": a,
+            "destination": a,
+            "amount": "499",
+            "created_at": T0,
+            "signatures": [{"validator": addr(7).to_hex(), "r": format!("0x{}", "01".repeat(32)), "s": format!("0x{}", "02".repeat(32)), "v": 27}],
+        }])
+    );
     let ns = s.info(json!({"type": "nodeStatus"})).await;
     assert!(ns["committed_height"].is_u64());
     let wd = s.info(json!({"type": "webData2", "user": a})).await;
@@ -472,4 +481,13 @@ async fn admin_endpoints_and_cors() {
         .await
         .unwrap();
     assert!(pre.headers().get("access-control-allow-origin").is_some());
+}
+
+#[tokio::test]
+async fn pending_withdrawals_roundtrip_through_relayer_parser() {
+    let s = start(ApiConfig::default()).await;
+    let pw = s.info(json!({"type": "pendingWithdrawals"})).await;
+    let parsed = relayer::api::parse_pending_withdrawals(pw).unwrap();
+    let expect = s.backend.state.lock().withdrawals.clone();
+    assert_eq!(parsed, expect);
 }
