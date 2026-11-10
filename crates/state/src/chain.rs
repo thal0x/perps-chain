@@ -303,7 +303,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         let run_inv = match self.cfg.invariants {
             InvariantMode::Never => false,
             InvariantMode::EveryBlock => true,
-            InvariantMode::EveryN(n) => n > 0 && ctx.height % n == 0,
+            InvariantMode::EveryN(n) => n > 0 && ctx.height.is_multiple_of(n),
         };
         if run_inv {
             if let Err(v) = self.check_invariants() {

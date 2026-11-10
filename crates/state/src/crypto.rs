@@ -19,12 +19,12 @@ pub fn address_of(pk: &PublicKey) -> Address {
 
 /// Recover the signer of `digest`; accepts v in {0,1,27,28}.
 pub fn ecrecover(digest: &[u8; 32], sig: &Sig65) -> Option<Address> {
-    let v = match sig.v {
+    let v: i32 = match sig.v {
         0 | 27 => 0,
         1 | 28 => 1,
         _ => return None,
     };
-    let id = RecoveryId::try_from(v as i32).ok()?;
+    let id = RecoveryId::try_from(v).ok()?;
     let mut rs = [0u8; 64];
     rs[..32].copy_from_slice(&sig.r);
     rs[32..].copy_from_slice(&sig.s);
