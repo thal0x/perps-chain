@@ -90,7 +90,7 @@ cargo run --release -p sim -- replay run/sim/log.zst --check-invariants every --
 ```
 Live load against a running localnet:
 ```bash
-cargo run --release -p sim -- load --targets http://127.0.0.1:3001,http://127.0.0.1:3002 --rate 20000 --duration 60 --mode mixed --accounts run/localnet/accounts.json
+cargo run --release -p sim -- load --targets http://127.0.0.1:3001,http://127.0.0.1:3002 --rate 20000 --duration 60 --mode mixed --keys run/localnet/accounts.json --genesis run/localnet/genesis.json
 ```
 Replay a log through real consensus: `hlnode run --replay-log run/sim/log.zst --genesis run/sim/genesis.json …`
 (details in `crates/sim/README.md` and `acceptance/README.md`).
