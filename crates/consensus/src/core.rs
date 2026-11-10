@@ -109,6 +109,8 @@ pub struct Core {
     inflight: Option<Inflight>,
     sync_rr: usize,
     pending_snapshot: Option<(Address, Snapshot)>,
+    /// When the pending snapshot was received (dropped after 30 s).
+    pending_snapshot_at: u64,
     snapshot_requested: Option<(Address, u64)>,
 
     exec_claims: BTreeMap<Height, Hash32>,
@@ -202,6 +204,7 @@ impl Core {
             inflight: None,
             sync_rr: 0,
             pending_snapshot: None,
+            pending_snapshot_at: 0,
             snapshot_requested: None,
             exec_claims: BTreeMap::new(),
             override_cache: None,
@@ -1056,6 +1059,25 @@ impl Core {
             eh = parent.header.exec_height;
             er = parent.header.exec_root;
         }
+        // Never jump the exec claim over a snapshot height: snapshot sync
+        // certifies a snapshot only by an exact `exec_height` claim.
+        // `base` = highest claim among recent ancestors (a lagging proposer's
+        // stale claim must not reset it).
+        let k = self.cfg.snapshot_interval.max(1);
+        let mut base = parent.header.exec_height;
+        let mut cur = parent.header.parent;
+        for _ in 0..8 {
+            let Some(e) = self.blocks.get(&cur) else { break };
+            base = base.max(e.block.header.exec_height);
+            cur = e.block.header.parent;
+        }
+        let next_snap = (base / k + 1) * k;
+        if eh > next_snap {
+            if let Some(r) = env.root_at(next_snap) {
+                eh = next_snap;
+                er = r;
+            }
+        }
         let payload_hash = crypto::payload_hash(&payload);
         let header = BlockHeader {
             chain_id: self.cfg.chain_id,
@@ -1173,8 +1195,8 @@ impl Core {
 
         if let Some((_, snap)) = self.pending_snapshot.clone() {
             if blocks.first().is_some_and(|b| b.block.header.height == snap.height + 1) {
-                self.pending_snapshot = None;
                 if snap.height <= self.committed_height {
+                    self.pending_snapshot = None;
                     return;
                 }
                 let n = self.cert_ctx().verify_committed_run(&blocks, None, &verify);
@@ -1182,9 +1204,14 @@ impl Core {
                     .iter()
                     .any(|cb| cb.block.header.exec_height == snap.height && cb.block.header.exec_root == snap.state_root);
                 if !certified {
-                    warn!(height = snap.height, "snapshot root not certified by any verified committed header; rejecting");
+                    // The certifying header is usually a few blocks past the
+                    // peer's tip: keep the snapshot pending and retry (the
+                    // stall tick re-requests from snap.height + 1); it is
+                    // dropped after 30 s.
+                    warn!(height = snap.height, "snapshot root not (yet) certified by a verified committed header");
                     return;
                 }
+                self.pending_snapshot = None;
                 info!(height = snap.height, root = %snap.state_root, "installing verified snapshot");
                 if let Err(e) = env.store().save_snapshot(&snap) {
                     error!(err = %e, "save_snapshot failed");
@@ -1261,8 +1288,12 @@ impl Core {
         if !self.snapshot_requested.as_ref().is_some_and(|(p, _)| *p == from) || s.height <= self.committed_height {
             return;
         }
+        if self.pending_snapshot.is_some() {
+            return;
+        }
         info!(peer = %from, height = s.height, "received snapshot; fetching certifying headers");
         self.pending_snapshot = Some((from, s));
+        self.pending_snapshot_at = self.now;
         self.inflight = None;
         self.start_sync(from);
     }
@@ -1305,9 +1336,9 @@ impl Core {
         }
         if self.inflight.as_ref().is_some_and(|i| self.now >= i.deadline) {
             self.inflight = None;
-            if self.pending_snapshot.is_some() {
-                self.pending_snapshot = None;
-            }
+        }
+        if self.pending_snapshot.is_some() && self.now >= self.pending_snapshot_at + 30_000 {
+            self.pending_snapshot = None;
         }
         let now = self.now;
         let retry: Vec<(BlockId, Address)> =

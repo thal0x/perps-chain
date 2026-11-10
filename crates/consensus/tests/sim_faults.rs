@@ -339,3 +339,21 @@ fn large_blocks_20k_txs() {
     sim.check_safety().unwrap();
 }
 
+
+#[test]
+fn every_snapshot_height_is_claimed_by_a_header() {
+    // fast cadence: execution lag varies, plain claims skip heights; claims
+    // must never skip a snapshot height (snapshot sync certifies by exact claim)
+    let mut cfg = SimConfig::new(4, 21);
+    cfg.min_block_interval_ms = 50;
+    cfg.snapshot_every = 20;
+    let mut sim = Sim::new(cfg);
+    sim.run_for(30_000);
+    let top = sim.committed_height(0);
+    let claims: Vec<u64> = (1..=top).map(|h| sim.nodes[0].store.committed_at(h).unwrap().block.header.exec_height).collect();
+    let claimed: std::collections::BTreeSet<u64> = claims.iter().copied().collect();
+    let missing: Vec<u64> = (1..top - 10).filter(|h| h % 20 == 0 && !claimed.contains(h)).collect();
+    assert!(top > 300 && missing.is_empty(), "top {top}, unclaimed snapshot heights: {missing:?}");
+    // and claims keep up with execution (lag stays small)
+    assert!(top - claims[claims.len() - 1] <= 6, "claim lag {}", top - claims[claims.len() - 1]);
+}

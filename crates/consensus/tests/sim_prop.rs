@@ -135,7 +135,12 @@ fn run_schedule(n: usize, seed: u64, duration_ms: u64) -> Result<Outcome, String
     // everybody honest catches up eventually
     let target = sim.max_honest_committed();
     if sim.wait_all(&honest, target, 60_000).is_none() {
-        return Err(format!("seed {seed} n {n}: honest nodes did not converge to {target}"));
+        let mut s = format!("seed {seed} n {n}: honest nodes did not converge to {target} (now={})\n", sim.now - SIM_GENESIS_TIME);
+        for i in 0..n {
+            s += &format!("  node {i} byz={:?} up={} h={} exec={} view={:?} {:?}\n", sim.nodes[i].byz, sim.is_up(i), sim.committed_height(i), sim.nodes[i].exec.height,
+                sim.core(i).map(interfaces::ConsensusCore::current_view), sim.core(i).map(|c| c.stats().clone()));
+        }
+        return Err(s);
     }
     sim.check_safety()?;
     if sim.total_safety_violations() > 0 {
@@ -170,20 +175,39 @@ fn fixed_seeds_regression() {
     }
 }
 
+/// Regression: a restarted node far behind pruned peers could never certify
+/// a snapshot because header exec claims skipped heights (found in the
+/// main merge gate).
+#[test]
+fn regression_snapshot_claim_gap() {
+    let o = run_schedule(4, 7182031906024167429, 120_000).unwrap_or_else(|e| panic!("{e}"));
+    assert!(o.height > 10);
+}
+
 #[test]
 #[ignore]
 fn long_seed_sweep() {
     let seeds: u64 = std::env::var("HLBFT_SIM_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(200);
     let dur: u64 = std::env::var("HLBFT_SIM_MS").ok().and_then(|s| s.parse().ok()).unwrap_or(300_000);
     let mut worst = 0;
+    let mut failures = 0;
     for seed in 0..seeds {
         for n in [4, 7] {
-            let o = run_schedule(n, 1_000_000 + seed, dur).unwrap_or_else(|e| panic!("{e}"));
-            worst = worst.max(o.max_resume_ms);
-            println!("seed {seed} n {n}: {o:?}");
+            let base: u64 = std::env::var("HLBFT_SIM_BASE").ok().and_then(|s| s.parse().ok()).unwrap_or(1_000_000);
+            match run_schedule(n, base + seed, dur) {
+                Ok(o) => {
+                    worst = worst.max(o.max_resume_ms);
+                    println!("seed {seed} n {n}: {o:?}");
+                }
+                Err(e) => {
+                    failures += 1;
+                    println!("FAIL {}", e.lines().next().unwrap_or(""));
+                }
+            }
         }
     }
-    println!("worst resume: {worst} ms");
+    println!("worst resume: {worst} ms, failures: {failures}");
+    assert_eq!(failures, 0);
 }
 
 /// Reproduce one schedule with logs:
