@@ -6,13 +6,22 @@ bookkeeping, and maintains the state root. Integer-only and deterministic.
 
 ## Public API
 
+* **`HlChain`** = `Chain<HlEngines, hlwire::HlVerifier>` — the production
+  chain; `HlChain::new_hl(genesis, cfg)`. `HlEngines` = `clearinghouse::
+  Clearinghouse`, `book::Book`, `book::TriggerBook`, `oracle::OracleState`.
+  `TestChain` = real engines + `FakeVerifier`; `HlChainWith<V>`.
 * `Chain<E: Engines, V: TxVerifier>` implements `interfaces::Application` and
   `interfaces::StateQuery`.
   * `Chain::new(genesis, Arc<V>, ChainConfig)`
   * `Engines` (src/engines.rs) bundles the engine types with their
     constructors / snapshot decoders (the interface traits have neither):
     `Ch: Clearinghouse`, `Book: OrderBook`, `Trig: TriggerStore`,
-    `Oracle: OracleAggregator`.
+    `Oracle: OracleAggregator`. Optional hooks with defaults:
+    `genesis_total`, `withdraw` (HlEngines: `withdraw_with_fee`, fee stays in
+    the fee pool, `amount − fee` added to `flows.withdrawals`),
+    `take_dirty`, `all_entity_hashes` (HlEngines: rebuild after `decode`),
+    `post_liquidation_check` (HlEngines: `negative_equity_accounts()` empty,
+    AC4 invariant 3; run in invariant-checking blocks).
   * extras: `check_invariants()`, `invariant_violations()`, `sig_cache()`
     (share with whoever calls `check_tx`), `current_root()`, `flows()`,
     `user_meta()`, `oracle_px()/mark_px()`, `clearinghouse()`, `book()`,
@@ -82,8 +91,11 @@ bookkeeping, and maintains the state root. Integer-only and deterministic.
 * "User or API Wallet … does not exist." if the principal has no
   funds/positions/spot and no agent/referrer/schedule metadata.
 * withdraw3: user debited `amount` (gross), `PendingWithdrawal.amount =
-  amount − withdraw_fee` (net, D18), `flows.withdrawals += amount`; the fee
-  stays in the bridge contract. Withdrawal ids start at 1.
+  amount − withdraw_fee` (net, D18). With HlEngines the fee goes to the fee
+  pool and `flows.withdrawals += amount − fee` (D19). Withdrawal ids start
+  at 1; deposit ids may start at 0.
+* Backstop/ADL fills returned by the clearinghouse get tids from the chain
+  counter.
 * Validator txs: ignored silently unless signer == `tx.validator` ∈ set and
   nonce strictly increasing. Deposits credit once when identical
   attestations reach quorum stake (one attestation per validator per id;
@@ -104,7 +116,9 @@ re-hashed. Snapshot = zstd(borsh{core, ch.encode, books, triggers});
 ## Tests
 ```
 cargo test -p state
-# throughput (release, single rayon thread, fake verifier):
+# throughput (release, single rayon thread, fake verifier, real engines):
+# 40 MMs requoting 50-order ladders + 50-entry cancels, 40 IOC takers/block
+# measured ~1.9M order actions/s (target >= 300k)
 cargo test --release -p state --test bench -- --ignored --nocapture
 ```
 * `tests/orders.rs` — placement, fills, validation errors, ALO, STP, maker
@@ -115,6 +129,9 @@ cargo test --release -p state --test bench -- --ignored --nocapture
   real secp256k1 signatures, digest == relayer.
 * `tests/triggers_liq.rs` — SL/TP, normalTpsl, positionTpsl, liquidation via
   book, backstop + bad debt.
+* `tests/hl_e2e.rs` — production `HlChain` with real hlwire wallets:
+  L1 orders via agent, user-signed approveAgent/usdSend/withdraw3, signed
+  validator oracle txs, tampered signature, replay determinism.
 * `tests/determinism.rs` — seeded random multi-account scenario: identical
   roots/receipts/events on replay, snapshot/restore mid-way, proptest with
   invariants every block (incl. liquidations from price shocks).
