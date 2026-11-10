@@ -1,0 +1,10 @@
+{
+  "name": "hlbft-ac5-ts",
+  "private": true,
+  "type": "module",
+  "description": "AC5: @nktkas/hyperliquid README/docs examples against the local chain (see README in acceptance/)",
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.33.3",
+    "viem": "2.57.8"
+  }
+}
