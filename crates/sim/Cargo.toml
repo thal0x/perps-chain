@@ -33,3 +33,4 @@ clap = { workspace = true }
 
 [dev-dependencies]
 proptest = { workspace = true }
+axum = { workspace = true }

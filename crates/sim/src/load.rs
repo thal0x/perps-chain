@@ -168,7 +168,8 @@ pub fn run_load(a: &LoadArgs) -> anyhow::Result<LoadReport> {
     }
     let keys = Arc::new(keys);
     let n_targets = a.targets.len();
-    let reqs_per_s_est = (a.rate / 20).max(1) as usize;
+    // requests per second ~ rate / (mean order actions per request)
+    let reqs_per_s_est = (a.rate / if mode == Mode::Bench { 45 } else { 4 }).max(1) as usize;
     let (tx, rx) = crossbeam_channel::bounded::<Item>((reqs_per_s_est * (a.presign_s as usize + 2)).max(1024));
     let ticks = a.duration * 1000 / TICK_MS;
     let budget_per_tick = (a.rate * TICK_MS / 1000).max(1);
