@@ -204,7 +204,8 @@ impl Clearinghouse {
         };
         let mut ch = Self::from_snapshot(snap);
         // everything is "dirty" at genesis
-        ch.dirty_list = (0..ch.accts.len() as u32).collect();
+        // idx 0 (insurance) is reported only under StateKey::Insurance
+        ch.dirty_list = (1..ch.accts.len() as u32).collect();
         for m in ch.meta.iter_mut() {
             m.dirty = true;
         }
@@ -1135,6 +1136,11 @@ impl ClearinghouseApi for Clearinghouse {
         list.sort_by(|a, b| self.accts[*a as usize].address.cmp(&self.accts[*b as usize].address));
         list.dedup();
         for i in list {
+            if i == 0 {
+                // never report the insurance pseudo-account as an Account key
+                self.dirty_insurance = true;
+                continue;
+            }
             let st = &self.accts[i as usize];
             out.push((StateKey::Account(st.address), hash_borsh(st)));
         }

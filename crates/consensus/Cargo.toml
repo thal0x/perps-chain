@@ -5,3 +5,16 @@ edition.workspace = true
 
 [dependencies]
 interfaces = { workspace = true }
+borsh = { workspace = true }
+blake3 = { workspace = true }
+sha3 = { workspace = true }
+secp256k1 = { workspace = true }
+tracing = { workspace = true }
+crossbeam-channel = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+borsh = { workspace = true }
+tracing-subscriber = { workspace = true }

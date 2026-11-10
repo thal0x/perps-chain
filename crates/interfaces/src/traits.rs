@@ -202,7 +202,10 @@ pub trait ConsensusEnv {
     /// Latest local snapshot, to serve SnapshotRequest.
     fn snapshot(&self) -> Option<Snapshot>;
     /// Replay mode: if Some, the leader must propose exactly this
-    /// (timestamp, payload) for `height` instead of mempool contents.
+    /// (timestamp, payload) for `height` instead of mempool contents, and
+    /// voters reject proposals that differ. Because commit needs two
+    /// successors, the override must return two (empty) padding blocks past
+    /// the end of the log for the last logged heights to commit.
     fn proposal_override(&mut self, _height: Height) -> Option<(TimestampMs, Vec<Tx>)> {
         None
     }

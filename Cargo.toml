@@ -73,8 +73,15 @@ debug = 1
 lto = "thin"
 codegen-units = 4
 
+[profile.dev]
+# Disk budget is ~30 GB shared by many worktrees (D21).
+incremental = false
+debug = "line-tables-only"
+
 [profile.test]
 opt-level = 1
+incremental = false
+debug = "line-tables-only"
 
 [profile.dev.package."*"]
 opt-level = 2
