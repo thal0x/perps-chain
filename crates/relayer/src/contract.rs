@@ -182,3 +182,25 @@ pub async fn erc20_balance(rpc: &EthRpc, token: &Address, owner: &Address) -> Re
     let out = rpc.call(token, &abi::encode_call("balanceOf(address)", &[Token::address(owner)]), None).await?;
     abi::u128_from_word(&abi::word_at(&out, 0)?)
 }
+
+/// Bridge.sol custom errors (for readable revert messages).
+pub const BRIDGE_ERRORS: &[&str] = &[
+    "DepositTooSmall()",
+    "DepositTooLarge()",
+    "TransferFailed()",
+    "WithdrawalAlreadyUsed()",
+    "InvalidWithdrawal()",
+    "InvalidSignature()",
+    "SignersNotSorted()",
+    "NotValidator()",
+    "InsufficientPower(uint256,uint256)",
+    "StaleEpoch()",
+    "InvalidValidatorSet()",
+    "InvalidToken()",
+];
+
+/// Name of the Bridge custom error whose selector appears in `msg`, if any.
+pub fn explain_revert(msg: &str) -> Option<&'static str> {
+    let lower = msg.to_ascii_lowercase();
+    BRIDGE_ERRORS.iter().copied().find(|e| lower.contains(&format!("0x{}", hex::encode(abi::selector(e)))))
+}

@@ -161,7 +161,7 @@ pub fn word_at(data: &[u8], i: usize) -> anyhow::Result<Word> {
 /// Decode a dynamic array of static words whose offset is stored in head word `head_idx`.
 pub fn decode_word_array(data: &[u8], head_idx: usize) -> anyhow::Result<Vec<Word>> {
     let off = u64_from_word(&word_at(data, head_idx)?)? as usize;
-    anyhow::ensure!(off % 32 == 0, "unaligned array offset");
+    anyhow::ensure!(off.is_multiple_of(32), "unaligned array offset");
     let base = off / 32;
     let len = u64_from_word(&word_at(data, base)?)? as usize;
     anyhow::ensure!(len <= data.len() / 32, "array length too large");

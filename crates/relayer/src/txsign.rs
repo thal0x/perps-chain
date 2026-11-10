@@ -134,7 +134,13 @@ impl<'a> TxSender<'a> {
     /// Sign + broadcast; returns the tx hash. Gas is estimated (+25%).
     pub async fn send(&self, to: Option<&Address>, data: Vec<u8>) -> Result<Hash32> {
         let from = self.address();
-        let gas = self.rpc.estimate_gas(&from, to, &data).await?;
+        let gas = self.rpc.estimate_gas(&from, to, &data).await.map_err(|e| {
+            let m = format!("{e:#}");
+            match crate::contract::explain_revert(&m) {
+                Some(name) => e.context(format!("reverted: {name}")),
+                None => e,
+            }
+        })?;
         let tx = LegacyTx {
             nonce: self.rpc.get_transaction_count(&from).await?,
             gas_price: self.rpc.gas_price().await?.max(1),

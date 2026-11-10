@@ -88,7 +88,7 @@ pub struct DepositWatcher {
 }
 
 fn due(map: &BTreeMap<u64, Instant>, id: u64, after: Duration) -> bool {
-    map.get(&id).map_or(true, |t| t.elapsed() >= after)
+    map.get(&id).is_none_or(|t| t.elapsed() >= after)
 }
 
 impl DepositWatcher {
