@@ -97,6 +97,11 @@ pub struct Core {
     timeouts: BTreeMap<View, TimeoutAgg>,
 
     pending: BTreeMap<BlockId, Vec<Pending>>,
+    /// Certified/proposed blocks not yet connected to the committed chain
+    /// (bounded). A lagging node can still vote on (and propose on top of)
+    /// them: voting safety depends only on QC/TC views.
+    floating: BTreeMap<BlockId, Arc<Block>>,
+    floating_order: VecDeque<BlockId>,
     pending_count: usize,
     fetching: BTreeMap<BlockId, (u64, Address)>,
 
@@ -188,6 +193,8 @@ impl Core {
             votes: BTreeMap::new(),
             timeouts: BTreeMap::new(),
             pending: BTreeMap::new(),
+            floating: BTreeMap::new(),
+            floating_order: VecDeque::new(),
             pending_count: 0,
             fetching: BTreeMap::new(),
             peers: BTreeMap::new(),
@@ -492,8 +499,27 @@ impl Core {
                 let peer = fresh.as_ref().map(|(f, _)| *f).unwrap_or(b.header.proposer);
                 if ph > self.committed_height + self.cfg.fetch_window {
                     self.start_sync(peer);
-                } else {
+                }
+                // fetch the direct parent even when far behind: it lets us
+                // vote on `b` while syncing (floating blocks)
+                if fresh.is_some() || ph <= self.committed_height + self.cfg.fetch_window {
                     self.fetch(parent_id, peer);
+                }
+                self.add_floating(&b);
+                if let Some((_, tc)) = &fresh {
+                    if let Some(p) = self.floating.get(&parent_id).cloned() {
+                        if self.structurally_valid(&b, &p) {
+                            self.maybe_vote(&b, tc.as_ref(), env);
+                        }
+                    }
+                }
+                let children: Vec<Pending> = self.pending.get(&id).cloned().unwrap_or_default();
+                for (c, cf) in children {
+                    if let Some((_, ctc)) = cf {
+                        if self.structurally_valid(&c, &b) {
+                            self.maybe_vote(&c, ctc.as_ref(), env);
+                        }
+                    }
                 }
                 if self.pending_count < MAX_PENDING {
                     self.pending_count += 1;
@@ -526,6 +552,17 @@ impl Core {
             if let Some(children) = self.pending.remove(&id) {
                 self.pending_count -= children.len();
                 work.extend(children);
+            }
+        }
+    }
+
+    fn add_floating(&mut self, b: &Arc<Block>) {
+        let id = b.id();
+        if self.floating.insert(id, b.clone()).is_none() {
+            self.floating_order.push_back(id);
+            while self.floating_order.len() > 32 {
+                let old = self.floating_order.pop_front().unwrap();
+                self.floating.remove(&old);
             }
         }
     }
@@ -604,7 +641,10 @@ impl Core {
     fn on_fetch(&mut self, from: Address, id: BlockId, env: &mut dyn ConsensusEnv) {
         let b = match self.blocks.get(&id) {
             Some(e) => Some((*e.block).clone()),
-            None => env.store().get_block(&id),
+            None => match self.floating.get(&id) {
+                Some(b) => Some((**b).clone()),
+                None => env.store().get_block(&id),
+            },
         };
         self.send_to(from, ConsensusMsg::FetchBlockResponse { block: b });
     }
@@ -942,6 +982,12 @@ impl Core {
             });
             self.pending_count = self.pending.values().map(|v| v.len()).sum();
         }
+        let ch = self.committed_height;
+        if self.floating.values().any(|b| b.header.height <= ch) {
+            self.floating.retain(|_, b| b.header.height > ch);
+            let f = &self.floating;
+            self.floating_order.retain(|id| f.contains_key(id));
+        }
         let vk = self.committed_view.saturating_sub(4 * self.cfg.memory_window);
         if self.verified_qcs.keys().next().is_some_and(|k| k.0 < vk) {
             self.verified_qcs = self.verified_qcs.split_off(&(vk, Hash32::ZERO, 0));
@@ -967,13 +1013,17 @@ impl Core {
         if via_tc && self.high_tc.as_ref().is_none_or(|t| t.view + 1 != v) {
             return;
         }
-        let Some(pe) = self.blocks.get(&hq.data.block_id) else {
-            let peer = self.next_peer(self.cfg.me);
-            self.fetch(hq.data.block_id, peer);
-            return;
+        let (parent, parent_seen) = match self.blocks.get(&hq.data.block_id) {
+            Some(pe) => (pe.block.clone(), pe.seen_ms),
+            None => match self.floating.get(&hq.data.block_id) {
+                Some(b) => (b.clone(), 0),
+                None => {
+                    let peer = self.next_peer(self.cfg.me);
+                    self.fetch(hq.data.block_id, peer);
+                    return;
+                }
+            },
         };
-        let parent = pe.block.clone();
-        let parent_seen = pe.seen_ms;
         let height = parent.header.height + 1;
         let replay = self.override_for(height, env).is_some();
         let earliest = if replay {
@@ -1210,7 +1260,6 @@ impl Core {
             return;
         }
         info!(peer = %from, height = s.height, "received snapshot; fetching certifying headers");
-        self.snapshot_requested = None;
         self.pending_snapshot = Some((from, s));
         self.inflight = None;
         self.start_sync(from);

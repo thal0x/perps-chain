@@ -309,17 +309,21 @@ impl FileStore {
             Err(_) => 0,
         })?;
         let mut committed_index = BTreeMap::new();
-        let mut recs: Vec<(Height, BlockId)> = vec![];
+        let mut recs: BTreeMap<Height, BlockId> = BTreeMap::new();
         let committed = Log::open(&dir, "committed", |seq, off, len, body| match CommittedRec::try_from_slice(body) {
             Ok(r) => {
+                // same semantics as put_committed: a record supersedes any
+                // entry at or above its height
+                committed_index.split_off(&r.height);
+                recs.split_off(&r.height);
                 committed_index.insert(r.height, Loc { seg: seq, off, len });
-                recs.push((r.height, r.block_id));
+                recs.insert(r.height, r.block_id);
                 r.height
             }
             Err(_) => 0,
         })?;
         // drop committed records whose block is missing (and everything above)
-        if let Some((bad, _)) = recs.iter().filter(|(_, id)| !block_index.contains_key(id)).min_by_key(|(h, _)| *h) {
+        if let Some((bad, _)) = recs.iter().find(|(_, id)| !block_index.contains_key(*id)) {
             tracing::warn!(height = bad, "committed record without block; dropping committed index from here");
             committed_index.split_off(bad);
         }
