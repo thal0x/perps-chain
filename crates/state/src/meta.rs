@@ -24,6 +24,8 @@ pub struct UserMeta {
     pub named_agents: BTreeMap<String, Address>,
     pub scheduled_cancel: Option<u64>,
     pub referrer: Option<String>,
+    /// Set once the address was seen with funds (cached existence check).
+    pub known: bool,
 }
 
 impl UserMeta {
@@ -61,6 +63,7 @@ impl UserMeta {
             && self.named_agents.is_empty()
             && self.scheduled_cancel.is_none()
             && self.referrer.is_none()
+            && !self.known
     }
 }
 

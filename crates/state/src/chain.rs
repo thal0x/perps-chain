@@ -332,7 +332,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     fn user_exists(&self, a: &Address) -> bool {
         // Nonce records alone do not make an account (e.g. a revoked agent).
         if self.core.users.get(a).is_some_and(|m| {
-            m.unnamed_agent.is_some() || !m.named_agents.is_empty() || m.referrer.is_some() || m.scheduled_cancel.is_some()
+            m.known || m.unnamed_agent.is_some() || !m.named_agents.is_empty() || m.referrer.is_some() || m.scheduled_cancel.is_some()
         }) {
             return true;
         }
@@ -371,6 +371,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         let user = if is_user_signed(action) { signer } else { *self.core.agents.get(&signer).unwrap_or(&signer) };
         if !self.user_exists(&user) {
             return err(user, err_msg::user_does_not_exist(&signer));
+        }
+        if !self.core.users.get(&user).is_some_and(|m| m.known) {
+            self.meta_mut(user).known = true;
         }
         self.meta_mut(signer).use_nonce(u.nonce);
         let n = action.order_action_count() as u64;
