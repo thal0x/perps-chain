@@ -96,3 +96,12 @@ actions are resubmitted by watchers, so duplicate attestations/signatures per
 `bridge.contract` = deployed Bridge, `eth_chain_id` = 31337; Anvil runs with
 `--block-time 1` so confirmations progress. L1-driven validator-set rotation
 is out of scope for AC6 (contract rotation is tested in Foundry).
+
+**D19 [clearinghouse]** Interface requests from clearinghouse (fee param on
+withdraw, post-liquidation check, all-entity-hashes, genesis flows helper)
+are served by inherent methods on the concrete `Clearinghouse`
+(`withdraw_with_fee`, `negative_equity_accounts`, `all_entity_hashes`,
+`genesis_total`) instead of widening the trait — the state crate binds to the
+concrete type. Known gap: the insurance fund can go negative when covering
+bad debt of an account with no positions left to ADL; conservation still
+holds and it's reported via BadDebtCovered. Revisit if AC4 evidence shows it.

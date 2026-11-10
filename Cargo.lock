@@ -385,7 +385,9 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 name = "clearinghouse"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "interfaces",
+ "proptest",
 ]
 
 [[package]]
@@ -709,7 +711,16 @@ dependencies = [
 name = "hlwire"
 version = "0.1.0"
 dependencies = [
+ "borsh",
+ "hex",
  "interfaces",
+ "proptest",
+ "rand 0.8.8",
+ "rand_chacha",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "sha3",
 ]
 
 [[package]]
