@@ -49,6 +49,10 @@ channels: see [COMPAT.md](COMPAT.md).
      is no race with fast blocks;
   3. submit and wait up to 10 s for the receipt.
 
+  Steps 1–3 (parse, hash, waiter registration, `ApiBackend::submit` with
+  its signature recovery) run on tokio's blocking pool, so `/info` and
+  WebSocket traffic on the async workers are not starved.
+
   Responses are rendered straight into a string, with no `serde_json::Value`
   on the hot path. Duplicates (`AdmissionError::Duplicate`) are answered from
   a bounded recent-receipt cache, or by waiting for the original. Admission
