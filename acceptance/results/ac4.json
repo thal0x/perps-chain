@@ -1,0 +1,61 @@
+{
+ "ac": "ac4",
+ "mode": "full",
+ "pass": true,
+ "proptest_cases": 2056,
+ "proptest_tests": 4,
+ "proptest_failed": 0,
+ "proptest_cases_per_test": [
+  24,
+  32,
+  1000
+ ],
+ "proptest_breakdown": [
+  {
+   "file": "crates/clearinghouse/tests/prop_invariants.rs",
+   "test": "invariants_hold_under_random_ops",
+   "cases": 1000,
+   "passed": true
+  },
+  {
+   "file": "crates/clearinghouse/tests/prop_invariants.rs",
+   "test": "invariants_hold_in_liquidation_storms",
+   "cases": 1000,
+   "passed": true
+  },
+  {
+   "file": "crates/state/tests/determinism.rs",
+   "test": "invariants_hold_every_block",
+   "cases": 32,
+   "passed": true
+  },
+  {
+   "file": "crates/state/tests/spot.rs",
+   "test": "spot_conservation",
+   "cases": 24,
+   "passed": true
+  }
+ ],
+ "replay_blocks_checked": 100800,
+ "replay_blocks": 100800,
+ "replay_actions": 50000002,
+ "replay_node_checks": {
+  "A0": 100800,
+  "A1": 100800,
+  "A2": 100800,
+  "A3": 100800,
+  "B0": 100800,
+  "B1": 100800,
+  "B2": 100800,
+  "B3": 100800
+ },
+ "replay_offline_checks": 100800,
+ "violations": 0,
+ "first_violations": [],
+ "node_first_violations": {},
+ "source_fingerprint": "3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f",
+ "git_head": "a2cb6ea0bd7b0ddf57d3907d74d07b4d892ba3b3",
+ "git_dirty": false,
+ "time_utc": "2026-11-10T21:50:55Z",
+ "summary": "proptests 4 tests / 2056 cases (0 failed); invariants every block of 100800 blocks (50000002 actions): offline sim replay + 8 node replays; 0 violations"
+}
