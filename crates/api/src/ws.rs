@@ -175,6 +175,10 @@ pub struct Hub {
 }
 
 impl Hub {
+    pub fn is_empty(&self) -> bool {
+        self.subs.read().is_empty()
+    }
+
     pub fn n_subscriptions(&self) -> usize {
         self.subs.read().values().map(|m| m.len()).sum()
     }

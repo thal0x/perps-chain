@@ -33,6 +33,13 @@ channels: see [COMPAT.md](COMPAT.md).
     users;
   * per coin: trades and funding points;
   * 5000 candles per series.
+* **Ingest cost.** The WS `BlockDelta` is built only when the hub has
+  subscribers (decided under `publish_lock`, so subscribing races are safe).
+  Users' LRU positions are touched once per block, and maps use a fast
+  non-cryptographic hasher. Stored orders keep "Limit" as an empty string
+  (no allocation), and candles take an in-bucket fast path. On
+  `node/tests/exec_bench`, 100k order actions/s cost ≈ 48–61 ms CPU per
+  second, down from 161–173 ms.
 * **Exchange.** The body bytes go through `wire::parse_exchange_bytes`, a
   zero-copy JSON→msgpack fast path. It falls back to
   `hlwire::parse_exchange_request` for anything unusual, and is
@@ -41,6 +48,10 @@ channels: see [COMPAT.md](COMPAT.md).
   2. register a oneshot waiter in a 64-shard map *before* `submit`, so there
      is no race with fast blocks;
   3. submit and wait up to 10 s for the receipt.
+
+  Steps 1–3 (parse, hash, waiter registration, `ApiBackend::submit` with
+  its signature recovery) run on tokio's blocking pool, so `/info` and
+  WebSocket traffic on the async workers are not starved.
 
   Responses are rendered straight into a string, with no `serde_json::Value`
   on the hot path. Duplicates (`AdmissionError::Duplicate`) are answered from
