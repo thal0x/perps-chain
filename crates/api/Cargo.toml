@@ -7,7 +7,7 @@ edition.workspace = true
 interfaces = { workspace = true }
 hlwire = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true, features = ["raw_value"] }
+serde_json = { workspace = true }
 tokio = { workspace = true }
 axum = { workspace = true }
 tower-http = { workspace = true }
@@ -19,7 +19,6 @@ crossbeam-channel = { workspace = true }
 tokio-util = { workspace = true }
 
 [dev-dependencies]
-proptest = { workspace = true }
 hlwire = { workspace = true }
 relayer = { workspace = true }
 state = { workspace = true }

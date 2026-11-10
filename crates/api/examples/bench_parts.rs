@@ -25,7 +25,7 @@ fn main() {
     for _ in 0..n {
         u = Some(api::wire::parse_exchange_bytes(body.as_bytes()).unwrap());
     }
-    println!("fast bytes parse{:6.1} us (replaces json parse + hlwire parse)", t.elapsed().as_secs_f64() * 1e6 / n as f64);
+    println!("bytes parse     {:6.1} us (hlwire::parse_exchange_request_bytes; replaces json parse + hlwire parse)", t.elapsed().as_secs_f64() * 1e6 / n as f64);
     let tx = Tx::User(u.unwrap());
     let t = Instant::now();
     let mut h = Hash32::ZERO;

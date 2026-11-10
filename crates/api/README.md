@@ -40,10 +40,9 @@ channels: see [COMPAT.md](COMPAT.md).
   (no allocation), and candles take an in-bucket fast path. On
   `node/tests/exec_bench`, 100k order actions/s cost ≈ 48–61 ms CPU per
   second, down from 161–173 ms.
-* **Exchange.** The body bytes go through `wire::parse_exchange_bytes`, a
-  zero-copy JSON→msgpack fast path. It falls back to
-  `hlwire::parse_exchange_request` for anything unusual, and is
-  differential-tested against hlwire (SDK vectors + proptest). The flow:
+* **Exchange.** The body bytes go through `hlwire::parse_exchange_request_bytes`
+  (allocation-light fast path with hlwire's own fallback; ≈20 µs for a
+  50-order body). Invalid JSON gets HL's error text. The flow:
   1. compute `Tx::hash()`;
   2. register a oneshot waiter in a 64-shard map *before* `submit`, so there
      is no race with fast blocks;
@@ -84,7 +83,7 @@ cargo test -p api
 * unit tests: formatting, candle buckets (incl. 1w Monday and 1M calendar), dir strings, fast render == Value render;
 * `tests/http.rs`: every /info type, exchange flows (resting, filled, errors, cancel, default, err, admission, duplicate, timeout, 400 concurrent 50-order batches), admin, CORS, pendingWithdrawals round-trip through `relayer::api::parse_pending_withdrawals`, and real hlwire-signed requests;
 * `tests/ws.rs`: all channels, snapshots, ping, errors, unsubscribe, `post` (info and action), `/` upgrade, cleanup;
-* `tests/wire.rs`: fast parser == hlwire on SDK vectors, edge cases and proptest;
+* `tests/wire.rs`: the bytes parser matches the JSON-Value path on SDK vectors, and error texts are kept;
 * `tests/schema.rs`: every JSON shape emitted (126 samples, 67 SDK types: /info, /exchange, WS events) is validated against the TS SDK's TypeScript response types, converted to JSON Schema with `additionalProperties: false` the way the SDK's own tests do (node + ajv; `tests/schema/`);
 * `tests/python_sdk.rs`: the real Python SDK (`HL_PYTHON` = a python with hyperliquid-python-sdk installed) runs `Info`, `Exchange`, `market_open`/`close`, tpsl, transfers, agent and the `basic_ws` subscriptions. Every signature is recovered with hlwire;
 * `tests/spot_chain.rs`: spot end to end over the real `state::HlChain` (an in-test `ApiBackend` executes one block per submit): hlwire-signed spot ladder, basic_spot_order flow (rest, orderStatus, cancel), IOC sweep, userFills dir, recentTrades, candles, spotMetaAndAssetCtxs volume/mid/mark, holds (API formula == chain), WS trades/l2Book/userFills for PURR/USDC;
