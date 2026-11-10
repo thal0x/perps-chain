@@ -156,7 +156,7 @@ impl BuiltinLoad {
         // market discovery (retry for a while; nodes may still be starting)
         let mut market = None;
         let t0 = Instant::now();
-        while market.is_none() && t0.elapsed() < Duration::from_secs(30) && !stop.load(Ordering::Relaxed) {
+        while market.is_none() && t0.elapsed() < Duration::from_secs(15) && !stop.load(Ordering::Relaxed) {
             if let Some(api) = self.pick_api(&mut rng) {
                 market = discover_market(api);
             }

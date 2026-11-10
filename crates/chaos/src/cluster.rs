@@ -14,6 +14,60 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 pub const CONSOLE_LOG: &str = "console.log";
+/// Captured stdout/stderr of a node is rotated (`console.log.1`) at this size.
+pub const CONSOLE_MAX_BYTES: u64 = 32 << 20;
+
+/// `STATE DIVERGENCE` lines seen on a node's console (counted by the capture
+/// thread so rotation can never lose one).
+#[derive(Debug, Default)]
+pub struct ConsoleDivergence {
+    pub count: std::sync::atomic::AtomicU64,
+    pub lines: Mutex<Vec<String>>,
+}
+
+/// Copy `src` line by line into `path`, rotating at `max_bytes`, and
+/// record divergence lines.
+pub fn capture_console<R: std::io::Read + Send + 'static>(src: R, path: PathBuf, max_bytes: u64, div: Arc<ConsoleDivergence>) {
+    std::thread::spawn(move || {
+        use std::io::{BufRead, Write};
+        let mut r = std::io::BufReader::new(src);
+        let open = |p: &Path| OpenOptions::new().create(true).append(true).open(p).ok();
+        let mut f = open(&path);
+        let mut size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        let mut line = Vec::new();
+        loop {
+            line.clear();
+            match r.read_until(b'\n', &mut line) {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {}
+            }
+            if line.len() > 64 * 1024 {
+                line.truncate(64 * 1024);
+                line.push(b'\n');
+            }
+            let text = String::from_utf8_lossy(&line);
+            if text.contains("STATE DIVERGENCE") {
+                div.count.fetch_add(1, Ordering::SeqCst);
+                if let Ok(mut v) = div.lines.lock() {
+                    if v.len() < 50 {
+                        v.push(text.trim_end().chars().take(400).collect());
+                    }
+                }
+            }
+            if size + line.len() as u64 > max_bytes {
+                drop(f.take());
+                let _ = std::fs::rename(&path, path.with_extension("log.1"));
+                f = open(&path);
+                size = 0;
+            }
+            if let Some(w) = f.as_mut() {
+                if w.write_all(&line).is_ok() {
+                    size += line.len() as u64;
+                }
+            }
+        }
+    });
+}
 
 #[derive(Clone, Debug)]
 pub struct NodeSpec {
@@ -105,6 +159,7 @@ pub struct Cluster {
     pub obs: Arc<Vec<Mutex<NodeObs>>>,
     pollers_stop: Arc<AtomicBool>,
     pub start_count: Vec<u64>,
+    pub console_div: Vec<Arc<ConsoleDivergence>>,
 }
 
 impl Cluster {
@@ -158,6 +213,7 @@ impl Cluster {
             obs: Arc::new((0..n).map(|_| Mutex::new(NodeObs::default())).collect()),
             pollers_stop: Arc::new(AtomicBool::new(false)),
             start_count: vec![0; n],
+            console_div: (0..n).map(|_| Arc::new(ConsoleDivergence::default())).collect(),
             nodes,
         })
     }
@@ -181,7 +237,6 @@ impl Cluster {
             bail!("node{i} already running");
         }
         let spec = &self.nodes[i];
-        let log = OpenOptions::new().create(true).append(true).open(spec.home.join(CONSOLE_LOG))?;
         let mut cmd = Command::new(&self.hlnode);
         cmd.arg("run").arg("--home").arg(&spec.home).arg("--genesis").arg(&self.genesis);
         cmd.args(["--api-listen", &spec.api]);
@@ -189,7 +244,7 @@ impl Cluster {
             cmd.args(["--p2p-listen", p]);
         }
         cmd.args(&self.extra_args);
-        cmd.stdin(Stdio::null()).stdout(log.try_clone()?).stderr(log);
+        cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
         unsafe {
             cmd.pre_exec(|| {
                 // die with the harness even if it is SIGKILLed
@@ -197,7 +252,14 @@ impl Cluster {
                 Ok(())
             });
         }
-        let child = cmd.spawn().with_context(|| format!("spawn node{i}"))?;
+        let mut child = cmd.spawn().with_context(|| format!("spawn node{i}"))?;
+        let path = spec.home.join(CONSOLE_LOG);
+        if let Some(o) = child.stdout.take() {
+            capture_console(o, path.clone(), CONSOLE_MAX_BYTES, self.console_div[i].clone());
+        }
+        if let Some(e) = child.stderr.take() {
+            capture_console(e, spec.home.join("console.err.log"), CONSOLE_MAX_BYTES, self.console_div[i].clone());
+        }
         self.children[i] = Some(child);
         self.alive[i].store(true, Ordering::SeqCst);
         self.start_count[i] += 1;
@@ -342,6 +404,27 @@ mod tests {
         assert_eq!(genesis_validators(&g), vec![("0xab".to_string(), Some("127.0.0.1:1".to_string()))]);
         let g: Value = serde_json::from_str(r#"{"validators":[{"address":"0xcd"}]}"#).unwrap();
         assert_eq!(genesis_validators(&g), vec![("0xcd".to_string(), None)]);
+    }
+
+    #[test]
+    fn console_capture_rotates_and_counts() {
+        let d = crate::testutil::tempdir("console");
+        let p = d.join("console.log");
+        let div = Arc::new(ConsoleDivergence::default());
+        let mut data = String::new();
+        for i in 0..200 {
+            data.push_str(&format!("line {i} {}\n", "x".repeat(50)));
+        }
+        data.push_str("ERROR STATE DIVERGENCE at 5\n");
+        capture_console(std::io::Cursor::new(data.into_bytes()), p.clone(), 4096, div.clone());
+        let t0 = Instant::now();
+        while div.count.load(Ordering::SeqCst) == 0 && t0.elapsed() < Duration::from_secs(5) {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        std::thread::sleep(Duration::from_millis(50));
+        assert_eq!(div.count.load(Ordering::SeqCst), 1);
+        assert!(std::fs::metadata(&p).unwrap().len() <= 4096);
+        assert!(std::fs::metadata(d.join("console.log.1")).unwrap().len() <= 4096);
     }
 
     #[test]

@@ -3,7 +3,7 @@
 //! dependency-free `Connection: close` client keeps it independent of any
 //! async runtime and lets each poller thread use short hard timeouts.
 
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs};
 use std::time::Duration;
 

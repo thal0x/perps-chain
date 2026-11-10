@@ -57,6 +57,8 @@ pub struct RunConfig {
     pub catchup_slack: u64,
     pub progress_every_ms: u64,
     pub flush_every_ms: u64,
+    /// Keep `run-*/net` (node data and logs) after the run.
+    pub keep_workdir: bool,
 }
 
 impl Default for RunConfig {
@@ -86,6 +88,7 @@ impl Default for RunConfig {
             catchup_slack: 3,
             progress_every_ms: 30_000,
             flush_every_ms: 30_000,
+            keep_workdir: false,
         }
     }
 }
@@ -123,6 +126,8 @@ struct Runner {
     load_stop: Arc<AtomicBool>,
     sim_child: Option<Child>,
     seen_violations: u64,
+    console_div_seen: Vec<u64>,
+    run_dir: PathBuf,
     interrupted: bool,
 }
 
@@ -240,6 +245,16 @@ impl Runner {
         if self.last_check.elapsed() >= Duration::from_millis(500) {
             self.last_check = Instant::now();
             self.checker.poll();
+        }
+        for i in 0..self.cluster.n() {
+            let d = self.cluster.console_div[i].clone();
+            let c = d.count.load(Ordering::SeqCst);
+            while self.console_div_seen[i] < c {
+                let k = self.console_div_seen[i] as usize;
+                let line = d.lines.lock().ok().and_then(|v| v.get(k).cloned()).unwrap_or_else(|| "STATE DIVERGENCE (console)".into());
+                self.checker.ingest_log_line(i, &line);
+                self.console_div_seen[i] += 1;
+            }
         }
         if self.checker.violation_count > self.seen_violations {
             for v in self.checker.violations.iter().skip(self.seen_violations as usize) {
@@ -492,7 +507,8 @@ pub fn run(cfg: RunConfig) -> Result<Report> {
     println!("hlchaos: run dir {}  report {}", run_dir.display(), report_path.display());
     let cluster = Cluster::generate(&cfg.hlnode, &run_dir, cfg.validators, cfg.seed, cfg.accounts, cfg.node_args.clone())?;
     let homes: Vec<PathBuf> = cluster.nodes.iter().map(|n| n.home.clone()).collect();
-    let checker = SafetyChecker::with_homes(&homes, &[CONSOLE_LOG], cfg.allow_gaps);
+    // console output is scanned by the capture threads (Cluster::console_div)
+    let checker = SafetyChecker::with_homes(&homes, &[], cfg.allow_gaps);
     let n = cfg.validators;
     let addrs = cluster.addresses();
     let mut sched = Scheduler::new(
@@ -527,6 +543,8 @@ pub fn run(cfg: RunConfig) -> Result<Report> {
         load_stop: Arc::new(AtomicBool::new(false)),
         sim_child: None,
         seen_violations: 0,
+        console_div_seen: vec![0; n],
+        run_dir: run_dir.clone(),
         interrupted: false,
         checker,
         cluster,
@@ -688,5 +706,40 @@ impl Runner {
             eprintln!("cannot write report {}: {e}", self.report_path.display());
         }
         self.say(&self.report.summary);
+        if !self.cfg.keep_workdir {
+            self.cleanup();
+        }
     }
+
+    /// Delete the node directories (data, logs) and keep only the report
+    /// plus, on failure, bounded tails of each node's logs for debugging.
+    fn cleanup(&mut self) {
+        if !self.report.pass {
+            let dst = self.run_dir.join("failure-logs");
+            let _ = std::fs::create_dir_all(&dst);
+            for node in &self.cluster.nodes {
+                for f in ["node.log", CONSOLE_LOG, "console.err.log", "commits.log", "roots.log"] {
+                    let src = node.home.join(f);
+                    if let Some(t) = tail_bytes(&src, 2 << 20) {
+                        let _ = std::fs::write(dst.join(format!("node{}.{f}.tail", node.idx)), t);
+                    }
+                }
+            }
+        }
+        match std::fs::remove_dir_all(&self.cluster.net_dir) {
+            Ok(()) => self.say(format!("removed {} (use --keep-workdir to keep it)", self.cluster.net_dir.display())),
+            Err(e) => eprintln!("cannot remove {}: {e}", self.cluster.net_dir.display()),
+        }
+    }
+}
+
+/// Last `max` bytes of a file (None if missing).
+fn tail_bytes(p: &std::path::Path, max: u64) -> Option<Vec<u8>> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut f = std::fs::File::open(p).ok()?;
+    let len = f.metadata().ok()?.len();
+    f.seek(SeekFrom::Start(len.saturating_sub(max))).ok()?;
+    let mut v = vec![];
+    f.read_to_end(&mut v).ok()?;
+    Some(v)
 }
