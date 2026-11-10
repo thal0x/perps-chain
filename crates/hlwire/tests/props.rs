@@ -13,7 +13,9 @@ fn arb_json() -> impl Strategy<Value = Value> {
         any::<bool>().prop_map(Value::Bool),
         any::<u64>().prop_map(Value::from),
         any::<i64>().prop_map(Value::from),
-        (-1e12f64..1e12f64).prop_map(|f| serde_json::Number::from_f64(f).map(Value::Number).unwrap_or(Value::Null)),
+        (-1e12f64..1e12f64).prop_map(|f| serde_json::Number::from_f64(f)
+            .map(Value::Number)
+            .unwrap_or(Value::Null)),
         ".{0,40}".prop_map(Value::String),
         "[a-z]{30,300}".prop_map(Value::String),
     ];
@@ -40,28 +42,41 @@ fn arb_sz() -> impl Strategy<Value = Sz> {
 
 fn arb_order() -> impl Strategy<Value = OrderRequest> {
     let kind = prop_oneof![
-        prop_oneof![Just(Tif::Gtc), Just(Tif::Ioc), Just(Tif::Alo)].prop_map(|tif| OrderKind::Limit { tif }),
+        prop_oneof![Just(Tif::Gtc), Just(Tif::Ioc), Just(Tif::Alo)]
+            .prop_map(|tif| OrderKind::Limit { tif }),
         (arb_px(), any::<bool>(), any::<bool>()).prop_map(|(p, m, tp)| OrderKind::Trigger {
             trigger_px: p,
             is_market: m,
             tpsl: if tp { TpSl::Tp } else { TpSl::Sl }
         }),
     ];
-    (0u32..200, any::<bool>(), arb_px(), arb_sz(), any::<bool>(), kind, proptest::option::of(any::<[u8; 16]>())).prop_map(
-        |(asset, is_buy, limit_px, sz, reduce_only, kind, cloid)| OrderRequest {
-            asset,
-            is_buy,
-            limit_px,
-            sz,
-            reduce_only,
-            kind,
-            cloid,
-        },
+    (
+        0u32..200,
+        any::<bool>(),
+        arb_px(),
+        arb_sz(),
+        any::<bool>(),
+        kind,
+        proptest::option::of(any::<[u8; 16]>()),
     )
+        .prop_map(
+            |(asset, is_buy, limit_px, sz, reduce_only, kind, cloid)| OrderRequest {
+                asset,
+                is_buy,
+                limit_px,
+                sz,
+                reduce_only,
+                kind,
+                cloid,
+            },
+        )
 }
 
 fn arb_oc() -> impl Strategy<Value = OidOrCloid> {
-    prop_oneof![any::<u64>().prop_map(OidOrCloid::Oid), any::<[u8; 16]>().prop_map(OidOrCloid::Cloid)]
+    prop_oneof![
+        any::<u64>().prop_map(OidOrCloid::Oid),
+        any::<[u8; 16]>().prop_map(OidOrCloid::Cloid)
+    ]
 }
 
 fn arb_addr() -> impl Strategy<Value = Address> {
@@ -69,24 +84,78 @@ fn arb_addr() -> impl Strategy<Value = Address> {
 }
 
 fn arb_action() -> impl Strategy<Value = Action> {
-    let grouping = prop_oneof![Just(Grouping::Na), Just(Grouping::NormalTpsl), Just(Grouping::PositionTpsl)];
+    let grouping = prop_oneof![
+        Just(Grouping::Na),
+        Just(Grouping::NormalTpsl),
+        Just(Grouping::PositionTpsl)
+    ];
     let amt = (0i64..i64::MAX / 2).prop_map(Usd);
     prop_oneof![
-        (prop::collection::vec(arb_order(), 0..10), grouping).prop_map(|(orders, grouping)| Action::Order { orders, grouping }),
-        prop::collection::vec((any::<u32>(), any::<u64>()), 0..10).prop_map(|cancels| Action::Cancel { cancels }),
-        prop::collection::vec((any::<u32>(), any::<[u8; 16]>()), 0..10).prop_map(|cancels| Action::CancelByCloid { cancels }),
+        (prop::collection::vec(arb_order(), 0..10), grouping)
+            .prop_map(|(orders, grouping)| Action::Order { orders, grouping }),
+        prop::collection::vec((any::<u32>(), any::<u64>()), 0..10)
+            .prop_map(|cancels| Action::Cancel { cancels }),
+        prop::collection::vec((any::<u32>(), any::<[u8; 16]>()), 0..10)
+            .prop_map(|cancels| Action::CancelByCloid { cancels }),
         (arb_oc(), arb_order()).prop_map(|(oid, order)| Action::Modify { oid, order }),
-        prop::collection::vec((arb_oc(), arb_order()), 0..5).prop_map(|modifies| Action::BatchModify { modifies }),
+        prop::collection::vec((arb_oc(), arb_order()), 0..5)
+            .prop_map(|modifies| Action::BatchModify { modifies }),
         proptest::option::of(any::<u64>()).prop_map(|time| Action::ScheduleCancel { time }),
-        (any::<u32>(), any::<bool>(), any::<u32>()).prop_map(|(asset, is_cross, leverage)| Action::UpdateLeverage { asset, is_cross, leverage }),
-        (any::<u32>(), any::<bool>(), any::<i64>()).prop_map(|(asset, is_buy, n)| Action::UpdateIsolatedMargin { asset, is_buy, ntli: Usd(n) }),
-        (arb_addr(), amt.clone(), any::<u64>()).prop_map(|(destination, amount, time)| Action::UsdSend { destination, amount, time }),
-        (arb_addr(), "[A-Z]{3,5}:0x[0-9a-f]{32}", amt.clone(), any::<u64>())
-            .prop_map(|(destination, token, amount, time)| Action::SpotSend { destination, token, amount, time }),
-        (amt.clone(), any::<bool>(), any::<u64>()).prop_map(|(amount, to_perp, nonce)| Action::UsdClassTransfer { amount, to_perp, nonce }),
-        (arb_addr(), amt, any::<u64>()).prop_map(|(destination, amount, time)| Action::Withdraw3 { destination, amount, time }),
-        (arb_addr(), proptest::option::of("[a-z0-9]{1,16}"), any::<u64>())
-            .prop_map(|(agent_address, agent_name, nonce)| Action::ApproveAgent { agent_address, agent_name, nonce }),
+        (any::<u32>(), any::<bool>(), any::<u32>()).prop_map(|(asset, is_cross, leverage)| {
+            Action::UpdateLeverage {
+                asset,
+                is_cross,
+                leverage,
+            }
+        }),
+        (any::<u32>(), any::<bool>(), any::<i64>()).prop_map(|(asset, is_buy, n)| {
+            Action::UpdateIsolatedMargin {
+                asset,
+                is_buy,
+                ntli: Usd(n),
+            }
+        }),
+        (arb_addr(), amt.clone(), any::<u64>()).prop_map(|(destination, amount, time)| {
+            Action::UsdSend {
+                destination,
+                amount,
+                time,
+            }
+        }),
+        (
+            arb_addr(),
+            "[A-Z]{3,5}:0x[0-9a-f]{32}",
+            amt.clone(),
+            any::<u64>()
+        )
+            .prop_map(|(destination, token, amount, time)| Action::SpotSend {
+                destination,
+                token,
+                amount,
+                time
+            }),
+        (amt.clone(), any::<bool>(), any::<u64>()).prop_map(|(amount, to_perp, nonce)| {
+            Action::UsdClassTransfer {
+                amount,
+                to_perp,
+                nonce,
+            }
+        }),
+        (arb_addr(), amt, any::<u64>()).prop_map(|(destination, amount, time)| Action::Withdraw3 {
+            destination,
+            amount,
+            time
+        }),
+        (
+            arb_addr(),
+            proptest::option::of("[a-z0-9]{1,16}"),
+            any::<u64>()
+        )
+            .prop_map(|(agent_address, agent_name, nonce)| Action::ApproveAgent {
+                agent_address,
+                agent_name,
+                nonce
+            }),
         "[A-Z0-9]{1,20}".prop_map(|code| Action::SetReferrer { code }),
         Just(Action::Noop),
     ]
@@ -175,6 +244,17 @@ proptest! {
     }
 
     #[test]
+    fn fast_decimal_matches_interfaces(s in "[+-]?[0-9]{0,10}(\\.[0-9]{0,10})?", d in 0u32..10) {
+        let ours = parse_wire_decimal(&s, d);
+        let reference = interfaces::parse_decimal(&s, d);
+        match (&ours, &reference) {
+            (Ok(a), Ok(b)) => prop_assert_eq!(a, b),
+            (Err(_), Err(_)) => {}
+            _ => prop_assert!(false, "{s:?} d={d}: ours={ours:?} ref={reference:?}"),
+        }
+    }
+
+    #[test]
     fn decimal_scientific(m in 1u64..1_000_000, e in -6i32..6) {
         // m * 10^e as "me<e>" equals the plain decimal
         let sci = format!("{m}e{e}");
@@ -236,7 +316,10 @@ fn parse_exchange_request_rejects() {
     let mut b = good.clone();
     b["vaultAddress"] = Value::Null;
     b["expiresAfter"] = Value::Null;
-    assert_eq!(parse_exchange_request(&b).unwrap(), parse_exchange_request(&good).unwrap());
+    assert_eq!(
+        parse_exchange_request(&b).unwrap(),
+        parse_exchange_request(&good).unwrap()
+    );
 }
 
 #[test]

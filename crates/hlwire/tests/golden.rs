@@ -46,7 +46,11 @@ struct Stats {
 fn check_vectors(file: &str, sdk: &str) -> Stats {
     let vs = load(file);
     assert!(vs.len() > 30, "{file}: too few vectors");
-    let mut st = Stats { n: 0, l1: 0, user: 0 };
+    let mut st = Stats {
+        n: 0,
+        l1: 0,
+        user: 0,
+    };
     for v in &vs {
         let name = v["name"].as_str().unwrap();
         let ctx = format!("{sdk}/{name}");
@@ -59,7 +63,11 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
 
         // 1. msgpack byte-identical to the SDK's encoder.
         let mp = json_to_msgpack(action).unwrap();
-        assert_eq!(hex::encode(&mp), v["msgpack_hex"].as_str().unwrap(), "{ctx}: msgpack");
+        assert_eq!(
+            hex::encode(&mp),
+            v["msgpack_hex"].as_str().unwrap(),
+            "{ctx}: msgpack"
+        );
         // 2. msgpack -> json -> msgpack roundtrip.
         let back = msgpack_to_json(&mp).unwrap();
         assert_eq!(&back, action, "{ctx}: msgpack_to_json");
@@ -70,7 +78,10 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
         let tx = parse_exchange_request(&body).unwrap_or_else(|e| panic!("{ctx}: parse: {e}"));
         assert_eq!(tx.action_bytes, mp);
         assert_eq!(tx.nonce, body["nonce"].as_u64().unwrap());
-        assert_eq!(tx.vault_address.map(|a| a.to_hex()), body["vaultAddress"].as_str().map(|s| s.to_lowercase()));
+        assert_eq!(
+            tx.vault_address.map(|a| a.to_hex()),
+            body["vaultAddress"].as_str().map(|s| s.to_lowercase())
+        );
         assert_eq!(tx.expires_after, body["expiresAfter"].as_u64());
 
         // 4. hashes / digests.
@@ -80,39 +91,85 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
             "l1" => {
                 st.l1 += 1;
                 let ah = l1_action_hash(&mp, tx.nonce, tx.vault_address, tx.expires_after);
-                assert_eq!(ah, h32(v["action_hash"].as_str().unwrap()), "{ctx}: action hash");
-                assert_eq!(l1_signing_digest(ah, is_mainnet), digest, "{ctx}: l1 digest");
+                assert_eq!(
+                    ah,
+                    h32(v["action_hash"].as_str().unwrap()),
+                    "{ctx}: action hash"
+                );
+                assert_eq!(
+                    l1_signing_digest(ah, is_mainnet),
+                    digest,
+                    "{ctx}: l1 digest"
+                );
                 assert_ne!(l1_signing_digest(ah, !is_mainnet), digest);
             }
             "user" => {
                 st.user += 1;
-                assert_eq!(user_signed_digest(action).unwrap(), digest, "{ctx}: user digest");
+                assert_eq!(
+                    user_signed_digest(action).unwrap(),
+                    digest,
+                    "{ctx}: user digest"
+                );
             }
             k => panic!("{ctx}: kind {k}"),
         }
 
         // 5. recovery.
-        assert_eq!(recover(&digest, &tx.signature).unwrap().to_hex(), signer, "{ctx}: recover");
-        assert_eq!(recover_signer(&tx, is_mainnet).unwrap().to_hex(), signer, "{ctx}: recover_signer");
+        assert_eq!(
+            recover(&digest, &tx.signature).unwrap().to_hex(),
+            signer,
+            "{ctx}: recover"
+        );
+        assert_eq!(
+            recover_signer(&tx, is_mainnet).unwrap().to_hex(),
+            signer,
+            "{ctx}: recover_signer"
+        );
         // wrong chain must not recover the signer
-        assert!(recover_signer(&tx, !is_mainnet).map(|a| a.to_hex() != signer).unwrap_or(true), "{ctx}: cross-chain");
+        assert!(
+            recover_signer(&tx, !is_mainnet)
+                .map(|a| a.to_hex() != signer)
+                .unwrap_or(true),
+            "{ctx}: cross-chain"
+        );
 
         // 6. our signer reproduces the SDK signature (RFC 6979).
         let w = wallet_for(signer);
         assert_eq!(w.sign_digest(&digest), tx.signature, "{ctx}: sign_digest");
         if kind == "l1" {
-            let sig = sign_l1_action(&w, action, tx.nonce, tx.vault_address, tx.expires_after, is_mainnet);
+            let sig = sign_l1_action(
+                &w,
+                action,
+                tx.nonce,
+                tx.vault_address,
+                tx.expires_after,
+                is_mainnet,
+            );
             assert_eq!(sig, tx.signature, "{ctx}: sign_l1_action");
         } else if action["signatureChainId"] == DEFAULT_SIGNATURE_CHAIN_ID {
             let mut a2 = action.clone();
             let sig = sign_user_signed_action(&w, &mut a2, is_mainnet);
             assert_eq!(sig, tx.signature, "{ctx}: sign_user_signed_action");
-            assert_eq!(json_to_msgpack(&a2).unwrap(), mp, "{ctx}: sign_user_signed_action must not reorder");
+            assert_eq!(
+                json_to_msgpack(&a2).unwrap(),
+                mp,
+                "{ctx}: sign_user_signed_action must not reorder"
+            );
         }
 
         // 7. build_exchange_request -> parse is identity on the tx.
-        let rebuilt = build_exchange_request(action.clone(), tx.nonce, tx.signature, tx.vault_address, tx.expires_after);
-        assert_eq!(parse_exchange_request(&rebuilt).unwrap(), tx, "{ctx}: build/parse");
+        let rebuilt = build_exchange_request(
+            action.clone(),
+            tx.nonce,
+            tx.signature,
+            tx.vault_address,
+            tx.expires_after,
+        );
+        assert_eq!(
+            parse_exchange_request(&rebuilt).unwrap(),
+            tx,
+            "{ctx}: build/parse"
+        );
 
         // 8. typed decode + verifier.
         let ver = HlVerifier { is_mainnet };
@@ -121,16 +178,32 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
             Ok(a) => {
                 assert!(!expect_decode_err(name), "{ctx}: decode should fail");
                 assert_eq!(is_user_signed(&a), kind == "user", "{ctx}");
-                assert_eq!(ver.recover_signer(&tx, &a).unwrap().to_hex(), signer, "{ctx}: verifier");
+                assert_eq!(
+                    ver.recover_signer(&tx, &a).unwrap().to_hex(),
+                    signer,
+                    "{ctx}: verifier"
+                );
                 // typed roundtrip through the SDK-shaped builders
                 let rebuilt = action_to_json(&a);
-                assert_eq!(decode_action(&json_to_msgpack(&rebuilt).unwrap()).unwrap(), a, "{ctx}: builder roundtrip");
+                assert_eq!(
+                    decode_action(&json_to_msgpack(&rebuilt).unwrap()).unwrap(),
+                    a,
+                    "{ctx}: builder roundtrip"
+                );
                 // Python L1 actions: builders reproduce the exact bytes
                 // (except the builder-fee field we drop, and "modify",
                 // which Python never sends).
                 // Uppercase cloids are lowercased by our builders.
-                if sdk == "python" && kind == "l1" && action.get("builder").is_none() && !name.contains("upper") {
-                    assert_eq!(json_to_msgpack(&rebuilt).unwrap(), mp, "{ctx}: builder bytes");
+                if sdk == "python"
+                    && kind == "l1"
+                    && action.get("builder").is_none()
+                    && !name.contains("upper")
+                {
+                    assert_eq!(
+                        json_to_msgpack(&rebuilt).unwrap(),
+                        mp,
+                        "{ctx}: builder bytes"
+                    );
                 }
                 // Python user-signed: builder + sign reproduces key order and signature
                 // when amounts are already in minimal form.
@@ -150,7 +223,12 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
         // 9. tampering breaks recovery.
         let mut bad = tx.clone();
         bad.nonce += 1;
-        assert!(recover_signer(&bad, is_mainnet).map(|a| a.to_hex() != signer).unwrap_or(true), "{ctx}: tamper");
+        assert!(
+            recover_signer(&bad, is_mainnet)
+                .map(|a| a.to_hex() != signer)
+                .unwrap_or(true),
+            "{ctx}: tamper"
+        );
         st.n += 1;
     }
     st
@@ -159,19 +237,32 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
 #[test]
 fn python_sdk_vectors() {
     let st = check_vectors("python_vectors.json", "python");
-    assert!(st.l1 >= 30 && st.user >= 10, "l1={} user={}", st.l1, st.user);
+    assert!(
+        st.l1 >= 30 && st.user >= 10,
+        "l1={} user={}",
+        st.l1,
+        st.user
+    );
     eprintln!("python vectors: {} ({} l1, {} user)", st.n, st.l1, st.user);
 }
 
 #[test]
 fn ts_sdk_vectors() {
     let st = check_vectors("ts_vectors.json", "ts");
-    assert!(st.l1 >= 30 && st.user >= 10, "l1={} user={}", st.l1, st.user);
+    assert!(
+        st.l1 >= 30 && st.user >= 10,
+        "l1={} user={}",
+        st.l1,
+        st.user
+    );
     eprintln!("ts vectors: {} ({} l1, {} user)", st.n, st.l1, st.user);
 }
 
 fn find(file: &str, name: &str) -> Value {
-    let v = load(file).into_iter().find(|v| v["name"] == name).unwrap_or_else(|| panic!("{name}"));
+    let v = load(file)
+        .into_iter()
+        .find(|v| v["name"] == name)
+        .unwrap_or_else(|| panic!("{name}"));
     serde_json::from_str(v["body_raw"].as_str().unwrap()).unwrap()
 }
 
@@ -191,7 +282,14 @@ fn typed_spot_checks() {
                 assert_eq!((o.asset, o.is_buy, o.reduce_only), (0, false, true));
                 assert_eq!(o.limit_px, Px::parse("29000").unwrap());
                 assert_eq!(o.sz, Sz::parse("0.5").unwrap());
-                assert_eq!(o.kind, OrderKind::Trigger { trigger_px: Px::parse("29500").unwrap(), is_market: true, tpsl: TpSl::Sl });
+                assert_eq!(
+                    o.kind,
+                    OrderKind::Trigger {
+                        trigger_px: Px::parse("29500").unwrap(),
+                        is_market: true,
+                        tpsl: TpSl::Sl
+                    }
+                );
             }
             a => panic!("{a:?}"),
         }
@@ -217,18 +315,55 @@ fn typed_spot_checks() {
             }
             a => panic!("{a:?}"),
         }
-        assert!(matches!(decode_body(&find(f, "order_cloid_upper")), Action::Order { orders, .. } if orders[0].cloid == Some(cloid_from_u128(0xabcdef))));
-        assert_eq!(decode_body(&find(f, "update_isolated_margin_remove")), match f {
-            "python_vectors.json" => Action::UpdateIsolatedMargin { asset: 1, is_buy: true, ntli: Usd(-3_000_250_000) },
-            _ => Action::UpdateIsolatedMargin { asset: 1, is_buy: false, ntli: Usd(-3_000_250_000) },
-        });
-        assert_eq!(decode_body(&find(f, "schedule_cancel_none")), Action::ScheduleCancel { time: None });
-        assert_eq!(decode_body(&find(f, "schedule_cancel_time")), Action::ScheduleCancel { time: Some(1_700_000_100_000) });
-        assert_eq!(decode_body(&find(f, "update_leverage_cross")), Action::UpdateLeverage { asset: 0, is_cross: true, leverage: 20 });
-        assert_eq!(decode_body(&find(f, "set_referrer")), Action::SetReferrer { code: "ASDFASDF".into() });
+        assert!(
+            matches!(decode_body(&find(f, "order_cloid_upper")), Action::Order { orders, .. } if orders[0].cloid == Some(cloid_from_u128(0xabcdef)))
+        );
+        assert_eq!(
+            decode_body(&find(f, "update_isolated_margin_remove")),
+            match f {
+                "python_vectors.json" => Action::UpdateIsolatedMargin {
+                    asset: 1,
+                    is_buy: true,
+                    ntli: Usd(-3_000_250_000)
+                },
+                _ => Action::UpdateIsolatedMargin {
+                    asset: 1,
+                    is_buy: false,
+                    ntli: Usd(-3_000_250_000)
+                },
+            }
+        );
+        assert_eq!(
+            decode_body(&find(f, "schedule_cancel_none")),
+            Action::ScheduleCancel { time: None }
+        );
+        assert_eq!(
+            decode_body(&find(f, "schedule_cancel_time")),
+            Action::ScheduleCancel {
+                time: Some(1_700_000_100_000)
+            }
+        );
+        assert_eq!(
+            decode_body(&find(f, "update_leverage_cross")),
+            Action::UpdateLeverage {
+                asset: 0,
+                is_cross: true,
+                leverage: 20
+            }
+        );
+        assert_eq!(
+            decode_body(&find(f, "set_referrer")),
+            Action::SetReferrer {
+                code: "ASDFASDF".into()
+            }
+        );
         assert_eq!(decode_body(&find(f, "noop")), Action::Noop);
         match decode_body(&find(f, "usd_send")) {
-            Action::UsdSend { destination, amount, time } => {
+            Action::UsdSend {
+                destination,
+                amount,
+                time,
+            } => {
                 assert_eq!(destination, dest);
                 assert_eq!(amount, Usd(12_500_000));
                 assert!(time > 1_700_000_000_000);
@@ -242,10 +377,31 @@ fn typed_spot_checks() {
             }
             a => panic!("{a:?}"),
         }
-        assert!(matches!(decode_body(&find(f, "withdraw3")), Action::Withdraw3 { amount: Usd(2_000_000), .. }));
-        assert!(matches!(decode_body(&find(f, "usd_class_transfer_to_perp")), Action::UsdClassTransfer { amount: Usd(10_000_000), to_perp: true, .. }));
-        assert!(matches!(decode_body(&find(f, "approve_agent_named")), Action::ApproveAgent { agent_name: Some(n), .. } if n == "bot1"));
-        assert!(matches!(decode_body(&find(f, "approve_agent_unnamed")), Action::ApproveAgent { agent_name: None, .. }));
+        assert!(matches!(
+            decode_body(&find(f, "withdraw3")),
+            Action::Withdraw3 {
+                amount: Usd(2_000_000),
+                ..
+            }
+        ));
+        assert!(matches!(
+            decode_body(&find(f, "usd_class_transfer_to_perp")),
+            Action::UsdClassTransfer {
+                amount: Usd(10_000_000),
+                to_perp: true,
+                ..
+            }
+        ));
+        assert!(
+            matches!(decode_body(&find(f, "approve_agent_named")), Action::ApproveAgent { agent_name: Some(n), .. } if n == "bot1")
+        );
+        assert!(matches!(
+            decode_body(&find(f, "approve_agent_unnamed")),
+            Action::ApproveAgent {
+                agent_name: None,
+                ..
+            }
+        ));
         match decode_body(&find(f, "batch_modify")) {
             Action::BatchModify { modifies } => {
                 assert_eq!(modifies[0].0, OidOrCloid::Oid(1));
@@ -270,10 +426,29 @@ fn typed_spot_checks() {
     }
     // TS-only shapes
     let ts = "ts_vectors.json";
-    assert!(matches!(decode_body(&find(ts, "order_frontend_market")), Action::Order { orders, .. } if orders[0].kind == OrderKind::Limit { tif: Tif::Ioc }));
-    assert!(matches!(decode_body(&find(ts, "order_grouping_priority")), Action::Order { grouping: Grouping::Na, .. }));
-    assert_eq!(decode_body(&find(ts, "cancel_big_oid_fast")), Action::Cancel { cancels: vec![(0, 1), (2, (1u64 << 40) + 7)] });
-    assert!(matches!(decode_body(&find(ts, "modify_by_cloid_allow")), Action::Modify { oid: OidOrCloid::Oid(5), .. }));
+    assert!(
+        matches!(decode_body(&find(ts, "order_frontend_market")), Action::Order { orders, .. } if orders[0].kind == OrderKind::Limit { tif: Tif::Ioc })
+    );
+    assert!(matches!(
+        decode_body(&find(ts, "order_grouping_priority")),
+        Action::Order {
+            grouping: Grouping::Na,
+            ..
+        }
+    ));
+    assert_eq!(
+        decode_body(&find(ts, "cancel_big_oid_fast")),
+        Action::Cancel {
+            cancels: vec![(0, 1), (2, (1u64 << 40) + 7)]
+        }
+    );
+    assert!(matches!(
+        decode_body(&find(ts, "modify_by_cloid_allow")),
+        Action::Modify {
+            oid: OidOrCloid::Oid(5),
+            ..
+        }
+    ));
     assert_eq!(
         decode_body(&find(ts, "modify_by_big_cloid")),
         Action::Modify {
@@ -289,8 +464,17 @@ fn typed_spot_checks() {
             }
         }
     );
-    assert!(matches!(decode_body(&find(ts, "modify_by_oid")), Action::Modify { oid: OidOrCloid::Oid(77), .. }));
-    assert!(matches!(decode_body(&find(ts, "usd_send_chain_66eee")), Action::UsdSend { amount: Usd(1), .. }));
+    assert!(matches!(
+        decode_body(&find(ts, "modify_by_oid")),
+        Action::Modify {
+            oid: OidOrCloid::Oid(77),
+            ..
+        }
+    ));
+    assert!(matches!(
+        decode_body(&find(ts, "usd_send_chain_66eee")),
+        Action::UsdSend { amount: Usd(1), .. }
+    ));
 }
 
 #[test]
@@ -310,7 +494,10 @@ fn user_signed_policy_checks() {
     let mut b2 = b.clone();
     let v = b2["signature"]["v"].as_u64().unwrap();
     b2["signature"]["v"] = Value::from(v - 27);
-    assert_eq!(recover_signer(&parse_exchange_request(&b2).unwrap(), false).unwrap(), signer);
+    assert_eq!(
+        recover_signer(&parse_exchange_request(&b2).unwrap(), false).unwrap(),
+        signer
+    );
     // r/s without leading zeros (python vector usd_class_transfer_vault_suffix has a 63-digit s)
     let b4 = find("python_vectors.json", "usd_class_transfer_vault_suffix");
     assert_eq!(b4["signature"]["s"].as_str().unwrap().len(), 65);

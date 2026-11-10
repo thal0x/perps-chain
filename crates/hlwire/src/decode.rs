@@ -1,20 +1,35 @@
 //! HL wire msgpack -> typed [`interfaces::Action`], plus typed wire helpers
 //! (cloids, addresses, exact decimal strings).
 
-use crate::msgpack::{Mp, Reader};
+use crate::msgpack::{ArrIter, Mp, Reader};
 use interfaces::*;
 
 // ------------------------------------------------------------ wire helpers
 
 /// Parse a cloid: `0x` + 32 hex digits (any case).
 pub fn parse_cloid(s: &str) -> Result<Cloid, String> {
-    let h = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).ok_or_else(|| format!("cloid must start with 0x: {s}"))?;
-    if h.len() != 32 {
-        return Err(format!("cloid must be 16 bytes: {s}"));
+    let b = s.as_bytes();
+    if b.len() != 34 || b[0] != b'0' || (b[1] != b'x' && b[1] != b'X') {
+        return Err(format!("cloid must be 0x + 16 bytes hex: {s}"));
     }
     let mut out = [0u8; 16];
-    hex::decode_to_slice(h, &mut out).map_err(|_| format!("bad cloid hex: {s}"))?;
+    for (i, o) in out.iter_mut().enumerate() {
+        match (nibble(b[2 + 2 * i]), nibble(b[3 + 2 * i])) {
+            (Some(h), Some(l)) => *o = (h << 4) | l,
+            _ => return Err(format!("bad cloid hex: {s}")),
+        }
+    }
     Ok(out)
+}
+
+#[inline]
+fn nibble(c: u8) -> Option<u8> {
+    match c {
+        b'0'..=b'9' => Some(c - b'0'),
+        b'a'..=b'f' => Some(c - b'a' + 10),
+        b'A'..=b'F' => Some(c - b'A' + 10),
+        _ => None,
+    }
 }
 
 /// Lowercase `0x`-prefixed hex form of a cloid (what both SDKs send).
@@ -30,7 +45,10 @@ pub fn cloid_from_u128(v: u128) -> Cloid {
 /// Parse an address: optional `0x`, 40 hex digits, any case (checksum not
 /// enforced, matching HL which lowercases addresses).
 pub fn parse_address(s: &str) -> Result<Address, String> {
-    let h = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).unwrap_or(s);
+    let h = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
     if h.len() != 40 {
         return Err(format!("invalid address: {s}"));
     }
@@ -46,26 +64,69 @@ pub fn parse_address(s: &str) -> Result<Address, String> {
 /// ("1e-05", "2.5E3"). Never rounds: more fractional precision than
 /// `decimals` (after trimming trailing zeros) is an error. No whitespace.
 pub fn parse_wire_decimal(s: &str, decimals: u32) -> Result<i128, String> {
-    if s.is_empty() || s.bytes().any(|c| c.is_ascii_whitespace()) {
-        return Err(format!("invalid decimal: {s:?}"));
+    if s.bytes().any(|c| c == b'e' || c == b'E') {
+        return parse_scientific(s, decimals);
     }
-    let (mant, exp) = match s.find(['e', 'E']) {
-        Some(i) => {
-            let e = &s[i + 1..];
-            let ev: i32 = e.parse().map_err(|_| format!("invalid decimal: {s:?}"))?;
-            if !(-60..=60).contains(&ev) {
-                return Err(format!("decimal exponent out of range: {s:?}"));
+    parse_plain(s.as_bytes(), decimals).map_err(|e| format!("{e}: {s:?}"))
+}
+
+/// Fast exact parser for plain decimals (no exponent). Values must fit
+/// 64 bits once scaled (true for every Px/Sz/Usd).
+fn parse_plain(b: &[u8], decimals: u32) -> Result<i128, &'static str> {
+    let (neg, mut i) = match b.first() {
+        Some(b'-') => (true, 1),
+        Some(b'+') => (false, 1),
+        Some(_) => (false, 0),
+        None => return Err("invalid decimal"),
+    };
+    let mut acc: u64 = 0;
+    let mut ndigits = 0usize;
+    while i < b.len() && b[i].is_ascii_digit() {
+        acc = acc
+            .checked_mul(10)
+            .and_then(|x| x.checked_add((b[i] - b'0') as u64))
+            .ok_or("decimal overflow")?;
+        i += 1;
+        ndigits += 1;
+    }
+    let mut frac = 0u32;
+    if i < b.len() && b[i] == b'.' {
+        i += 1;
+        while i < b.len() && b[i].is_ascii_digit() {
+            let d = (b[i] - b'0') as u64;
+            if frac < decimals {
+                acc = acc
+                    .checked_mul(10)
+                    .and_then(|x| x.checked_add(d))
+                    .ok_or("decimal overflow")?;
+                frac += 1;
+            } else if d != 0 {
+                return Err("too much precision");
             }
-            (&s[..i], ev)
+            i += 1;
+            ndigits += 1;
         }
-        None => (s, 0),
-    };
-    let r = if exp == 0 {
-        parse_decimal(mant, decimals)
-    } else {
-        parse_decimal(&shift_decimal(mant, exp).ok_or_else(|| format!("invalid decimal: {s:?}"))?, decimals)
-    };
-    r.map_err(|e| format!("{e}"))
+    }
+    if i != b.len() || ndigits == 0 {
+        return Err("invalid decimal");
+    }
+    let scale = 10u64
+        .checked_pow(decimals - frac)
+        .ok_or("decimal overflow")?;
+    let v = acc.checked_mul(scale).ok_or("decimal overflow")? as i128;
+    Ok(if neg { -v } else { v })
+}
+
+fn parse_scientific(s: &str, decimals: u32) -> Result<i128, String> {
+    let i = s.find(['e', 'E']).expect("caller checked");
+    let ev: i32 = s[i + 1..]
+        .parse()
+        .map_err(|_| format!("invalid decimal: {s:?}"))?;
+    if !(-60..=60).contains(&ev) {
+        return Err(format!("decimal exponent out of range: {s:?}"));
+    }
+    let plain = shift_decimal(&s[..i], ev).ok_or_else(|| format!("invalid decimal: {s:?}"))?;
+    parse_plain(plain.as_bytes(), decimals).map_err(|e| format!("{e}: {s:?}"))
 }
 
 /// Rewrite a plain decimal mantissa multiplied by 10^exp as a plain decimal.
@@ -79,7 +140,8 @@ fn shift_decimal(m: &str, exp: i32) -> Option<String> {
         Some(i) => (&body[..i], &body[i + 1..]),
         None => (body, ""),
     };
-    if (ip.is_empty() && fp.is_empty()) || !ip.bytes().chain(fp.bytes()).all(|c| c.is_ascii_digit()) {
+    if (ip.is_empty() && fp.is_empty()) || !ip.bytes().chain(fp.bytes()).all(|c| c.is_ascii_digit())
+    {
         return None;
     }
     let digits = format!("{ip}{fp}");
@@ -89,7 +151,11 @@ fn shift_decimal(m: &str, exp: i32) -> Option<String> {
     } else if point as usize >= digits.len() {
         format!("{}{}", digits, "0".repeat(point as usize - digits.len()))
     } else {
-        format!("{}.{}", &digits[..point as usize], &digits[point as usize..])
+        format!(
+            "{}.{}",
+            &digits[..point as usize],
+            &digits[point as usize..]
+        )
     };
     Some(format!("{sign}{s}"))
 }
@@ -97,7 +163,9 @@ fn shift_decimal(m: &str, exp: i32) -> Option<String> {
 /// Wire price string -> [`Px`] (exact, > 0 not enforced here).
 pub fn parse_px(s: &str) -> Result<Px, String> {
     let v = parse_wire_decimal(s, PX_DECIMALS)?;
-    u64::try_from(v).map(Px).map_err(|_| format!("invalid price: {s}"))
+    u64::try_from(v)
+        .map(Px)
+        .map_err(|_| format!("invalid price: {s}"))
 }
 
 /// Wire size string -> [`Sz`] (exact, non-negative; "0" allowed for
@@ -107,13 +175,17 @@ pub fn parse_sz(s: &str) -> Result<Sz, String> {
     if v < 0 {
         return Err(format!("invalid size: {s}"));
     }
-    i64::try_from(v).map(Sz).map_err(|_| format!("invalid size: {s}"))
+    i64::try_from(v)
+        .map(Sz)
+        .map_err(|_| format!("invalid size: {s}"))
 }
 
 /// Wire USD amount string -> [`Usd`] (exact, may be negative).
 pub fn parse_usd(s: &str) -> Result<Usd, String> {
     let v = parse_wire_decimal(s, USD_DECIMALS)?;
-    i64::try_from(v).map(Usd).map_err(|_| format!("invalid amount: {s}"))
+    i64::try_from(v)
+        .map(Usd)
+        .map_err(|_| format!("invalid amount: {s}"))
 }
 
 /// Wire USD amount string -> non-negative [`Usd`].
@@ -129,14 +201,14 @@ pub fn parse_usd_amount(s: &str) -> Result<Usd, String> {
 
 type R<T> = Result<T, String>;
 
-fn field<'m, 'a>(m: &'m Mp<'a>, k: &str) -> R<&'m Mp<'a>> {
+fn field<'a>(m: &Mp<'a>, k: &str) -> R<Mp<'a>> {
     match m.get(k) {
         Some(v) => Ok(v),
         None => Err(format!("missing field `{k}`")),
     }
 }
 /// Present and not nil.
-fn opt_field<'m, 'a>(m: &'m Mp<'a>, k: &str) -> Option<&'m Mp<'a>> {
+fn opt_field<'a>(m: &Mp<'a>, k: &str) -> Option<Mp<'a>> {
     match m.get(k) {
         None | Some(Mp::Nil) => None,
         Some(v) => Some(v),
@@ -157,7 +229,10 @@ fn as_bool(v: &Mp<'_>, k: &str) -> R<bool> {
 fn as_u64(v: &Mp<'_>, k: &str) -> R<u64> {
     match v {
         Mp::UInt(u) => Ok(*u),
-        o => Err(format!("field `{k}`: expected unsigned integer, got {}", o.kind())),
+        o => Err(format!(
+            "field `{k}`: expected unsigned integer, got {}",
+            o.kind()
+        )),
     }
 }
 fn as_u32(v: &Mp<'_>, k: &str) -> R<u32> {
@@ -171,23 +246,23 @@ fn as_i64(v: &Mp<'_>, k: &str) -> R<i64> {
         o => Err(format!("field `{k}`: expected integer, got {}", o.kind())),
     }
 }
-fn as_arr<'m, 'a>(v: &'m Mp<'a>, k: &str) -> R<&'m [Mp<'a>]> {
+fn as_arr<'a>(v: &Mp<'a>, k: &str) -> R<ArrIter<'a>> {
     match v {
-        Mp::Arr(a) => Ok(a),
+        Mp::Arr(a) => Ok(a.items()),
         o => Err(format!("field `{k}`: expected array, got {}", o.kind())),
     }
 }
 fn str_f<'a>(m: &Mp<'a>, k: &str) -> R<&'a str> {
-    as_str(field(m, k)?, k)
+    as_str(&field(m, k)?, k)
 }
 fn bool_f(m: &Mp<'_>, k: &str) -> R<bool> {
-    as_bool(field(m, k)?, k)
+    as_bool(&field(m, k)?, k)
 }
 fn u64_f(m: &Mp<'_>, k: &str) -> R<u64> {
-    as_u64(field(m, k)?, k)
+    as_u64(&field(m, k)?, k)
 }
 fn u32_f(m: &Mp<'_>, k: &str) -> R<u32> {
-    as_u32(field(m, k)?, k)
+    as_u32(&field(m, k)?, k)
 }
 fn addr_f(m: &Mp<'_>, k: &str) -> R<Address> {
     parse_address(str_f(m, k)?)
@@ -204,18 +279,67 @@ fn require_map(m: &Mp<'_>, what: &str) -> R<()> {
 
 // ------------------------------------------------------------ actions
 
-/// Parse an HL OrderWire map `{a,b,p,s,r,t,c?}`.
+/// Parse an HL OrderWire map `{a,b,p,s,r,t,c?}` (unknown keys ignored,
+/// first occurrence of a key wins).
 fn order_wire(m: &Mp<'_>) -> R<OrderRequest> {
-    require_map(m, "order")?;
-    let asset = u32_f(m, "a")?;
-    let is_buy = bool_f(m, "b")?;
-    let limit_px = parse_px(str_f(m, "p")?)?;
-    let sz = parse_sz(str_f(m, "s")?)?;
-    let reduce_only = bool_f(m, "r")?;
-    let t = field(m, "t")?;
+    let Mp::Map(seq) = m else {
+        return Err(format!("order: expected map, got {}", m.kind()));
+    };
+    let mut r = seq.reader();
+    order_wire_body(&mut r, seq.n)
+}
+
+/// Streaming OrderWire parse from a validated reader positioned at a map
+/// body with `n` entries (single pass, no intermediate views).
+fn order_wire_body(r: &mut Reader<'_>, n: usize) -> R<OrderRequest> {
+    let (mut a, mut b, mut p, mut sz, mut ro, mut kind, mut c) =
+        (None, None, None, None, None, None, None);
+    for _ in 0..n {
+        let k = r.read_str_bytes()?;
+        match k {
+            b"a" if a.is_none() => a = Some(as_u32(&r.read_value()?, "a")?),
+            b"b" if b.is_none() => b = Some(as_bool(&r.read_value()?, "b")?),
+            b"p" if p.is_none() => {
+                p = Some(parse_px(
+                    r.read_str().map_err(|e| format!("field `p`: {e}"))?,
+                )?)
+            }
+            b"s" if sz.is_none() => {
+                sz = Some(parse_sz(
+                    r.read_str().map_err(|e| format!("field `s`: {e}"))?,
+                )?)
+            }
+            b"r" if ro.is_none() => ro = Some(as_bool(&r.read_value()?, "r")?),
+            b"t" if kind.is_none() => kind = Some(order_type(&r.read_value()?)?),
+            b"c" if c.is_none() => {
+                c = Some(if r.peek() == Some(0xc0) {
+                    r.skip_value()?;
+                    None
+                } else {
+                    Some(parse_cloid(
+                        r.read_str().map_err(|e| format!("field `c`: {e}"))?,
+                    )?)
+                })
+            }
+            _ => r.skip_value()?,
+        }
+    }
+    let miss = |k: &str| format!("missing field `{k}`");
+    Ok(OrderRequest {
+        asset: a.ok_or_else(|| miss("a"))?,
+        is_buy: b.ok_or_else(|| miss("b"))?,
+        limit_px: p.ok_or_else(|| miss("p"))?,
+        sz: sz.ok_or_else(|| miss("s"))?,
+        reduce_only: ro.ok_or_else(|| miss("r"))?,
+        kind: kind.ok_or_else(|| miss("t"))?,
+        cloid: c.flatten(),
+    })
+}
+
+fn order_type(t: &Mp<'_>) -> R<OrderKind> {
     require_map(t, "order type `t`")?;
-    let kind = if let Some(l) = opt_field(t, "limit") {
-        let tif = match str_f(l, "tif")? {
+    if let Some(l) = opt_field(t, "limit") {
+        let tif = match str_f(&l, "tif")? {
             "Gtc" => Tif::Gtc,
             "Ioc" => Tif::Ioc,
             "Alo" => Tif::Alo,
@@ -223,47 +347,49 @@ fn order_wire(m: &Mp<'_>) -> R<OrderRequest> {
             "FrontendMarket" => Tif::Ioc,
             other => return Err(format!("invalid tif: {other}")),
         };
-        OrderKind::Limit { tif }
+        Ok(OrderKind::Limit { tif })
     } else if let Some(tr) = opt_field(t, "trigger") {
-        let is_market = bool_f(tr, "isMarket")?;
-        let trigger_px = parse_px(str_f(tr, "triggerPx")?)?;
-        let tpsl = match str_f(tr, "tpsl")? {
+        let is_market = bool_f(&tr, "isMarket")?;
+        let trigger_px = parse_px(str_f(&tr, "triggerPx")?)?;
+        let tpsl = match str_f(&tr, "tpsl")? {
             "tp" => TpSl::Tp,
             "sl" => TpSl::Sl,
             other => return Err(format!("invalid tpsl: {other}")),
         };
-        OrderKind::Trigger { trigger_px, is_market, tpsl }
+        Ok(OrderKind::Trigger {
+            trigger_px,
+            is_market,
+            tpsl,
+        })
     } else {
-        return Err("order type must be `limit` or `trigger`".into());
+        Err("order type must be `limit` or `trigger`".into())
+    }
+}
+
+/// All orders of an `orders` array, streaming.
+fn orders_array(v: &Mp<'_>) -> R<Vec<OrderRequest>> {
+    let Mp::Arr(seq) = v else {
+        return Err(format!("field `orders`: expected array, got {}", v.kind()));
     };
-    let cloid = match opt_field(m, "c") {
-        Some(c) => Some(cloid_v(c, "c")?),
-        None => None,
-    };
-    Ok(OrderRequest { asset, is_buy, limit_px, sz, reduce_only, kind, cloid })
+    let mut r = seq.reader();
+    let mut out = Vec::with_capacity(seq.n);
+    for _ in 0..seq.n {
+        let n = r
+            .read_map_len()
+            .map_err(|_| "order: expected map".to_string())?;
+        out.push(order_wire_body(&mut r, n)?);
+    }
+    Ok(out)
 }
 
 fn oid_or_cloid(v: &Mp<'_>) -> R<OidOrCloid> {
     match v {
         Mp::UInt(u) => Ok(OidOrCloid::Oid(*u)),
         Mp::Str(s) => parse_cloid(s).map(OidOrCloid::Cloid),
-        o => Err(format!("field `oid`: expected integer or cloid string, got {}", o.kind())),
-    }
-}
-
-fn grouping(m: &Mp<'_>) -> R<Grouping> {
-    match opt_field(m, "grouping") {
-        None => Ok(Grouping::Na),
-        Some(Mp::Str("na")) => Ok(Grouping::Na),
-        Some(Mp::Str("normalTpsl")) => Ok(Grouping::NormalTpsl),
-        Some(Mp::Str("positionTpsl")) => Ok(Grouping::PositionTpsl),
-        // Priority grouping {p: n} (TS SDK): priority fees are not modeled.
-        Some(g @ Mp::Map(_)) => {
-            u64_f(g, "p")?;
-            Ok(Grouping::Na)
-        }
-        Some(Mp::Str(s)) => Err(format!("invalid grouping: {s}")),
-        Some(o) => Err(format!("invalid grouping: {}", o.kind())),
+        o => Err(format!(
+            "field `oid`: expected integer or cloid string, got {}",
+            o.kind()
+        )),
     }
 }
 
@@ -285,19 +411,46 @@ pub fn decode_action(action_bytes: &[u8]) -> Result<Action, String> {
     decode_mp(&m)
 }
 
+/// `order` with a single pass over the top-level map (hot path).
+fn decode_order_fast(m: &Mp<'_>) -> Result<Action, String> {
+    let Mp::Map(seq) = m else { unreachable!() };
+    let (mut orders, mut grouping_v) = (None, None);
+    for (k, v) in seq.entries() {
+        match k {
+            "orders" if orders.is_none() => orders = Some(v),
+            "grouping" if grouping_v.is_none() => grouping_v = Some(v),
+            _ => {} // "type" (checked by caller), "builder" (ignored)
+        }
+    }
+    let orders = orders_array(&orders.ok_or("missing field `orders`")?)?;
+    let grouping = match grouping_v {
+        None | Some(Mp::Nil) => Grouping::Na,
+        Some(Mp::Str("na")) => Grouping::Na,
+        Some(Mp::Str("normalTpsl")) => Grouping::NormalTpsl,
+        Some(Mp::Str("positionTpsl")) => Grouping::PositionTpsl,
+        // Priority grouping {p: n} (TS SDK): priority fees are not modeled.
+        Some(g @ Mp::Map(_)) => {
+            u64_f(&g, "p")?;
+            Grouping::Na
+        }
+        Some(Mp::Str(s)) => return Err(format!("invalid grouping: {s}")),
+        Some(o) => return Err(format!("invalid grouping: {}", o.kind())),
+    };
+    // `builder` (builder fee) is accepted and ignored.
+    Ok(Action::Order { orders, grouping })
+}
+
 pub(crate) fn decode_mp(m: &Mp<'_>) -> Result<Action, String> {
     require_map(m, "action")?;
     let t = str_f(m, "type")?;
+    if t == "order" {
+        return decode_order_fast(m);
+    }
     Ok(match t {
-        "order" => {
-            let orders = as_arr(field(m, "orders")?, "orders")?.iter().map(order_wire).collect::<R<Vec<_>>>()?;
-            // `builder` (builder fee) is accepted and ignored.
-            Action::Order { orders, grouping: grouping(m)? }
-        }
         "cancel" => {
-            let cancels = as_arr(field(m, "cancels")?, "cancels")?
-                .iter()
+            let cancels = as_arr(&field(m, "cancels")?, "cancels")?
                 .map(|c| {
+                    let c = &c;
                     require_map(c, "cancel")?;
                     Ok((u32_f(c, "a")?, u64_f(c, "o")?))
                 })
@@ -305,29 +458,35 @@ pub(crate) fn decode_mp(m: &Mp<'_>) -> Result<Action, String> {
             Action::Cancel { cancels }
         }
         "cancelByCloid" => {
-            let cancels = as_arr(field(m, "cancels")?, "cancels")?
-                .iter()
+            let cancels = as_arr(&field(m, "cancels")?, "cancels")?
                 .map(|c| {
+                    let c = &c;
                     require_map(c, "cancel")?;
-                    Ok((u32_f(c, "asset")?, cloid_v(field(c, "cloid")?, "cloid")?))
+                    Ok((u32_f(c, "asset")?, cloid_v(&field(c, "cloid")?, "cloid")?))
                 })
                 .collect::<R<Vec<_>>>()?;
             Action::CancelByCloid { cancels }
         }
-        "modify" => Action::Modify { oid: oid_or_cloid(field(m, "oid")?)?, order: order_wire(field(m, "order")?)? },
+        "modify" => Action::Modify {
+            oid: oid_or_cloid(&field(m, "oid")?)?,
+            order: order_wire(&field(m, "order")?)?,
+        },
         "batchModify" => {
-            let modifies = as_arr(field(m, "modifies")?, "modifies")?
-                .iter()
+            let modifies = as_arr(&field(m, "modifies")?, "modifies")?
                 .map(|x| {
+                    let x = &x;
                     require_map(x, "modify")?;
-                    Ok((oid_or_cloid(field(x, "oid")?)?, order_wire(field(x, "order")?)?))
+                    Ok((
+                        oid_or_cloid(&field(x, "oid")?)?,
+                        order_wire(&field(x, "order")?)?,
+                    ))
                 })
                 .collect::<R<Vec<_>>>()?;
             Action::BatchModify { modifies }
         }
         "scheduleCancel" => {
             let time = match opt_field(m, "time") {
-                Some(v) => Some(as_u64(v, "time")?),
+                Some(v) => Some(as_u64(&v, "time")?),
                 None => None,
             };
             Action::ScheduleCancel { time }
@@ -340,7 +499,7 @@ pub(crate) fn decode_mp(m: &Mp<'_>) -> Result<Action, String> {
         "updateIsolatedMargin" => Action::UpdateIsolatedMargin {
             asset: u32_f(m, "asset")?,
             is_buy: bool_f(m, "isBuy")?,
-            ntli: Usd(as_i64(field(m, "ntli")?, "ntli")?),
+            ntli: Usd(as_i64(&field(m, "ntli")?, "ntli")?),
         },
         "usdSend" => Action::UsdSend {
             destination: addr_f(m, "destination")?,
@@ -375,13 +534,19 @@ pub(crate) fn decode_mp(m: &Mp<'_>) -> Result<Action, String> {
             let agent_name = match opt_field(m, "agentName") {
                 None => None,
                 Some(v) => {
-                    let s = as_str(v, "agentName")?;
+                    let s = as_str(&v, "agentName")?;
                     (!s.is_empty()).then(|| s.to_string())
                 }
             };
-            Action::ApproveAgent { agent_address: addr_f(m, "agentAddress")?, agent_name, nonce: u64_f(m, "nonce")? }
+            Action::ApproveAgent {
+                agent_address: addr_f(m, "agentAddress")?,
+                agent_name,
+                nonce: u64_f(m, "nonce")?,
+            }
         }
-        "setReferrer" => Action::SetReferrer { code: str_f(m, "code")?.to_string() },
+        "setReferrer" => Action::SetReferrer {
+            code: str_f(m, "code")?.to_string(),
+        },
         "noop" => Action::Noop,
         other => return Err(format!("unsupported action type: {other}")),
     })
@@ -437,12 +602,22 @@ mod tests {
         match a {
             Action::Order { orders, grouping } => {
                 assert_eq!(grouping, Grouping::PositionTpsl);
-                assert_eq!(orders[0].kind, OrderKind::Trigger { trigger_px: Px(140_000_000), is_market: false, tpsl: TpSl::Sl });
+                assert_eq!(
+                    orders[0].kind,
+                    OrderKind::Trigger {
+                        trigger_px: Px(140_000_000),
+                        is_market: false,
+                        tpsl: TpSl::Sl
+                    }
+                );
                 assert_eq!(orders[0].cloid, None);
             }
             _ => panic!(),
         }
-        assert_eq!(dec(json!({"type":"scheduleCancel","time":null})).unwrap(), Action::ScheduleCancel { time: None });
+        assert_eq!(
+            dec(json!({"type":"scheduleCancel","time":null})).unwrap(),
+            Action::ScheduleCancel { time: None }
+        );
         assert_eq!(dec(json!({"type":"noop"})).unwrap(), Action::Noop);
         assert_eq!(
             dec(json!({"type":"approveAgent","agentAddress":"0x5e9ee1089755c3435139848e47e6635505d5a13a","agentName":null,"nonce":5})).unwrap(),

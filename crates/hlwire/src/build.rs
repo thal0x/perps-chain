@@ -32,7 +32,11 @@ pub fn order_to_wire_json(o: &OrderRequest) -> Value {
             };
             obj(vec![("limit", obj(vec![("tif", s(tif))]))])
         }
-        OrderKind::Trigger { trigger_px, is_market, tpsl } => obj(vec![(
+        OrderKind::Trigger {
+            trigger_px,
+            is_market,
+            tpsl,
+        } => obj(vec![(
             "trigger",
             obj(vec![
                 ("isMarket", Value::Bool(is_market)),
@@ -60,7 +64,10 @@ pub fn order_to_wire_json(o: &OrderRequest) -> Value {
 /// (<= 5 significant figures unless integer, <= 6 - sz_decimals decimals).
 pub fn order_to_wire_json_checked(o: &OrderRequest, sz_decimals: u32) -> Result<Value, String> {
     if !o.sz.has_at_most_decimals(sz_decimals) {
-        return Err(format!("size {} has more than {sz_decimals} decimals", o.sz));
+        return Err(format!(
+            "size {} has more than {sz_decimals} decimals",
+            o.sz
+        ));
     }
     let spec = MarketSpec {
         asset: o.asset,
@@ -93,7 +100,10 @@ pub fn grouping_str(g: Grouping) -> &'static str {
 pub fn order_action(orders: &[OrderRequest], grouping: Grouping) -> Value {
     obj(vec![
         ("type", s("order")),
-        ("orders", Value::Array(orders.iter().map(order_to_wire_json).collect())),
+        (
+            "orders",
+            Value::Array(orders.iter().map(order_to_wire_json).collect()),
+        ),
         ("grouping", s(grouping_str(grouping))),
     ])
 }
@@ -104,7 +114,12 @@ pub fn cancel_action(cancels: &[(AssetId, Oid)]) -> Value {
         ("type", s("cancel")),
         (
             "cancels",
-            Value::Array(cancels.iter().map(|(a, o)| obj(vec![("a", Value::from(*a)), ("o", Value::from(*o))])).collect()),
+            Value::Array(
+                cancels
+                    .iter()
+                    .map(|(a, o)| obj(vec![("a", Value::from(*a)), ("o", Value::from(*o))]))
+                    .collect(),
+            ),
         ),
     ])
 }
@@ -116,7 +131,15 @@ pub fn cancel_by_cloid_action(cancels: &[(AssetId, Cloid)]) -> Value {
         (
             "cancels",
             Value::Array(
-                cancels.iter().map(|(a, c)| obj(vec![("asset", Value::from(*a)), ("cloid", s(cloid_to_hex(c)))])).collect(),
+                cancels
+                    .iter()
+                    .map(|(a, c)| {
+                        obj(vec![
+                            ("asset", Value::from(*a)),
+                            ("cloid", s(cloid_to_hex(c))),
+                        ])
+                    })
+                    .collect(),
             ),
         ),
     ])
@@ -131,7 +154,11 @@ fn oid_json(o: &OidOrCloid) -> Value {
 
 /// `{type:"modify", oid, order}` (TS SDK `modify`; Python only sends batchModify).
 pub fn modify_action(oid: &OidOrCloid, order: &OrderRequest) -> Value {
-    obj(vec![("type", s("modify")), ("oid", oid_json(oid)), ("order", order_to_wire_json(order))])
+    obj(vec![
+        ("type", s("modify")),
+        ("oid", oid_json(oid)),
+        ("order", order_to_wire_json(order)),
+    ])
 }
 
 /// `{type:"batchModify", modifies:[{oid, order}]}`.
@@ -141,7 +168,15 @@ pub fn batch_modify_action(modifies: &[(OidOrCloid, OrderRequest)]) -> Value {
         (
             "modifies",
             Value::Array(
-                modifies.iter().map(|(o, ord)| obj(vec![("oid", oid_json(o)), ("order", order_to_wire_json(ord))])).collect(),
+                modifies
+                    .iter()
+                    .map(|(o, ord)| {
+                        obj(vec![
+                            ("oid", oid_json(o)),
+                            ("order", order_to_wire_json(ord)),
+                        ])
+                    })
+                    .collect(),
             ),
         ),
     ])
@@ -232,7 +267,10 @@ pub fn usd_class_transfer_action(amount: Usd, to_perp: bool, nonce: u64) -> Valu
 /// `{type:"approveAgent", agentAddress, agentName?, nonce}`. With `name =
 /// None` the key is omitted (Python SDK; signed as "").
 pub fn approve_agent_action(agent: &Address, name: Option<&str>, nonce: u64) -> Value {
-    let mut v = vec![("type", s("approveAgent")), ("agentAddress", s(agent.to_hex()))];
+    let mut v = vec![
+        ("type", s("approveAgent")),
+        ("agentAddress", s(agent.to_hex())),
+    ];
     if let Some(n) = name {
         v.push(("agentName", s(n)));
     }
@@ -249,15 +287,42 @@ pub fn action_to_json(a: &Action) -> Value {
         Action::Modify { oid, order } => modify_action(oid, order),
         Action::BatchModify { modifies } => batch_modify_action(modifies),
         Action::ScheduleCancel { time } => schedule_cancel_action(*time),
-        Action::UpdateLeverage { asset, is_cross, leverage } => update_leverage_action(*asset, *is_cross, *leverage),
-        Action::UpdateIsolatedMargin { asset, is_buy, ntli } => update_isolated_margin_action(*asset, *is_buy, *ntli),
-        Action::UsdSend { destination, amount, time } => usd_send_action(destination, *amount, *time),
-        Action::SpotSend { destination, token, amount, time } => spot_send_action(destination, token, *amount, *time),
-        Action::UsdClassTransfer { amount, to_perp, nonce } => usd_class_transfer_action(*amount, *to_perp, *nonce),
-        Action::Withdraw3 { destination, amount, time } => withdraw3_action(destination, *amount, *time),
-        Action::ApproveAgent { agent_address, agent_name, nonce } => {
-            approve_agent_action(agent_address, agent_name.as_deref(), *nonce)
-        }
+        Action::UpdateLeverage {
+            asset,
+            is_cross,
+            leverage,
+        } => update_leverage_action(*asset, *is_cross, *leverage),
+        Action::UpdateIsolatedMargin {
+            asset,
+            is_buy,
+            ntli,
+        } => update_isolated_margin_action(*asset, *is_buy, *ntli),
+        Action::UsdSend {
+            destination,
+            amount,
+            time,
+        } => usd_send_action(destination, *amount, *time),
+        Action::SpotSend {
+            destination,
+            token,
+            amount,
+            time,
+        } => spot_send_action(destination, token, *amount, *time),
+        Action::UsdClassTransfer {
+            amount,
+            to_perp,
+            nonce,
+        } => usd_class_transfer_action(*amount, *to_perp, *nonce),
+        Action::Withdraw3 {
+            destination,
+            amount,
+            time,
+        } => withdraw3_action(destination, *amount, *time),
+        Action::ApproveAgent {
+            agent_address,
+            agent_name,
+            nonce,
+        } => approve_agent_action(agent_address, agent_name.as_deref(), *nonce),
         Action::SetReferrer { code } => set_referrer_action(code),
         Action::Noop => noop_action(),
     }

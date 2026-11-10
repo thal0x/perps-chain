@@ -13,7 +13,8 @@ use std::sync::OnceLock;
 /// viem accounts). Any value is accepted; it only feeds the EIP-712 domain.
 pub const DEFAULT_SIGNATURE_CHAIN_ID: &str = "0x66eee";
 
-const EIP712_DOMAIN_TYPE: &[u8] = b"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
+const EIP712_DOMAIN_TYPE: &[u8] =
+    b"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)";
 
 fn u256_be(v: u64) -> [u8; 32] {
     let mut o = [0u8; 32];
@@ -38,7 +39,12 @@ fn eip712_digest(domain_sep: &[u8; 32], struct_hash: &[u8; 32]) -> [u8; 32] {
 // ------------------------------------------------------------------ L1
 
 /// `keccak(msgpack(action) || nonce_be8 || (0x00 | 0x01 || vault20) || [0x00 || expires_be8])`.
-pub fn l1_action_hash(action_bytes: &[u8], nonce: u64, vault: Option<Address>, expires_after: Option<u64>) -> [u8; 32] {
+pub fn l1_action_hash(
+    action_bytes: &[u8],
+    nonce: u64,
+    vault: Option<Address>,
+    expires_after: Option<u64>,
+) -> [u8; 32] {
     use sha3::{Digest, Keccak256};
     let mut h = Keccak256::new();
     h.update(action_bytes);
@@ -112,36 +118,75 @@ use FieldType as F;
 
 /// (primary type, fields) for a user-signed action `type`, matching
 /// `hyperliquid/utils/signing.py` and the TS SDK `*Types` constants.
-pub fn user_signed_types(action_type: &str) -> Option<(&'static str, &'static [(&'static str, FieldType)])> {
+pub fn user_signed_types(
+    action_type: &str,
+) -> Option<(&'static str, &'static [(&'static str, FieldType)])> {
     const CHAIN: (&str, FieldType) = ("hyperliquidChain", F::String);
     Some(match action_type {
         "usdSend" => (
             "HyperliquidTransaction:UsdSend",
-            &[CHAIN, ("destination", F::String), ("amount", F::String), ("time", F::Uint64)],
+            &[
+                CHAIN,
+                ("destination", F::String),
+                ("amount", F::String),
+                ("time", F::Uint64),
+            ],
         ),
         "spotSend" => (
             "HyperliquidTransaction:SpotSend",
-            &[CHAIN, ("destination", F::String), ("token", F::String), ("amount", F::String), ("time", F::Uint64)],
+            &[
+                CHAIN,
+                ("destination", F::String),
+                ("token", F::String),
+                ("amount", F::String),
+                ("time", F::Uint64),
+            ],
         ),
         "withdraw3" => (
             "HyperliquidTransaction:Withdraw",
-            &[CHAIN, ("destination", F::String), ("amount", F::String), ("time", F::Uint64)],
+            &[
+                CHAIN,
+                ("destination", F::String),
+                ("amount", F::String),
+                ("time", F::Uint64),
+            ],
         ),
         "usdClassTransfer" => (
             "HyperliquidTransaction:UsdClassTransfer",
-            &[CHAIN, ("amount", F::String), ("toPerp", F::Bool), ("nonce", F::Uint64)],
+            &[
+                CHAIN,
+                ("amount", F::String),
+                ("toPerp", F::Bool),
+                ("nonce", F::Uint64),
+            ],
         ),
         "approveAgent" => (
             "HyperliquidTransaction:ApproveAgent",
-            &[CHAIN, ("agentAddress", F::Address), ("agentName", F::String), ("nonce", F::Uint64)],
+            &[
+                CHAIN,
+                ("agentAddress", F::Address),
+                ("agentName", F::String),
+                ("nonce", F::Uint64),
+            ],
         ),
         "approveBuilderFee" => (
             "HyperliquidTransaction:ApproveBuilderFee",
-            &[CHAIN, ("maxFeeRate", F::String), ("builder", F::Address), ("nonce", F::Uint64)],
+            &[
+                CHAIN,
+                ("maxFeeRate", F::String),
+                ("builder", F::Address),
+                ("nonce", F::Uint64),
+            ],
         ),
         "tokenDelegate" => (
             "HyperliquidTransaction:TokenDelegate",
-            &[CHAIN, ("validator", F::Address), ("wei", F::Uint64), ("isUndelegate", F::Bool), ("nonce", F::Uint64)],
+            &[
+                CHAIN,
+                ("validator", F::Address),
+                ("wei", F::Uint64),
+                ("isUndelegate", F::Bool),
+                ("nonce", F::Uint64),
+            ],
         ),
         "sendAsset" => (
             "HyperliquidTransaction:SendAsset",
@@ -158,7 +203,12 @@ pub fn user_signed_types(action_type: &str) -> Option<(&'static str, &'static [(
         ),
         "userDexAbstraction" => (
             "HyperliquidTransaction:UserDexAbstraction",
-            &[CHAIN, ("user", F::Address), ("enabled", F::Bool), ("nonce", F::Uint64)],
+            &[
+                CHAIN,
+                ("user", F::Address),
+                ("enabled", F::Bool),
+                ("nonce", F::Uint64),
+            ],
         ),
         "convertToMultiSigUser" => (
             "HyperliquidTransaction:ConvertToMultiSigUser",
@@ -171,18 +221,29 @@ pub fn user_signed_types(action_type: &str) -> Option<(&'static str, &'static [(
 /// Name of the nonce-carrying field ("time" or "nonce") of a user-signed type.
 pub fn user_signed_nonce_field(action_type: &str) -> Option<&'static str> {
     let (_, fields) = user_signed_types(action_type)?;
-    fields.iter().map(|(n, _)| *n).find(|n| *n == "time" || *n == "nonce")
+    fields
+        .iter()
+        .map(|(n, _)| *n)
+        .find(|n| *n == "time" || *n == "nonce")
 }
 
 fn parse_chain_id(s: &str) -> Result<u64, String> {
-    let h = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).ok_or("signatureChainId must be 0x-hex")?;
+    let h = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .ok_or("signatureChainId must be 0x-hex")?;
     if h.is_empty() || h.len() > 16 {
         return Err(format!("invalid signatureChainId: {s}"));
     }
     u64::from_str_radix(h, 16).map_err(|_| format!("invalid signatureChainId: {s}"))
 }
 
-fn encode_field(name: &str, ty: FieldType, v: Option<&Value>, out: &mut Vec<u8>) -> Result<(), String> {
+fn encode_field(
+    name: &str,
+    ty: FieldType,
+    v: Option<&Value>,
+    out: &mut Vec<u8>,
+) -> Result<(), String> {
     // approveAgent.agentName: absent/null is signed as "" by both SDKs.
     let v = match v {
         Some(Value::Null) | None if ty == F::String && name == "agentName" => {
@@ -194,31 +255,46 @@ fn encode_field(name: &str, ty: FieldType, v: Option<&Value>, out: &mut Vec<u8>)
     };
     match ty {
         F::String => {
-            let s = v.as_str().ok_or_else(|| format!("field `{name}` must be a string"))?;
+            let s = v
+                .as_str()
+                .ok_or_else(|| format!("field `{name}` must be a string"))?;
             out.extend_from_slice(&keccak256(s.as_bytes()));
         }
         F::Address => {
-            let s = v.as_str().ok_or_else(|| format!("field `{name}` must be an address string"))?;
+            let s = v
+                .as_str()
+                .ok_or_else(|| format!("field `{name}` must be an address string"))?;
             let a = parse_address(s)?;
             out.extend_from_slice(&[0u8; 12]);
             out.extend_from_slice(&a.0);
         }
         F::Uint64 => {
-            let n = v.as_u64().filter(|_| v.is_u64()).ok_or_else(|| format!("field `{name}` must be a uint64"))?;
-            if v.as_number().map(|x| x.to_string().contains(['.', 'e', 'E'])).unwrap_or(true) {
+            let n = v
+                .as_u64()
+                .filter(|_| v.is_u64())
+                .ok_or_else(|| format!("field `{name}` must be a uint64"))?;
+            if v.as_number()
+                .map(|x| x.to_string().contains(['.', 'e', 'E']))
+                .unwrap_or(true)
+            {
                 return Err(format!("field `{name}` must be an integer"));
             }
             out.extend_from_slice(&u256_be(n));
         }
         F::Bool => {
-            let b = v.as_bool().ok_or_else(|| format!("field `{name}` must be a bool"))?;
+            let b = v
+                .as_bool()
+                .ok_or_else(|| format!("field `{name}` must be a bool"))?;
             out.extend_from_slice(&u256_be(b as u64));
         }
         F::Bytes32 => {
-            let s = v.as_str().ok_or_else(|| format!("field `{name}` must be a hex string"))?;
+            let s = v
+                .as_str()
+                .ok_or_else(|| format!("field `{name}` must be a hex string"))?;
             let h = s.strip_prefix("0x").unwrap_or(s);
             let mut b = [0u8; 32];
-            hex::decode_to_slice(h, &mut b).map_err(|_| format!("field `{name}` must be bytes32 hex"))?;
+            hex::decode_to_slice(h, &mut b)
+                .map_err(|_| format!("field `{name}` must be bytes32 hex"))?;
             out.extend_from_slice(&b);
         }
     }
@@ -231,9 +307,16 @@ fn encode_field(name: &str, ty: FieldType, v: Option<&Value>, out: &mut Vec<u8>)
 /// Extra keys (`type`, `signatureChainId`, ...) are ignored as in the SDKs.
 pub fn user_signed_digest(action: &Value) -> Result<[u8; 32], String> {
     let obj = action.as_object().ok_or("action must be an object")?;
-    let t = obj.get("type").and_then(Value::as_str).ok_or("action.type missing")?;
-    let (primary, fields) = user_signed_types(t).ok_or_else(|| format!("{t} is not a user-signed action"))?;
-    let chain = obj.get("signatureChainId").and_then(Value::as_str).ok_or("signatureChainId missing")?;
+    let t = obj
+        .get("type")
+        .and_then(Value::as_str)
+        .ok_or("action.type missing")?;
+    let (primary, fields) =
+        user_signed_types(t).ok_or_else(|| format!("{t} is not a user-signed action"))?;
+    let chain = obj
+        .get("signatureChainId")
+        .and_then(Value::as_str)
+        .ok_or("signatureChainId missing")?;
     let chain_id = parse_chain_id(chain)?;
 
     let mut type_str = String::with_capacity(128);
@@ -255,7 +338,10 @@ pub fn user_signed_digest(action: &Value) -> Result<[u8; 32], String> {
         encode_field(n, *ty, obj.get(*n), &mut enc)?;
     }
     let sh = keccak256(&enc);
-    Ok(eip712_digest(&domain_separator("HyperliquidSignTransaction", chain_id), &sh))
+    Ok(eip712_digest(
+        &domain_separator("HyperliquidSignTransaction", chain_id),
+        &sh,
+    ))
 }
 
 /// Sign a user-signed action like the Python SDK: sets
@@ -263,10 +349,19 @@ pub fn user_signed_digest(action: &Value) -> Result<[u8; 32], String> {
 /// on the action (appended if absent, replaced in place otherwise), then
 /// signs the EIP-712 digest. Panics if required fields are missing.
 pub fn sign_user_signed_action(w: &Wallet, action: &mut Value, is_mainnet: bool) -> Sig65 {
-    let obj = action.as_object_mut().expect("sign_user_signed_action: action must be an object");
-    obj.insert("signatureChainId".into(), Value::String(DEFAULT_SIGNATURE_CHAIN_ID.into()));
-    obj.insert("hyperliquidChain".into(), Value::String(hyperliquid_chain(is_mainnet).into()));
-    let d = user_signed_digest(action).expect("sign_user_signed_action: invalid user-signed action");
+    let obj = action
+        .as_object_mut()
+        .expect("sign_user_signed_action: action must be an object");
+    obj.insert(
+        "signatureChainId".into(),
+        Value::String(DEFAULT_SIGNATURE_CHAIN_ID.into()),
+    );
+    obj.insert(
+        "hyperliquidChain".into(),
+        Value::String(hyperliquid_chain(is_mainnet).into()),
+    );
+    let d =
+        user_signed_digest(action).expect("sign_user_signed_action: invalid user-signed action");
     w.sign_digest(&d)
 }
 
@@ -284,15 +379,26 @@ pub fn hyperliquid_chain(is_mainnet: bool) -> &'static str {
 /// HL signature JSON `{"r":"0x..","s":"0x..","v":27}` (32-byte padded hex).
 pub fn sig_to_json(sig: &Sig65) -> Value {
     let mut m = Map::new();
-    m.insert("r".into(), Value::String(format!("0x{}", hex::encode(sig.r))));
-    m.insert("s".into(), Value::String(format!("0x{}", hex::encode(sig.s))));
+    m.insert(
+        "r".into(),
+        Value::String(format!("0x{}", hex::encode(sig.r))),
+    );
+    m.insert(
+        "s".into(),
+        Value::String(format!("0x{}", hex::encode(sig.s))),
+    );
     m.insert("v".into(), Value::from(sig.v));
     Value::Object(m)
 }
 
 fn sig_word(v: Option<&Value>, k: &str) -> Result<[u8; 32], String> {
-    let s = v.and_then(Value::as_str).ok_or_else(|| format!("signature.{k} must be a hex string"))?;
-    let h = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")).unwrap_or(s);
+    let s = v
+        .and_then(Value::as_str)
+        .ok_or_else(|| format!("signature.{k} must be a hex string"))?;
+    let h = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
     if h.is_empty() || h.len() > 64 || !h.bytes().all(|c| c.is_ascii_hexdigit()) {
         return Err(format!("invalid signature.{k}"));
     }
@@ -308,7 +414,10 @@ pub fn parse_signature(v: &Value) -> Result<Sig65, String> {
     let o = v.as_object().ok_or("signature must be an object")?;
     let r = sig_word(o.get("r"), "r")?;
     let s = sig_word(o.get("s"), "s")?;
-    let vv = o.get("v").and_then(Value::as_u64).ok_or("signature.v must be an integer")?;
+    let vv = o
+        .get("v")
+        .and_then(Value::as_u64)
+        .ok_or("signature.v must be an integer")?;
     let v = match vv {
         27 | 28 => vv as u8,
         0 | 1 => vv as u8 + 27,
@@ -320,7 +429,10 @@ pub fn parse_signature(v: &Value) -> Result<Sig65, String> {
 fn opt_u64(body: &Map<String, Value>, k: &str) -> Result<Option<u64>, String> {
     match body.get(k) {
         None | Some(Value::Null) => Ok(None),
-        Some(v) => v.as_u64().map(Some).ok_or_else(|| format!("{k} must be an unsigned integer")),
+        Some(v) => v
+            .as_u64()
+            .map(Some)
+            .ok_or_else(|| format!("{k} must be an unsigned integer")),
     }
 }
 
@@ -328,13 +440,18 @@ fn opt_u64(body: &Map<String, Value>, k: &str) -> Result<Option<u64>, String> {
 /// into a [`UserTx`]. The action is msgpack-encoded with its key order kept
 /// (the bytes the L1 signature hashes). The action is not decoded here.
 pub fn parse_exchange_request(body: &Value) -> Result<UserTx, String> {
-    let b = body.as_object().ok_or("request body must be a JSON object")?;
+    let b = body
+        .as_object()
+        .ok_or("request body must be a JSON object")?;
     let action = b.get("action").ok_or("missing action")?;
     let ao = action.as_object().ok_or("action must be an object")?;
     if !ao.get("type").map(Value::is_string).unwrap_or(false) {
         return Err("action.type must be a string".into());
     }
-    let nonce = b.get("nonce").and_then(Value::as_u64).ok_or("nonce must be an unsigned integer")?;
+    let nonce = b
+        .get("nonce")
+        .and_then(Value::as_u64)
+        .ok_or("nonce must be an unsigned integer")?;
     let signature = parse_signature(b.get("signature").ok_or("missing signature")?)?;
     let vault_address = match b.get("vaultAddress") {
         None | Some(Value::Null) => None,
@@ -342,7 +459,13 @@ pub fn parse_exchange_request(body: &Value) -> Result<UserTx, String> {
         Some(_) => return Err("vaultAddress must be a string".into()),
     };
     let expires_after = opt_u64(b, "expiresAfter")?;
-    Ok(UserTx { action_bytes: json_to_msgpack(action)?, nonce, signature, vault_address, expires_after })
+    Ok(UserTx {
+        action_bytes: json_to_msgpack(action)?,
+        nonce,
+        signature,
+        vault_address,
+        expires_after,
+    })
 }
 
 /// Build a `/exchange` body in Python SDK key order
@@ -399,7 +522,13 @@ pub fn user_tx_from_parts(
     vault: Option<Address>,
     expires_after: Option<u64>,
 ) -> Result<UserTx, String> {
-    Ok(UserTx { action_bytes: json_to_msgpack(action)?, nonce, signature, vault_address: vault, expires_after })
+    Ok(UserTx {
+        action_bytes: json_to_msgpack(action)?,
+        nonce,
+        signature,
+        vault_address: vault,
+        expires_after,
+    })
 }
 
 // ------------------------------------------------------------ verifier
@@ -416,21 +545,37 @@ pub fn recover_signer(tx: &UserTx, is_mainnet: bool) -> Result<Address, String> 
 fn recover_signer_typed(tx: &UserTx, t: &str, is_mainnet: bool) -> Result<Address, String> {
     if user_signed_types(t).is_some() {
         let action = crate::msgpack::msgpack_to_json(&tx.action_bytes)?;
-        let chain = action.get("hyperliquidChain").and_then(Value::as_str).ok_or("hyperliquidChain missing")?;
+        let chain = action
+            .get("hyperliquidChain")
+            .and_then(Value::as_str)
+            .ok_or("hyperliquidChain missing")?;
         if chain != hyperliquid_chain(is_mainnet) {
-            return Err(format!("hyperliquidChain {chain} does not match this chain"));
+            return Err(format!(
+                "hyperliquidChain {chain} does not match this chain"
+            ));
         }
         if tx.expires_after.is_some() {
             return Err("expiresAfter is not supported for user-signed actions".into());
         }
         let nf = user_signed_nonce_field(t).ok_or("no nonce field")?;
-        let an = action.get(nf).and_then(Value::as_u64).ok_or_else(|| format!("{nf} missing"))?;
+        let an = action
+            .get(nf)
+            .and_then(Value::as_u64)
+            .ok_or_else(|| format!("{nf} missing"))?;
         if an != tx.nonce {
-            return Err(format!("nonce {} does not match action {nf} {an}", tx.nonce));
+            return Err(format!(
+                "nonce {} does not match action {nf} {an}",
+                tx.nonce
+            ));
         }
         recover(&user_signed_digest(&action)?, &tx.signature)
     } else {
-        let cid = l1_action_hash(&tx.action_bytes, tx.nonce, tx.vault_address, tx.expires_after);
+        let cid = l1_action_hash(
+            &tx.action_bytes,
+            tx.nonce,
+            tx.vault_address,
+            tx.expires_after,
+        );
         recover(&l1_signing_digest(cid, is_mainnet), &tx.signature)
     }
 }

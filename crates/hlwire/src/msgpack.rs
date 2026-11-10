@@ -50,7 +50,14 @@ fn write_value(out: &mut Vec<u8>, v: &Value) -> Result<(), String> {
     Ok(())
 }
 
-fn write_len(out: &mut Vec<u8>, n: usize, fix: u8, fix_limit: usize, m16: u8, m32: u8) -> Result<(), String> {
+fn write_len(
+    out: &mut Vec<u8>,
+    n: usize,
+    fix: u8,
+    fix_limit: usize,
+    m16: u8,
+    m32: u8,
+) -> Result<(), String> {
     if n < fix_limit {
         out.push(fix | n as u8);
     } else if n < 0x1_0000 {
@@ -92,7 +99,9 @@ fn is_float_token(n: &Number) -> bool {
 
 fn write_number(out: &mut Vec<u8>, n: &Number) -> Result<(), String> {
     if is_float_token(n) {
-        let f = n.as_f64().ok_or_else(|| format!("msgpack: bad float {n}"))?;
+        let f = n
+            .as_f64()
+            .ok_or_else(|| format!("msgpack: bad float {n}"))?;
         if !f.is_finite() {
             return Err(format!("msgpack: non-finite float {n}"));
         }
@@ -151,8 +160,10 @@ pub(crate) fn write_int(out: &mut Vec<u8>, i: i64) {
 
 // ------------------------------------------------------------------ decoding
 
-/// Borrowed msgpack value tree (cheap to build; used by `decode_action`).
-#[derive(Clone, Debug, PartialEq)]
+/// Lazily-decoded borrowed msgpack value. Arrays and maps are *views* over
+/// their (already structurally validated) encoded body: no allocation is
+/// needed to walk an action, which keeps `decode_action` fast.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Mp<'a> {
     Nil,
     Bool(bool),
@@ -162,14 +173,88 @@ pub(crate) enum Mp<'a> {
     /// Raw IEEE-754 bits of a float32/float64 (never used for arithmetic).
     Float(u64),
     Str(&'a str),
-    Arr(Vec<Mp<'a>>),
-    Map(Vec<(&'a str, Mp<'a>)>),
+    Arr(Seq<'a>),
+    Map(Seq<'a>),
+}
+
+/// `n` elements (arrays) or `n` key/value pairs (maps) encoded in `body`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Seq<'a> {
+    pub(crate) n: usize,
+    body: &'a [u8],
+    depth: usize,
+}
+
+/// Iterator over array elements.
+pub(crate) struct ArrIter<'a> {
+    r: Reader<'a>,
+    left: usize,
+    depth: usize,
+}
+
+impl<'a> Iterator for ArrIter<'a> {
+    type Item = Mp<'a>;
+    fn next(&mut self) -> Option<Mp<'a>> {
+        if self.left == 0 {
+            return None;
+        }
+        self.left -= 1;
+        // Structure was validated when the view was created.
+        Some(self.r.value(self.depth).expect("validated msgpack"))
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.left, Some(self.left))
+    }
+}
+
+/// Iterator over map entries.
+pub(crate) struct MapIter<'a> {
+    r: Reader<'a>,
+    left: usize,
+    depth: usize,
+}
+
+impl<'a> Iterator for MapIter<'a> {
+    type Item = (&'a str, Mp<'a>);
+    fn next(&mut self) -> Option<(&'a str, Mp<'a>)> {
+        if self.left == 0 {
+            return None;
+        }
+        self.left -= 1;
+        let k = match self.r.value(self.depth).expect("validated msgpack") {
+            Mp::Str(s) => s,
+            _ => unreachable!("validated map key"),
+        };
+        Some((k, self.r.value(self.depth).expect("validated msgpack")))
+    }
+}
+
+impl<'a> Seq<'a> {
+    /// Streaming reader over the (validated) body.
+    pub(crate) fn reader(&self) -> Reader<'a> {
+        Reader::trusted(self.body)
+    }
+    pub(crate) fn items(&self) -> ArrIter<'a> {
+        ArrIter {
+            r: Reader::trusted(self.body),
+            left: self.n,
+            depth: self.depth,
+        }
+    }
+    pub(crate) fn entries(&self) -> MapIter<'a> {
+        MapIter {
+            r: Reader::trusted(self.body),
+            left: self.n,
+            depth: self.depth,
+        }
+    }
 }
 
 impl<'a> Mp<'a> {
-    pub(crate) fn get(&self, key: &str) -> Option<&Mp<'a>> {
+    /// First value for `key` in a map (None for non-maps).
+    pub(crate) fn get(&self, key: &str) -> Option<Mp<'a>> {
         match self {
-            Mp::Map(m) => m.iter().find(|(k, _)| *k == key).map(|(_, v)| v),
+            Mp::Map(m) => m.entries().find(|(k, _)| *k == key).map(|(_, v)| v),
             _ => None,
         }
     }
@@ -191,14 +276,133 @@ const MAX_DEPTH: usize = 64;
 pub(crate) struct Reader<'a> {
     b: &'a [u8],
     pos: usize,
+    /// Input already validated by `parse_all`: container bodies are skipped
+    /// without re-validating their contents.
+    trusted: bool,
 }
 
 impl<'a> Reader<'a> {
     pub(crate) fn new(b: &'a [u8]) -> Self {
-        Reader { b, pos: 0 }
+        Reader {
+            b,
+            pos: 0,
+            trusted: false,
+        }
+    }
+    fn trusted(b: &'a [u8]) -> Self {
+        Reader {
+            b,
+            pos: 0,
+            trusted: true,
+        }
     }
 
-    /// Parse exactly one value spanning the whole input.
+    // ---- streaming accessors (used by the hot decode path) ----
+
+    pub(crate) fn peek(&self) -> Option<u8> {
+        self.b.get(self.pos).copied()
+    }
+
+    pub(crate) fn read_map_len(&mut self) -> Result<usize, String> {
+        match self.u8()? {
+            t @ 0x80..=0x8f => Ok((t & 0x0f) as usize),
+            0xde => Ok(u16::from_be_bytes(self.be()?) as usize),
+            0xdf => Ok(u32::from_be_bytes(self.be()?) as usize),
+            _ => Err("expected map".into()),
+        }
+    }
+
+    /// Raw bytes of a string value (no UTF-8 check: use for key matching).
+    pub(crate) fn read_str_bytes(&mut self) -> Result<&'a [u8], String> {
+        let n = match self.u8()? {
+            t @ 0xa0..=0xbf => (t & 0x1f) as usize,
+            0xd9 => self.u8()? as usize,
+            0xda => u16::from_be_bytes(self.be()?) as usize,
+            0xdb => u32::from_be_bytes(self.be()?) as usize,
+            _ => {
+                self.pos -= 1;
+                return Err(format!(
+                    "expected string, got {}",
+                    self.value(0).map(|v| v.kind()).unwrap_or("invalid")
+                ));
+            }
+        };
+        self.take(n)
+    }
+
+    pub(crate) fn read_str(&mut self) -> Result<&'a str, String> {
+        let b = self.read_str_bytes()?;
+        std::str::from_utf8(b).map_err(|_| "msgpack: invalid utf-8 string".to_string())
+    }
+
+    /// Any value (as a lazy view).
+    pub(crate) fn read_value(&mut self) -> Result<Mp<'a>, String> {
+        self.value(0)
+    }
+
+    /// Skip one (validated) value without decoding it.
+    pub(crate) fn skip_value(&mut self) -> Result<(), String> {
+        self.skip()
+    }
+
+    /// Skip one (validated) value without decoding it.
+    fn skip(&mut self) -> Result<(), String> {
+        let b = self.b;
+        let mut p = self.pos;
+        let mut left: usize = 1;
+        #[inline(always)]
+        fn be_len(b: &[u8], p: usize, n: usize) -> Option<usize> {
+            let s = b.get(p..p + n)?;
+            Some(s.iter().fold(0usize, |acc, &x| (acc << 8) | x as usize))
+        }
+        let eof = || "msgpack: unexpected end of input".to_string();
+        while left > 0 {
+            left -= 1;
+            let t = *b.get(p).ok_or_else(eof)?;
+            p += 1;
+            let n = match t {
+                0x00..=0x7f | 0xe0..=0xff | 0xc0 | 0xc2 | 0xc3 => 0,
+                0x80..=0x8f => {
+                    left += 2 * (t & 0x0f) as usize;
+                    0
+                }
+                0x90..=0x9f => {
+                    left += (t & 0x0f) as usize;
+                    0
+                }
+                0xa0..=0xbf => (t & 0x1f) as usize,
+                0xcc | 0xd0 => 1,
+                0xcd | 0xd1 => 2,
+                0xca | 0xce | 0xd2 => 4,
+                0xcb | 0xcf | 0xd3 => 8,
+                0xd9..=0xdb => {
+                    let w = 1usize << (t - 0xd9);
+                    let n = be_len(b, p, w).ok_or_else(eof)?;
+                    p += w;
+                    n
+                }
+                0xdc | 0xdd => {
+                    let w = 2usize << (t - 0xdc);
+                    left += be_len(b, p, w).ok_or_else(eof)?;
+                    p += w;
+                    0
+                }
+                0xde | 0xdf => {
+                    let w = 2usize << (t - 0xde);
+                    left += 2 * be_len(b, p, w).ok_or_else(eof)?;
+                    p += w;
+                    0
+                }
+                _ => return Err("msgpack: unsupported type in validated input".into()),
+            };
+            p = p.checked_add(n).filter(|&e| e <= b.len()).ok_or_else(eof)?;
+        }
+        self.pos = p;
+        Ok(())
+    }
+
+    /// Parse (and fully validate the structure and UTF-8 of) exactly one
+    /// value spanning the whole input.
     pub(crate) fn parse_all(b: &'a [u8]) -> Result<Mp<'a>, String> {
         let mut r = Reader::new(b);
         let v = r.value(0)?;
@@ -208,6 +412,7 @@ impl<'a> Reader<'a> {
         Ok(v)
     }
 
+    #[inline]
     fn take(&mut self, n: usize) -> Result<&'a [u8], String> {
         let end = self.pos.checked_add(n).ok_or("msgpack: length overflow")?;
         if end > self.b.len() {
@@ -217,14 +422,17 @@ impl<'a> Reader<'a> {
         self.pos = end;
         Ok(s)
     }
+    #[inline]
     fn u8(&mut self) -> Result<u8, String> {
         Ok(self.take(1)?[0])
     }
+    #[inline]
     fn be<const N: usize>(&mut self) -> Result<[u8; N], String> {
         let mut a = [0u8; N];
         a.copy_from_slice(self.take(N)?);
         Ok(a)
     }
+    #[inline]
     fn str(&mut self, n: usize) -> Result<&'a str, String> {
         let s = self.take(n)?;
         std::str::from_utf8(s).map_err(|_| "msgpack: invalid utf-8 string".to_string())
@@ -290,37 +498,67 @@ impl<'a> Reader<'a> {
             }
             0xe0..=0xff => Mp::NegInt(t as i8 as i64),
             0xc4..=0xc6 => return Err("msgpack: binary values are not supported".into()),
-            0xc7..=0xc9 | 0xd4..=0xd8 => return Err("msgpack: extension types are not supported".into()),
+            0xc7..=0xc9 | 0xd4..=0xd8 => {
+                return Err("msgpack: extension types are not supported".into())
+            }
             0xc1 => return Err("msgpack: reserved byte 0xc1".into()),
         })
     }
 
     fn arr(&mut self, n: usize, depth: usize) -> Result<Mp<'a>, String> {
-        // Each element needs at least one byte: bound allocation by input size.
+        // Each element needs at least one byte.
         if n > self.b.len() - self.pos {
             return Err("msgpack: array length exceeds input".into());
         }
-        let mut v = Vec::with_capacity(n);
-        for _ in 0..n {
-            v.push(self.value(depth + 1)?);
+        let start = self.pos;
+        if self.trusted {
+            for _ in 0..n {
+                self.skip()?;
+            }
+        } else {
+            for _ in 0..n {
+                self.value(depth + 1)?;
+            }
         }
-        Ok(Mp::Arr(v))
+        Ok(Mp::Arr(Seq {
+            n,
+            body: &self.b[start..self.pos],
+            depth: depth + 1,
+        }))
     }
 
     fn map(&mut self, n: usize, depth: usize) -> Result<Mp<'a>, String> {
         if n.saturating_mul(2) > self.b.len() - self.pos {
             return Err("msgpack: map length exceeds input".into());
         }
-        let mut v = Vec::with_capacity(n);
-        for _ in 0..n {
-            let k = match self.value(depth + 1)? {
-                Mp::Str(s) => s,
-                other => return Err(format!("msgpack: map key must be a string, got {}", other.kind())),
-            };
-            let x = self.value(depth + 1)?;
-            v.push((k, x));
+        let start = self.pos;
+        if self.trusted {
+            for _ in 0..2 * n {
+                self.skip()?;
+            }
+            return Ok(Mp::Map(Seq {
+                n,
+                body: &self.b[start..self.pos],
+                depth: depth + 1,
+            }));
         }
-        Ok(Mp::Map(v))
+        for _ in 0..n {
+            match self.value(depth + 1)? {
+                Mp::Str(_) => {}
+                other => {
+                    return Err(format!(
+                        "msgpack: map key must be a string, got {}",
+                        other.kind()
+                    ))
+                }
+            }
+            self.value(depth + 1)?;
+        }
+        Ok(Mp::Map(Seq {
+            n,
+            body: &self.b[start..self.pos],
+            depth: depth + 1,
+        }))
     }
 }
 
@@ -335,11 +573,15 @@ fn mp_to_json(v: &Mp<'_>) -> Result<Value, String> {
             Value::Number(Number::from_f64(f).ok_or("msgpack: non-finite float")?)
         }
         Mp::Str(s) => Value::String((*s).to_string()),
-        Mp::Arr(a) => Value::Array(a.iter().map(mp_to_json).collect::<Result<_, _>>()?),
+        Mp::Arr(a) => Value::Array(
+            a.items()
+                .map(|x| mp_to_json(&x))
+                .collect::<Result<_, _>>()?,
+        ),
         Mp::Map(m) => {
-            let mut o = Map::with_capacity(m.len());
-            for (k, x) in m {
-                o.insert((*k).to_string(), mp_to_json(x)?);
+            let mut o = Map::with_capacity(m.n);
+            for (k, x) in m.entries() {
+                o.insert(k.to_string(), mp_to_json(&x)?);
             }
             Value::Object(o)
         }
@@ -392,8 +634,14 @@ mod tests {
             let v: Value = serde_json::from_str(j).unwrap();
             assert_eq!(hx(&v), *h, "{j}");
         }
-        assert!(json_to_msgpack(&serde_json::from_str::<Value>("18446744073709551616").unwrap()).is_err());
-        assert!(json_to_msgpack(&serde_json::from_str::<Value>("-9223372036854775809").unwrap()).is_err());
+        assert!(
+            json_to_msgpack(&serde_json::from_str::<Value>("18446744073709551616").unwrap())
+                .is_err()
+        );
+        assert!(
+            json_to_msgpack(&serde_json::from_str::<Value>("-9223372036854775809").unwrap())
+                .is_err()
+        );
     }
 
     #[test]
@@ -410,7 +658,10 @@ mod tests {
     fn strings_and_containers() {
         assert_eq!(hx(&json!("")), "a0");
         assert_eq!(hx(&json!("a".repeat(31))), format!("bf{}", "61".repeat(31)));
-        assert_eq!(hx(&json!("a".repeat(32))), format!("d920{}", "61".repeat(32)));
+        assert_eq!(
+            hx(&json!("a".repeat(32))),
+            format!("d920{}", "61".repeat(32))
+        );
         assert_eq!(hx(&json!("a".repeat(256)))[..6], *"da0100");
         assert_eq!(hx(&json!([])), "90");
         assert_eq!(hx(&json!({})), "80");

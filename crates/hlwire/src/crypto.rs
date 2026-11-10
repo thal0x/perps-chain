@@ -49,7 +49,8 @@ pub fn recover(digest: &[u8; 32], sig: &Sig65) -> Result<Address, String> {
     compact[..32].copy_from_slice(&sig.r);
     compact[32..].copy_from_slice(&sig.s);
     let rid = RecoveryId::try_from(rid as i32).map_err(|e| e.to_string())?;
-    let rs = RecoverableSignature::from_compact(&compact, rid).map_err(|e| format!("invalid signature: {e}"))?;
+    let rs = RecoverableSignature::from_compact(&compact, rid)
+        .map_err(|e| format!("invalid signature: {e}"))?;
     let pk = SECP256K1
         .recover_ecdsa(&Message::from_digest(*digest), &rs)
         .map_err(|e| format!("signature recovery failed: {e}"))?;
@@ -87,9 +88,14 @@ impl Wallet {
     /// From a hex secret (with or without `0x`).
     pub fn from_secret_hex(s: &str) -> Result<Self, String> {
         let h = s.trim();
-        let h = h.strip_prefix("0x").or_else(|| h.strip_prefix("0X")).unwrap_or(h);
+        let h = h
+            .strip_prefix("0x")
+            .or_else(|| h.strip_prefix("0X"))
+            .unwrap_or(h);
         let v = hex::decode(h).map_err(|_| "invalid secret key hex".to_string())?;
-        let b: [u8; 32] = v.try_into().map_err(|_| "secret key must be 32 bytes".to_string())?;
+        let b: [u8; 32] = v
+            .try_into()
+            .map_err(|_| "secret key must be 32 bytes".to_string())?;
         Self::from_bytes(&b)
     }
 
@@ -127,14 +133,23 @@ impl Wallet {
         let mut s = [0u8; 32];
         r.copy_from_slice(&compact[..32]);
         s.copy_from_slice(&compact[32..]);
-        Sig65 { r, s, v: 27 + i32::from(rid) as u8 }
+        Sig65 {
+            r,
+            s,
+            v: 27 + i32::from(rid) as u8,
+        }
     }
 }
 
 // ------------------------------------------------------------ validator txs
 
 /// keccak256(borsh((chain_id, validator, nonce, action))).
-pub fn validator_tx_digest(chain_id: u64, validator: &Address, nonce: u64, action: &ValidatorAction) -> [u8; 32] {
+pub fn validator_tx_digest(
+    chain_id: u64,
+    validator: &Address,
+    nonce: u64,
+    action: &ValidatorAction,
+) -> [u8; 32] {
     let mut buf = Vec::with_capacity(96);
     // Serializing the fields in order is byte-identical to borsh of the tuple.
     chain_id.serialize(&mut buf).expect("vec write");
@@ -145,10 +160,20 @@ pub fn validator_tx_digest(chain_id: u64, validator: &Address, nonce: u64, actio
 }
 
 /// Build and sign a validator transaction with the validator's key.
-pub fn sign_validator_tx(w: &Wallet, chain_id: u64, nonce: u64, action: ValidatorAction) -> ValidatorTx {
+pub fn sign_validator_tx(
+    w: &Wallet,
+    chain_id: u64,
+    nonce: u64,
+    action: ValidatorAction,
+) -> ValidatorTx {
     let validator = w.address();
     let d = validator_tx_digest(chain_id, &validator, nonce, &action);
-    ValidatorTx { validator, nonce, action, signature: w.sign_digest(&d) }
+    ValidatorTx {
+        validator,
+        nonce,
+        action,
+        signature: w.sign_digest(&d),
+    }
 }
 
 /// Verify a validator tx; returns the signer (must equal `tx.validator`).
@@ -156,7 +181,10 @@ pub fn recover_validator_tx(tx: &ValidatorTx, chain_id: u64) -> Result<Address, 
     let d = validator_tx_digest(chain_id, &tx.validator, tx.nonce, &tx.action);
     let a = recover(&d, &tx.signature)?;
     if a != tx.validator {
-        return Err(format!("validator tx signed by {a}, expected {}", tx.validator));
+        return Err(format!(
+            "validator tx signed by {a}, expected {}",
+            tx.validator
+        ));
     }
     Ok(a)
 }
@@ -180,8 +208,14 @@ mod tests {
     #[test]
     fn known_address() {
         // Well-known test key (eth_account docs).
-        let w = Wallet::from_secret_hex("0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318").unwrap();
-        assert_eq!(w.address().to_hex(), "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23");
+        let w = Wallet::from_secret_hex(
+            "0x4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318",
+        )
+        .unwrap();
+        assert_eq!(
+            w.address().to_hex(),
+            "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23"
+        );
         assert_eq!(Wallet::from_secret_hex(&w.secret_hex()).unwrap(), w);
     }
 
@@ -207,8 +241,24 @@ mod tests {
     #[test]
     fn rejects_bad_sigs() {
         let d = [1u8; 32];
-        assert!(recover(&d, &Sig65 { r: [0; 32], s: [1; 32], v: 27 }).is_err());
-        assert!(recover(&d, &Sig65 { r: [0xff; 32], s: [0xff; 32], v: 27 }).is_err());
+        assert!(recover(
+            &d,
+            &Sig65 {
+                r: [0; 32],
+                s: [1; 32],
+                v: 27
+            }
+        )
+        .is_err());
+        assert!(recover(
+            &d,
+            &Sig65 {
+                r: [0xff; 32],
+                s: [0xff; 32],
+                v: 27
+            }
+        )
+        .is_err());
         assert!(Wallet::from_bytes(&[0u8; 32]).is_err());
         assert!(Wallet::from_secret_hex("0x1234").is_err());
     }
@@ -216,14 +266,24 @@ mod tests {
     #[test]
     fn validator_tx_sign_verify() {
         let w = Wallet::random(&mut rand_chacha::ChaCha20Rng::seed_from_u64(1));
-        let tx = sign_validator_tx(&w, 42, 5, ValidatorAction::WithdrawalFinalized { withdrawal_id: 3 });
+        let tx = sign_validator_tx(
+            &w,
+            42,
+            5,
+            ValidatorAction::WithdrawalFinalized { withdrawal_id: 3 },
+        );
         assert_eq!(recover_validator_tx(&tx, 42).unwrap(), w.address());
         assert!(recover_validator_tx(&tx, 43).is_err());
         let mut t2 = tx.clone();
         t2.nonce = 6;
         assert!(recover_validator_tx(&t2, 42).is_err());
         // digest == keccak(borsh(tuple))
-        let tuple = (42u64, w.address(), 5u64, ValidatorAction::WithdrawalFinalized { withdrawal_id: 3 });
+        let tuple = (
+            42u64,
+            w.address(),
+            5u64,
+            ValidatorAction::WithdrawalFinalized { withdrawal_id: 3 },
+        );
         assert_eq!(
             validator_tx_digest(42, &w.address(), 5, &tuple.3),
             keccak256(&borsh::to_vec(&tuple).unwrap())
