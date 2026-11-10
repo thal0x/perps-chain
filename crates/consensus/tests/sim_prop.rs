@@ -4,7 +4,7 @@
 //! safety is checked continuously.
 //!
 //! Default run: a handful of seeds per configuration.
-//! Long sweep:  `HLBFT_SIM_SEEDS=500 cargo test -p consensus --release --test sim_prop -- --ignored --nocapture`
+//! Long sweep:  `HLBFT_SIM_SEEDS=300 HLBFT_SIM_MS=120000 [HLBFT_SIM_BASE=..] [HLBFT_MAXTO=4000] cargo test -p consensus --release --test sim_prop long_seed_sweep -- --ignored --nocapture`
 
 use consensus::sim::*;
 use proptest::prelude::*;
@@ -27,6 +27,10 @@ fn run_schedule(n: usize, seed: u64, duration_ms: u64) -> Result<Outcome, String
     if rng.gen_range(0..3) == 0 {
         cfg.store = StoreKind::Mem { retain_heights: 60 };
         cfg.snapshot_every = 20;
+    }
+    // HLBFT_MAXTO=<ms>: override CoreConfig::max_timeout_ms (sweeps)
+    if std::env::var("HLBFT_MAXTO").is_ok() {
+        cfg.tweak = Some(|c| c.max_timeout_ms = std::env::var("HLBFT_MAXTO").unwrap().parse().expect("HLBFT_MAXTO"));
     }
     let mut sim = Sim::new(cfg);
     let mut order: Vec<usize> = (0..n).collect();
@@ -135,7 +139,12 @@ fn run_schedule(n: usize, seed: u64, duration_ms: u64) -> Result<Outcome, String
     // everybody honest catches up eventually
     let target = sim.max_honest_committed();
     if sim.wait_all(&honest, target, 60_000).is_none() {
-        return Err(format!("seed {seed} n {n}: honest nodes did not converge to {target}"));
+        let mut s = format!("seed {seed} n {n}: honest nodes did not converge to {target} (now={})\n", sim.now - SIM_GENESIS_TIME);
+        for i in 0..n {
+            s += &format!("  node {i} byz={:?} up={} h={} exec={} view={:?} {:?}\n", sim.nodes[i].byz, sim.is_up(i), sim.committed_height(i), sim.nodes[i].exec.height,
+                sim.core(i).map(interfaces::ConsensusCore::current_view), sim.core(i).map(|c| c.stats().clone()));
+        }
+        return Err(s);
     }
     sim.check_safety()?;
     if sim.total_safety_violations() > 0 {
@@ -170,20 +179,44 @@ fn fixed_seeds_regression() {
     }
 }
 
+/// Regressions found by the merge gate / sweeps (D29):
+/// * 7182031906024167429 (n=4): a restarted node far behind pruned peers
+///   could never certify a snapshot (header exec claims skipped heights).
+/// * 9438599898672929746 (n=7), 5000000079 (n=4): view-timeout backoff
+///   built up during a lossy/slow episode outlived the heal; a faulty
+///   leader right after the heal then cost > 10 s.
+#[test]
+fn regression_seeds() {
+    for (seed, n) in [(7182031906024167429u64, 4usize), (9438599898672929746, 7), (5000000079, 4)] {
+        let o = run_schedule(n, seed, 120_000).unwrap_or_else(|e| panic!("{e}"));
+        assert!(o.height > 10 && o.max_resume_ms <= 10_000, "seed {seed}: {o:?}");
+    }
+}
+
 #[test]
 #[ignore]
 fn long_seed_sweep() {
     let seeds: u64 = std::env::var("HLBFT_SIM_SEEDS").ok().and_then(|s| s.parse().ok()).unwrap_or(200);
     let dur: u64 = std::env::var("HLBFT_SIM_MS").ok().and_then(|s| s.parse().ok()).unwrap_or(300_000);
     let mut worst = 0;
+    let mut failures = 0;
     for seed in 0..seeds {
         for n in [4, 7] {
-            let o = run_schedule(n, 1_000_000 + seed, dur).unwrap_or_else(|e| panic!("{e}"));
-            worst = worst.max(o.max_resume_ms);
-            println!("seed {seed} n {n}: {o:?}");
+            let base: u64 = std::env::var("HLBFT_SIM_BASE").ok().and_then(|s| s.parse().ok()).unwrap_or(1_000_000);
+            match run_schedule(n, base + seed, dur) {
+                Ok(o) => {
+                    worst = worst.max(o.max_resume_ms);
+                    println!("seed {seed} n {n}: {o:?}");
+                }
+                Err(e) => {
+                    failures += 1;
+                    println!("FAIL {}", e.lines().next().unwrap_or(""));
+                }
+            }
         }
     }
-    println!("worst resume: {worst} ms");
+    println!("worst resume: {worst} ms, failures: {failures}");
+    assert_eq!(failures, 0);
 }
 
 /// Reproduce one schedule with logs:

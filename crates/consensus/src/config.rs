@@ -37,6 +37,10 @@ pub struct CoreConfig {
     pub fetch_window: u64,
     /// In-memory blocks kept below the committed height.
     pub memory_window: u64,
+    /// Heights at which the node takes snapshots (multiples of this). A
+    /// proposer's exec claim never jumps over such a height, so every
+    /// snapshot root is certified by some header (needed for snapshot sync).
+    pub snapshot_interval: u64,
 }
 
 impl CoreConfig {
@@ -60,6 +64,7 @@ impl CoreConfig {
             sync_stall_ms: 2000,
             fetch_window: 64,
             memory_window: 64,
+            snapshot_interval: 1000,
         }
     }
 

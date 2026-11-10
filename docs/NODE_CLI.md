@@ -11,6 +11,7 @@ hlnode run --home DIR/node<i> [--genesis PATH] [--config PATH]
    flags override config.toml:
    --p2p-listen HOST:PORT   --api-listen HOST:PORT   --key PATH
    --min-block-ms 200       --invariants off|every|<N>
+   --max-timeout-ms 4000    (cap on the consensus view timeout; D29)
    --oracle-feed synthetic:<seed>[:skew_bps=<i>]|fixed|file:<path>
    --bridge-rpc http://127.0.0.1:8545   (enables DepositWatcher if set)
    --replay-log PATH        (leader proposes logged blocks, D8)
