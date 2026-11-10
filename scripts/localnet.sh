@@ -2,6 +2,7 @@
 # Local hlbft network.
 #   scripts/localnet.sh start N [--bench] [--release] [--fund-sdk-examples] [-- extra hlnode run flags]
 #   scripts/localnet.sh dev          # = start 4 --fund-sdk-examples (API on 3001..3004)
+#   scripts/localnet.sh seed         # rest a liquidity ladder on every market (dev does this)
 #   scripts/localnet.sh stop
 #   scripts/localnet.sh status
 # Env: LOCALNET_DIR (default <repo>/run/localnet), BASE_P2P (26600), BASE_API (3001),
@@ -119,10 +120,58 @@ cmd_start() {
   return 0
 }
 
+# Rest a two-sided ladder on every perp market from funded test account #0,
+# so SDK examples that take liquidity (market orders, closes) can fill.
+# Also writes $DIR/sdk_config.json (checksummed example account) for the SDK examples.
+cmd_seed() {
+  local py="${HL_PYTHON:-/home/user/.venvs/hl/bin/python}"
+  [ -x "$py" ] || { echo "localnet: no SDK python at $py; skipping liquidity seeding" >&2; return 0; }
+  "$py" - "$DIR" "http://127.0.0.1:$BASE_API" <<'EOF'
+import json, os, sys
+import eth_account
+from hyperliquid.exchange import Exchange
+from hyperliquid.info import Info
+d, url = sys.argv[1], sys.argv[2]
+accts = json.load(open(os.path.join(d, "accounts.json")))
+ex_acct = [a for a in accts if a.get("name") == "sdk_example"]
+if ex_acct:
+    acc = eth_account.Account.from_key(ex_acct[0]["secret"])
+    json.dump({"secret_key": ex_acct[0]["secret"], "account_address": acc.address, "keystore_path": "",
+               "multi_sig": {"authorized_users": []}}, open(os.path.join(d, "sdk_config.json"), "w"), indent=2)
+mm = [a for a in accts if not a.get("name")]
+if not mm:
+    print("no funded test account for liquidity"); sys.exit(0)
+w = eth_account.Account.from_key(mm[0]["secret"])
+info = Info(url, skip_ws=True)
+ex = Exchange(w, url)
+meta = info.meta()
+mids = info.all_mids()
+def rnd(px, szd):
+    dec = max(0, 6 - szd)
+    return float(f"{float(f'{px:.5g}'):.{dec}f}")
+orders = []
+for a in meta["universe"]:
+    name, szd = a["name"], a["szDecimals"]
+    mid = float(mids[name])
+    sz = round(20000.0 / mid, szd) or 10 ** -szd
+    for lvl in range(1, 6):
+        off = 0.0005 * lvl
+        orders.append({"coin": name, "is_buy": True, "sz": sz, "limit_px": rnd(mid * (1 - off), szd),
+                       "order_type": {"limit": {"tif": "Gtc"}}, "reduce_only": False})
+        orders.append({"coin": name, "is_buy": False, "sz": sz, "limit_px": rnd(mid * (1 + off), szd),
+                       "order_type": {"limit": {"tif": "Gtc"}}, "reduce_only": False})
+r = ex.bulk_orders(orders)
+st = r.get("response", {}).get("data", {}).get("statuses", []) if isinstance(r, dict) else []
+ok = sum(1 for s in st if "resting" in s)
+print(f"liquidity: {ok}/{len(orders)} resting orders from {w.address}")
+EOF
+}
+
 case "${1:-}" in
   start) shift; cmd_start "$@" ;;
-  dev) shift; BASE_API=3001 cmd_start 4 --fund-sdk-examples "$@" ;;
+  seed) cmd_seed ;;
+  dev) shift; BASE_API=3001 cmd_start 4 --fund-sdk-examples "$@"; BASE_API=3001 cmd_seed ;;
   stop) cmd_stop ;;
   status) cmd_status ;;
-  *) die "usage: $0 start N [--bench] [--release] | dev | stop | status" ;;
+  *) die "usage: $0 start N [--bench] [--release] [--fund-sdk-examples] | dev | seed | stop | status" ;;
 esac

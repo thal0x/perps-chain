@@ -259,6 +259,7 @@ impl ConsensusEnv for NodeEnv {
 
 // --------------------------------------------------------------- executor --
 
+#[allow(clippy::large_enum_variant)]
 enum ExecMsg {
     Commit(CommittedBlock),
     Install(Snapshot),
@@ -327,10 +328,10 @@ impl Executor {
             let mut c = self.shared.chain.write();
             let o = c.execute_block(&ctx, &b.payload);
             let v = c.invariant_violations().len();
-            if v > 0 && h % 100 == 0 {
+            if v > 0 && h.is_multiple_of(100) {
                 warn!(height = h, violations = v, "invariant violations recorded");
             }
-            let snap = if h % self.snapshot_interval == 0 {
+            let snap = if h.is_multiple_of(self.snapshot_interval) {
                 let c = parking_lot::RwLockWriteGuard::downgrade(c);
                 Some(c.snapshot())
             } else {
