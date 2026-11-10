@@ -5,3 +5,17 @@ edition.workspace = true
 
 [dependencies]
 interfaces = { workspace = true }
+borsh = { workspace = true }
+bytes = { workspace = true }
+crossbeam-channel = { workspace = true }
+parking_lot = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+secp256k1 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha3 = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tracing = { workspace = true }

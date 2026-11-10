@@ -173,13 +173,13 @@ fn check_tx_admission() {
     let a = addr(ALICE);
     let app: &dyn Application = &h.chain;
     let good = user_tx(a, &Action::Noop, h.time + 10);
-    assert_eq!(app.check_tx(&good), Ok(()));
+    assert_eq!(app.check_tx(&good), Ok(a));
     assert!(h.chain.sig_cache().len() >= 1);
     let Tx::User(mut u) = good.clone() else { unreachable!() };
     u.signature.v = 1;
     assert_eq!(app.check_tx(&Tx::User(u)), Err(AdmissionError::BadSignature));
     let v = validator_tx(addr(1000), 1, ValidatorAction::OraclePrices { prices: vec![] });
-    assert_eq!(app.check_tx(&v), Ok(()));
+    assert_eq!(app.check_tx(&v), Ok(addr(1000)));
     let v = validator_tx(addr(9), 1, ValidatorAction::OraclePrices { prices: vec![] });
     assert_eq!(app.check_tx(&v), Err(AdmissionError::UnknownSigner(addr(9))));
 }

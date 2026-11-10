@@ -1342,7 +1342,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
 
     // ------------------------------------------------------------ check_tx
 
-    pub fn admit(&self, tx: &Tx) -> Result<(), AdmissionError> {
+    pub fn admit(&self, tx: &Tx) -> Result<Address, AdmissionError> {
         match tx {
             Tx::User(u) => {
                 let h = tx.hash();
@@ -1365,12 +1365,12 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                 let empty = UserMeta::default();
                 let m = meta.unwrap_or(&empty);
                 match m.check_nonce(u.nonce, now) {
-                    Ok(()) => Ok(()),
+                    Ok(()) => Ok(*signer),
                     // Before the first block the chain time is genesis time,
                     // which may be far in the past: skip the future bound.
                     Err(e) if self.core.height == 0 && u.nonce >= now && !m.nonces.contains(&u.nonce) => {
                         let _ = e;
-                        Ok(())
+                        Ok(*signer)
                     }
                     Err(e) => Err(AdmissionError::BadNonce(e)),
                 }
@@ -1389,7 +1389,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                 if self.core.validator_nonces.get(&signer).is_some_and(|l| v.nonce <= *l) {
                     return Err(AdmissionError::BadNonce("validator nonce not increasing".into()));
                 }
-                Ok(())
+                Ok(signer)
             }
         }
     }
@@ -1417,7 +1417,7 @@ impl<E: Engines, V: TxVerifier + 'static> Application for Chain<E, V> {
     fn execute_block(&mut self, ctx: &BlockContext, txs: &[Tx]) -> BlockOutcome {
         self.execute(ctx, txs)
     }
-    fn check_tx(&self, tx: &Tx) -> Result<(), AdmissionError> {
+    fn check_tx(&self, tx: &Tx) -> Result<Address, AdmissionError> {
         self.admit(tx)
     }
     fn snapshot(&self) -> Snapshot {
