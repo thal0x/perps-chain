@@ -351,7 +351,7 @@ dependencies = [
  "libc",
  "proptest",
  "rand 0.8.8",
- "rand_chacha",
+ "rand_chacha 0.3.1",
  "serde",
  "serde_json",
 ]
