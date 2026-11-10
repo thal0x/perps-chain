@@ -78,3 +78,7 @@ quorum math is stake-weighted so unequal stakes work.
 to token indices (`AccountView.spot_balances`, `Clearinghouse::spot_send(token)`,
 `Genesis.spot_tokens/spot_balances`) because the in-scope SDK example
 basic_spot_transfer sends PURR.
+
+**D16 [book]** `StopTaker` always cancels the taker remainder (doc fix, no
+type change), and a partial `Fill` continues matching with the same maker
+re-offered. Duplicate cloids per user must be rejected by the state crate.

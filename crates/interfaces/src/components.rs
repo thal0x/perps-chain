@@ -19,9 +19,9 @@ pub enum MatchDecision {
     /// Remove the maker order (e.g. maker no longer has margin, self-trade,
     /// reduce-only maker that would increase). Book continues matching.
     CancelMaker(OrderLifecycle),
-    /// Stop matching the taker here; remaining taker size is handled per TIF
-    /// (rests if GTC, otherwise canceled). Used when the taker runs out of
-    /// margin or a reduce-only taker would flip.
+    /// Stop matching the taker here; the remaining taker size is **always
+    /// canceled** (even GTC — resting it would leave a crossed book). Used
+    /// when the taker runs out of margin or a reduce-only taker would flip.
     StopTaker,
 }
 
@@ -43,7 +43,8 @@ pub struct CandidateFill<'a> {
 /// potential maker/taker match in price-time priority.
 pub trait MatchHook {
     /// Returns (decision, accepted size). For `Fill`, accepted size must be in
-    /// (0, candidate.sz]; for other decisions it is ignored.
+    /// (0, candidate.sz]; for other decisions it is ignored. A partial `Fill`
+    /// continues matching: the same maker is offered again with updated sizes.
     fn on_match(&mut self, c: &CandidateFill<'_>) -> (MatchDecision, Sz);
 }
 

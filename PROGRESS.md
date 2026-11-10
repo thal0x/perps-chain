@@ -8,16 +8,24 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 ## In progress (owner -> directory, worktree, branch)
 (see "Agents" below; worktrees under /home/user/wt/<name>, branch agent/<name>)
 
-| agent | owns | status |
+| agent (worktree /home/user/wt/<name>) | owns | status |
 |---|---|---|
-| — | — | — |
+| hlwire | crates/hlwire | running (wave 1) |
+| api | crates/api | running |
+| consensus | crates/consensus | running |
+| netmempool | crates/net, crates/mempool | running |
+| bookoracle | crates/book, crates/oracle | running |
+| clearinghouse | crates/clearinghouse | running |
+| state | crates/state | running |
+| bridge | bridge/, crates/relayer | running |
+| (unassigned) | crates/node, crates/sim, crates/chaos | wave 2 after state+hlwire land |
 
 ## Currently failing
 - All component crates are stubs (0 tests) — expected until M1.
 - No acceptance evidence yet.
 
 ## Next three actions
-1. Commit M0, create worktrees, spawn component agents (wave 1).
+1. Wait for wave-1 agents; review + merge each branch (build + tests green).
 2. Merge component branches as they land; keep workspace green.
 3. Build `node` wiring + localnet scripts (M2).
 
