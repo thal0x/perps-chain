@@ -176,3 +176,11 @@ against real HL. The TS harness treats this as pass only when the throw is the
 allowlisted, matched error, raised by the snippet's final call, with no other
 failure recorded; self-tests cover the negative cases. Equivalent to the
 Python rule (D23), not a relaxation of it.
+
+**D28 [process] Code freeze** at main c0dd61b, source
+fingerprint `8cca0b788895:db263aa35d91:6a118c8621b7:af3525ddaf6f`. Final acceptance runs execute on this tree in order
+AC5, AC6, AC2 (50M week), AC4 (reuses AC2 log), then AC1 (12 h). Any change
+under crates/, bridge/, Cargo.lock or acceptance/sdk after this point
+invalidates evidence (STALE) and requires reruns; only docs and runner-side
+fixes outside the fingerprint are allowed. API indexer stays fed in replay
+mode (real components; memory plateaus at its cap, ~1 GB/node).

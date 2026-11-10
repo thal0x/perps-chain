@@ -16,18 +16,18 @@ All wave-1/2 components MERGED: interfaces, hlwire, consensus, net, mempool, boo
 | integ | crates/node, scripts/localnet.sh, scripts/acceptance.sh, acceptance/ | AC3 PASS + AC5 PASS merged; running AC2 full then AC4 |
 
 ## Currently failing
-- None in unit suites (M1 STATUS.md). AC evidence: AC3 PASS (110k/s, min window 107k, median block 200 ms); AC5 and AC6 PASS but STALE (code changed since); AC1/AC2/AC4 full runs pending.
+- None in unit suites. Evidence: AC3 PASS (fresh). AC5/AC6 PASS but STALE (rerun queued). AC1/AC2/AC4 full runs pending. AC2+AC4 5M dry run passed (0 mismatches, 0 violations).
 
-## Next three actions
-1. Merge api/hlwire perf work; then freeze code.
-2. On frozen code: AC2 (50M week x2), AC4, AC3, AC5, AC6 full runs; then AC1 12 h last.
-3. README.md; final clean-checkout status.sh.
+## Next three actions (CODE FROZEN, D28)
+1. integ agent: full AC5, AC6, then AC2 (50M week, ~4.5 h), AC4 — on the frozen tree.
+2. integ agent: AC1 12 h chaos run (7 validators) last.
+3. Lead: merge evidence, `scripts/status.sh --md` on a clean clone, final commit M9.
 
 ## Known risks
 - Throughput with one validator down ~2.5 blocks/s (no leader reputation).
 - Clearinghouse fill cost 1.6–2.6 µs at 100k accounts.
 - sim gen 30–50k actions/s (50M week ≈ 20–30 min) — acceptable.
-- AC3 untested at target; 4 validators + load on 4 cores.
+- AC3: 110.5k/s at 3.09 cores; ceiling ~150k/s.
 - Insurance fund can go negative in a corner case (D19).
 
 ## Environment notes
