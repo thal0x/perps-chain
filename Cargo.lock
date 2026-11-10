@@ -1174,6 +1174,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "api",
+ "blake3",
  "borsh",
  "clap",
  "consensus",
@@ -1192,6 +1193,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "signal-hook",
+ "sim",
  "state",
  "tokio",
  "toml",

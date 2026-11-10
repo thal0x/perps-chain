@@ -165,6 +165,8 @@ st = r.get("response", {}).get("data", {}).get("statuses", []) if isinstance(r, 
 ok = sum(1 for s in st if "resting" in s)
 print(f"liquidity: {ok}/{len(orders)} resting orders from {w.address}")
 EOF
+  # spot PURR/USDC ladder (D25; needs >= 2 funded test accounts)
+  "$py" "$ROOT/crates/api/tests/python/spot_seed.py" "$DIR" "http://127.0.0.1:$BASE_API"
 }
 
 case "${1:-}" in

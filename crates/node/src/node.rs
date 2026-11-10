@@ -186,6 +186,10 @@ impl BridgeHost for Backend {
 
 // -------------------------------------------------------- consensus env --
 
+/// Replay back-pressure (see `NodeEnv::proposal_override`).
+const REPLAY_MAX_LAG: Height = 8;
+const REPLAY_LAG_WAIT_MS: u64 = 400;
+
 pub struct NodeEnv {
     shared: Arc<Shared>,
     store: FileStore,
@@ -244,7 +248,18 @@ impl ConsensusEnv for NodeEnv {
         self.store.latest_snapshot()
     }
     fn proposal_override(&mut self, height: Height) -> Option<(TimestampMs, Vec<Tx>)> {
-        self.replay.as_mut().and_then(|r| r.get(height))
+        let r = self.replay.as_mut()?;
+        // Back-pressure: execution is decoupled from commits (D3), so without this
+        // consensus would run through the whole log and queue every committed block
+        // in memory. Wait (bounded, well under the view timeout) while our executor
+        // is more than REPLAY_MAX_LAG heights behind.
+        if height <= r.last_height() {
+            let deadline = std::time::Instant::now() + Duration::from_millis(REPLAY_LAG_WAIT_MS);
+            while self.shared.exec.lock().height + REPLAY_MAX_LAG < height && std::time::Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        }
+        r.get(height)
     }
     fn sign(&self, digest: &[u8; 32]) -> Sig65 {
         consensus::crypto::secp::sign(&self.sk, digest)
@@ -272,7 +287,23 @@ struct Executor {
     snapshot_interval: u64,
     /// Replay mode: last logged height (padding blocks beyond it are not executed).
     replay_end: Option<Height>,
+    /// Replay mode: invariant checking (same checks as `sim replay`).
+    replay_check: Option<ReplayCheck>,
     divergences: u64,
+}
+
+/// Replay-mode invariant bookkeeping; written to `<home>/replay.json` when the
+/// last logged height has executed.
+struct ReplayCheck {
+    every: u64,
+    home: PathBuf,
+    blocks: u64,
+    checked: u64,
+    violations: u64,
+    first_violations: Vec<String>,
+    order_actions: u64,
+    digest: blake3::Hasher,
+    started_ms: u64,
 }
 
 impl Executor {
@@ -331,6 +362,9 @@ impl Executor {
             if v > 0 && h.is_multiple_of(100) {
                 warn!(height = h, violations = v, "invariant violations recorded");
             }
+            if let Some(rc) = self.replay_check.as_mut() {
+                rc.check(&c, &o);
+            }
             let snap = if h.is_multiple_of(self.snapshot_interval) {
                 let c = parking_lot::RwLockWriteGuard::downgrade(c);
                 Some(c.snapshot())
@@ -358,10 +392,73 @@ impl Executor {
                 }
             }
         }
+        if let (Some(rc), Some(end)) = (self.replay_check.as_mut(), self.replay_end) {
+            rc.digest.update(&h.to_le_bytes());
+            rc.digest.update(&root.0);
+            if h == end {
+                rc.finish(h, &root, self.divergences);
+            }
+        }
         let outcome = Arc::new(outcome);
         for cb in self.shared.callbacks.read().iter() {
             cb(outcome.clone());
         }
+    }
+}
+
+impl ReplayCheck {
+    /// `sim replay` semantics: `check_invariants` + no negative equity after the
+    /// liquidation pass unless the account had `BadDebtCovered` in the block.
+    fn check(&mut self, c: &HlChain, o: &BlockOutcome) {
+        self.blocks += 1;
+        self.order_actions += o.order_actions;
+        if self.every == 0 || !o.height.is_multiple_of(self.every) {
+            return;
+        }
+        self.checked += 1;
+        let mut found = Vec::new();
+        if let Err(e) = c.check_invariants() {
+            found.push(format!("height {}: {e}", o.height));
+        }
+        let covered: std::collections::BTreeSet<Address> = o
+            .events
+            .iter()
+            .filter_map(|e| if let Event::BadDebtCovered { user, .. } = e { Some(*user) } else { None })
+            .collect();
+        for a in c.clearinghouse().negative_equity_accounts() {
+            if !covered.contains(&a) {
+                found.push(format!("height {}: negative equity {a} after liquidation pass", o.height));
+            }
+        }
+        for f in found {
+            error!(height = o.height, "INVARIANT VIOLATION (replay): {f}");
+            self.violations += 1;
+            if self.first_violations.len() < 100 {
+                self.first_violations.push(f);
+            }
+        }
+    }
+
+    fn finish(&mut self, h: Height, root: &Hash32, divergences: u64) {
+        let digest = Hash32(*std::mem::take(&mut self.digest).finalize().as_bytes());
+        let j = serde_json::json!({
+            "last_height": h,
+            "final_root": hex32(root),
+            "blocks_executed": self.blocks,
+            "invariant_checks": self.checked,
+            "violations": self.violations,
+            "first_violations": self.first_violations,
+            "order_actions": self.order_actions,
+            "roots_digest": digest.to_hex(),
+            "divergences": divergences,
+            "wall_ms": now_ms().saturating_sub(self.started_ms),
+        });
+        let p = self.home.join("replay.json");
+        let tmp = self.home.join("replay.json.tmp");
+        if let Err(e) = std::fs::write(&tmp, serde_json::to_vec_pretty(&j).unwrap_or_default()).and_then(|_| std::fs::rename(&tmp, &p)) {
+            error!("write replay.json failed: {e}");
+        }
+        info!(height = h, violations = self.violations, checks = self.checked, "replay complete");
     }
 }
 
@@ -382,29 +479,40 @@ fn read_key(path: &PathBuf) -> Result<Wallet> {
 
 impl Node {
     pub fn start(cfg: Resolved) -> Result<Node> {
-        let genesis: Genesis = serde_json::from_slice(
-            &std::fs::read(&cfg.genesis_path).with_context(|| format!("read genesis {}", cfg.genesis_path.display()))?,
-        )
-        .context("parse genesis.json")?;
+        let read_genesis = |p: &PathBuf| -> Result<Genesis> {
+            serde_json::from_slice(&std::fs::read(p).with_context(|| format!("read genesis {}", p.display()))?)
+                .context("parse genesis.json")
+        };
+        // Replay mode: the genesis comes from the log header; an operator-supplied
+        // genesis (explicit or the default path, if present) must match it.
+        let (genesis, replay) = match &cfg.replay_log {
+            Some(p) => {
+                let supplied = if cfg.genesis_path.exists() { Some(read_genesis(&cfg.genesis_path)?) } else { None };
+                let mut r = ReplaySource::open(p, supplied.as_ref())?;
+                r.exit_on_error = true;
+                info!(log = %p.display(), blocks = r.last_height(), "replay mode (genesis from the log header)");
+                (r.genesis().clone(), Some(r))
+            }
+            None => (read_genesis(&cfg.genesis_path)?, None),
+        };
         let wallet = read_key(&cfg.key_path)?;
         let me = wallet.address();
         anyhow::ensure!(genesis.validators.contains(&me), "key {me} is not a genesis validator");
         let my_index = genesis.validators.validators.iter().position(|v| v.address == me).unwrap_or(0);
         info!(validator = %me, index = my_index, home = %cfg.home.display(), "starting hlnode");
 
-        let replay = match &cfg.replay_log {
-            Some(p) => Some(ReplaySource::open(p, &genesis)?),
-            None => None,
-        };
         let replay_end = replay.as_ref().map(|r| r.last_height());
 
         // ---- state (restored from the latest snapshot if any)
         let data = cfg.home.join("data");
         std::fs::create_dir_all(&data)?;
-        let store = FileStore::open_with(&data, FileStoreConfig::default()).context("open FileStore")?;
-        let mut ccfg = ChainConfig::default();
-        let inv = if replay.is_some() && cfg.invariants == Invariants::EveryN(100) { Invariants::Every } else { cfg.invariants.clone() };
-        ccfg.invariants = inv.to_mode();
+        let store = FileStore::open_with(&data, FileStoreConfig { fsync_commits: cfg.fsync_commits, ..FileStoreConfig::default() }).context("open FileStore")?;
+        // Replay mode runs the `sim replay` checks itself (ReplayCheck, every block by
+        // default); the chain's internal checks would duplicate the work.
+        let ccfg = ChainConfig {
+            invariants: if replay.is_some() { state::InvariantMode::Never } else { cfg.invariants.clone().to_mode() },
+            ..Default::default()
+        };
         let mut chain = HlChain::new_hl(genesis.clone(), ccfg);
         let genesis_root = chain.root_at(0).unwrap_or(Hash32::ZERO);
         if let Some(s) = store.latest_snapshot() {
@@ -547,13 +655,29 @@ impl Node {
                 driver: driver.sender(),
                 snapshot_interval: cfg.snapshot_interval,
                 replay_end,
+                replay_check: replay_end.map(|_| ReplayCheck {
+                    every: match &cfg.invariants {
+                        Invariants::Off => 0,
+                        Invariants::Every => 1,
+                        Invariants::EveryN(n) => *n,
+                    },
+                    home: cfg.home.clone(),
+                    blocks: 0,
+                    checked: 0,
+                    violations: 0,
+                    first_violations: Vec::new(),
+                    order_actions: 0,
+                    digest: blake3::Hasher::new(),
+                    started_ms: now_ms(),
+                }),
                 divergences: 0,
             };
             threads.push(std::thread::Builder::new().name("executor".into()).spawn(move || ex.run(exec_rx))?);
         }
 
         // ---- oracle feeder
-        if let Some(mut feed) = make_feed(&cfg.oracle_feed, &genesis, my_index) {
+        let feed = if replay_end.is_some() { None } else { make_feed(&cfg.oracle_feed, &genesis, my_index) };
+        if let Some(mut feed) = feed {
             let s = shared.clone();
             let st = stop.clone();
             let interval = cfg.oracle_interval_ms.max(50);
@@ -589,7 +713,7 @@ impl Node {
                 }
             });
         }
-        if let Some(rpc) = &cfg.bridge_rpc {
+        if let Some(rpc) = cfg.bridge_rpc.as_ref().filter(|_| replay_end.is_none()) {
             let mut wc = relayer::WatcherConfig::new(rpc.clone());
             wc.confirmations = cfg.bridge_confirmations;
             let host: Arc<dyn BridgeHost> = backend.clone();

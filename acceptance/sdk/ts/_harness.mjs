@@ -32,6 +32,7 @@ const calls = [];
 const reasons = [];
 const subCounts = {}; // "method params" -> events
 let holding = false;
+let finalThrow = null;
 
 const EXPECTED_TYPE = {
   order: "order",
@@ -80,7 +81,10 @@ function wrap(Cls, kind) {
         return res;
       } catch (e) {
         rec.error = `${e?.name}: ${e?.message}`;
+        Object.defineProperty(rec, "thrown", { value: e, enumerable: false });
+        rec.index = calls.length + 1; // 1-based position among recorded calls
         const hit = allow.findIndex((a) => a.call === call && a.error_text === e?.message);
+        rec.allowIndex = hit;
         if (hit >= 0) {
           matched.add(hit);
           rec.allowlisted = true;
@@ -109,6 +113,45 @@ export async function hold(seconds) {
   process.exit(0);
 }
 
+// D27: a verbatim snippet may end in a call that real HL rejects too (allowlisted,
+// D23/D25); the SDK throws ApiRequestError and the snippet does not catch it, so the
+// script would exit 1. Exit 0 ONLY IF (a) the uncaught error is the SDK's
+// ApiRequestError whose text exactly matches an allowlist entry for this script and
+// call, (b) that entry is marked matched, (c) it was thrown by the LAST call of the
+// verbatim snippet: the entry's `final_call_of_snippet` (the snippet's total number of
+// SDK calls) equals the throwing call's 1-based index AND it is the final recorded
+// call, (d) no other failure reason was recorded. Otherwise exit 1 with the reason.
+export function judgeUncaught(err) {
+  const last = calls[calls.length - 1];
+  const why = [];
+  if (err?.name !== "ApiRequestError" && err?.constructor?.name !== "ApiRequestError") why.push(`not an ApiRequestError (${err?.name})`);
+  if (!last || last.thrown !== err) why.push("not thrown by the final recorded SDK call");
+  const a = last && last.thrown === err ? allow[last.allowIndex] : undefined;
+  if (!a) why.push("error not in the allowlist for this script/call");
+  else {
+    if (!matched.has(last.allowIndex)) why.push("allowlist entry not matched");
+    if (a.error_text !== err?.message) why.push("text differs from the allowlist entry");
+    if (!Number.isInteger(a.final_call_of_snippet)) why.push("allowlist entry lacks final_call_of_snippet");
+    else if (last.index !== a.final_call_of_snippet) {
+      why.push(`thrown by call ${last.index}, snippet's last call is ${a.final_call_of_snippet}`);
+    }
+  }
+  if (reasons.length) why.push(`other failures: ${reasons.join("; ")}`);
+  return why;
+}
+const onUncaught = (err) => {
+  const why = judgeUncaught(err);
+  if (why.length === 0) {
+    finalThrow = { name: err?.name, message: err?.message };
+    console.log("ACC_ALLOWLISTED_FINAL_THROW " + json(finalThrow));
+    process.exit(0);
+  }
+  reasons.push(`uncaught ${err?.name}: ${err?.message} (${why.join("; ")})`);
+  console.error(err);
+  process.exit(1);
+};
+process.on("uncaughtException", onUncaught);
+
 process.on("exit", (code) => {
   allow.forEach((a, i) => {
     if (!matched.has(i)) reasons.push(`allowlisted error did not occur: ${a.call}: ${a.error_text}`);
@@ -122,6 +165,7 @@ process.on("exit", (code) => {
     info_calls: calls.filter((c) => c.call.startsWith("InfoClient.")).length,
     subscriptions: holding ? subCounts : undefined,
     calls: calls.map((c) => ({ call: c.call, ok: !c.error, error: c.error, allowlisted: c.allowlisted })),
+    allowlisted_final_throw: finalThrow || undefined,
   };
   console.log("ACC_RESULT " + json(res));
 });

@@ -60,7 +60,12 @@ exactly these substitutions:
 (`hl.`-prefixed transports likewise.) `ts/_harness.mjs` (imported first) only
 observes: logs every client call, fails a script on any thrown API error not in
 the allowlist, checks HL's response `type` per action, counts subscription
-events. Order: 01_read_data, 02_trading, 04_usd_send, then 06_subscriptions
+events. D27: a snippet whose LAST SDK call is an allowlisted HL rejection throws
+`ApiRequestError` uncaught; the harness exits 0 only if that error is the allowlist
+entry's exact text for this script/call, the entry matched, the throwing call is the
+final recorded call and its index equals the entry's `final_call_of_snippet`, and no
+other failure was recorded (`selftest/ts_harness_selftest.sh`, run by `run_ts.sh`,
+proves the negative cases). Order: 01_read_data, 02_trading, 04_usd_send, then 06_subscriptions
 (40 s; allMids, openOrders, l2Book, userFills, orderUpdates) during which
 03_order_modify_cancel and 05_market_order run.
 
