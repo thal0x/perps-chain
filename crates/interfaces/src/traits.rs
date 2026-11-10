@@ -66,6 +66,11 @@ pub trait StateQuery: Send + Sync {
     fn order_by_cloid(&self, user: &Address, cloid: &Cloid) -> Option<RestingOrderView>;
     /// Agent wallet -> principal resolution.
     fn principal_of(&self, signer: &Address) -> Address;
+    /// Leverage setting for (user, asset) even with no open position
+    /// (after `updateLeverage`). None = implementation doesn't track it.
+    fn leverage_of(&self, _user: &Address, _asset: AssetId) -> Option<Leverage> {
+        None
+    }
     fn block_time(&self) -> TimestampMs;
     fn height(&self) -> Height;
     /// Pending bridge withdrawals with collected validator signatures.

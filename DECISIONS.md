@@ -119,3 +119,11 @@ a separate signature (validator-only mesh, D5).
 (13 GB) in the shared target dir. Dev/test profiles now use
 `incremental = false` and `debug = "line-tables-only"`. Agents must delete
 their own temp dirs (e.g. /tmp perf stores) after tests.
+
+**D22 (rev 4) [interfaces/api]** Added `StateQuery::leverage_of` (default
+None; state implements it) so flat accounts show leverage after
+updateLeverage. Not adopted: `BlockOutcome.timestamp_ms` (API uses
+`StateQuery::block_time()` inside the query of the block), and
+`RestingOrderView.is_position_tpsl/children` (cosmetic for
+frontendOpenOrders; revisit only if an SDK example needs it). Transfer
+ledger events: API dedupes by tx hash, either emission style works.
