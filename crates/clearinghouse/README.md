@@ -71,11 +71,18 @@ returns the insurance fund's equity (cash + value of positions it took over).
 * Fills: for each non-liquidated side whose trade is **risk-increasing**
   (|szi| grows or flips) the post-trade state must have
   `cross equity − cross IM >= 0`, else `"Insufficient margin to place order."`.
-  Reducing trades are always allowed. `check_order_margin` runs the same
-  computation (with fee = max(taker, maker) rate) so a pre-check that passes
-  implies the fill-time check passes for the same price/size.
-* Isolated open/increase: `T = ceil(N_open / leverage)` moves from cross cash
-  into the isolated bucket (so isolated equity ≈ T); the fee is paid from
+  Reducing trades are allowed unless they would leave the side with
+  negative equity it did not already have (cross equity < 0 and lower than
+  before, or isolated equity < 0 and lower than before) — e.g. a stale
+  resting order far through the mark swept by a liquidation IOC; the error is
+  the same string. `check_order_margin` runs the same computation (with
+  fee = max(taker, maker) rate, also for `reduce_only` requests) so a
+  pre-check that passes implies the fill-time check passes for the same
+  price/size.
+* Isolated open/increase: `T = ceil(N_open / leverage) + max(0, instant
+  mark-to-market loss of the opened size)` moves from cross cash into the
+  isolated bucket (so isolated equity ≈ N_open/leverage even when filling
+  through the mark); the fee is paid from
   cross cash. Partial reduce releases `floor(E·q/|s0|)` of the isolated
   equity `E` (if positive) back to cross, keeping equity per unit constant.
   Full close releases the whole bucket (a negative bucket is absorbed by
