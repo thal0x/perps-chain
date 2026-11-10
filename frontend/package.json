@@ -1,0 +1,30 @@
+{
+  "name": "hlbft-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "e2e": "node e2e/run.mjs"
+  },
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.33.3",
+    "lightweight-charts": "4.2.3",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "viem": "2.57.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "playwright": "1.63.0",
+    "typescript": "5.9.3",
+    "vite": "6.4.6"
+  }
+}
