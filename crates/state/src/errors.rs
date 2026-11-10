@@ -29,6 +29,13 @@ pub const REFERRER_ALREADY_SET: &str = "Referrer already set.";
 pub const DUPLICATE_CLOID: &str = "Duplicate cloid.";
 pub const NONCE_MISMATCH: &str = "Invalid nonce: action time does not match request nonce.";
 
+pub const SPOT_TRIGGER_UNSUPPORTED: &str = "Trigger orders are not supported for spot.";
+
+/// Spot order the user cannot fund from free (unheld) balance.
+pub fn spot_insufficient(asset: interfaces::AssetId) -> String {
+    format!("Insufficient spot balance asset={asset}")
+}
+
 pub fn post_only_crossed(bid: &str, ask: &str) -> String {
     format!("Post only order would have immediately matched, bbo was {bid}@{ask}")
 }

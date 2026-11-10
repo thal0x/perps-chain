@@ -45,7 +45,13 @@ pub fn fill(coins: &Coins, f: &FillRec) -> Value {
     m.insert("side".into(), side(f.side).into());
     m.insert("time".into(), f.time.into());
     m.insert("startPosition".into(), fmt::sz(f.start_pos).into());
-    m.insert("dir".into(), dir(f.side, f.start_pos, f.sz).into());
+    let d = if coins.is_spot_asset(f.asset) {
+        // HL spot fills: "Buy" / "Sell"; startPosition = base balance before.
+        if f.side.is_buy() { "Buy" } else { "Sell" }
+    } else {
+        dir(f.side, f.start_pos, f.sz)
+    };
+    m.insert("dir".into(), d.into());
     m.insert("closedPnl".into(), fmt::usd(f.closed_pnl).into());
     m.insert("hash".into(), fmt::hash(&f.hash).into());
     m.insert("oid".into(), f.oid.into());
@@ -402,19 +408,6 @@ pub fn clearinghouse(coins: &Coins, a: &AccountView, time: u64) -> Value {
     })
 }
 
-pub fn spot_clearinghouse(coins: &Coins, a: &AccountView) -> Value {
-    let balances: Vec<Value> = a
-        .spot_balances
-        .iter()
-        .filter(|(_, amt)| !amt.is_zero())
-        .map(|(tok, amt)| {
-            let name = coins.token(*tok).map(|t| t.name.clone()).unwrap_or_else(|| format!("?{tok}"));
-            json!({"coin": name, "token": tok, "total": fmt::usd(*amt), "hold": "0.0", "entryNtl": "0.0"})
-        })
-        .collect();
-    json!({"balances": balances})
-}
-
 pub fn spot_meta(coins: &Coins) -> Value {
     let tokens: Vec<Value> = coins
         .spot_tokens
@@ -439,21 +432,6 @@ pub fn spot_meta(coins: &Coins) -> Value {
         .map(|p| json!({"tokens": [p.base, p.quote], "name": p.name, "index": p.index, "isCanonical": p.is_canonical}))
         .collect();
     json!({"universe": universe, "tokens": tokens})
-}
-
-/// Spot asset ctx (no spot books on this chain: prices are nominal).
-pub fn spot_ctx(coins: &Coins, pair: u32) -> Value {
-    let name = coins.spot_pair(pair).map(|p| p.name.clone()).unwrap_or_else(|| format!("@{pair}"));
-    json!({
-        "prevDayPx": "1.0",
-        "dayNtlVlm": "0.0",
-        "markPx": "1.0",
-        "midPx": Value::Null,
-        "circulatingSupply": "0.0",
-        "coin": name,
-        "totalSupply": "0.0",
-        "dayBaseVlm": "0.0",
-    })
 }
 
 pub fn l2_levels(levels: &[(Px, Sz, u32)]) -> Value {

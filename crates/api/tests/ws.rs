@@ -95,7 +95,8 @@ async fn market_channels() {
 
     s.block(rich_events()).await;
     let mut got: Vec<Value> = vec![];
-    for _ in 0..6 {
+    // allMids, l2Book, bbo, trades, candle, activeAssetCtx, activeSpotAssetCtx (every block)
+    for _ in 0..7 {
         got.push(ws_next(&mut ws).await);
     }
     let ch = |c: &str| got.iter().find(|m| m["channel"] == c).cloned().unwrap_or_else(|| panic!("no {c} in {got:?}"));
@@ -113,13 +114,14 @@ async fn market_channels() {
     assert_eq!(ch("activeAssetCtx")["data"]["coin"], "BTC");
     ws_quiet(&mut ws, 150).await;
 
-    // a block without book changes only pushes allMids + activeAssetCtx
+    // a block without book changes only pushes allMids + activeAssetCtx (perp and spot)
     s.block(vec![]).await;
-    let a = ws_next(&mut ws).await;
-    let b = ws_next(&mut ws).await;
-    let mut chans = vec![a["channel"].as_str().unwrap().to_string(), b["channel"].as_str().unwrap().to_string()];
+    let mut chans = vec![];
+    for _ in 0..3 {
+        chans.push(ws_next(&mut ws).await["channel"].as_str().unwrap().to_string());
+    }
     chans.sort();
-    assert_eq!(chans, vec!["activeAssetCtx", "allMids"]);
+    assert_eq!(chans, vec!["activeAssetCtx", "activeSpotAssetCtx", "allMids"]);
     ws_quiet(&mut ws, 150).await;
 
     // candle snapshot now exists for a new subscriber

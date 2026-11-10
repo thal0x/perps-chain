@@ -103,6 +103,8 @@ pub struct Candle {
     pub l: Px,
     /// Base volume, raw 1e-8 units.
     pub v: i128,
+    /// Quote (USD) notional volume, raw 1e-6 units.
+    pub ntl: i128,
     pub n: u64,
 }
 
@@ -320,6 +322,7 @@ impl Indexer {
             tq.pop_front();
         }
         d.trades_by_asset.entry(f.asset).or_default().push(tr);
+        let ntl = notional(f.px, sz);
         for iv in ALL_INTERVALS {
             let (t, close_t) = iv.bucket(f.time);
             let q = self.candles.entry((f.asset, iv)).or_default();
@@ -329,15 +332,17 @@ impl Indexer {
                     c.h = c.h.max(f.px);
                     c.l = c.l.min(f.px);
                     c.v += sz.raw();
+                    c.ntl += ntl;
                     c.n += 1;
                 }
                 Some(c) if c.t > t => {
                     // out-of-order fill (should not happen): fold into the latest candle
                     c.v += sz.raw();
+                    c.ntl += ntl;
                     c.n += 1;
                 }
                 _ => {
-                    q.push_back(Candle { t, close_t, o: f.px, c: f.px, h: f.px, l: f.px, v: sz.raw(), n: 1 });
+                    q.push_back(Candle { t, close_t, o: f.px, c: f.px, h: f.px, l: f.px, v: sz.raw(), ntl, n: 1 });
                     if q.len() > lim.candles_per_series {
                         q.pop_front();
                     }
@@ -345,7 +350,6 @@ impl Indexer {
             }
             d.candles_changed.insert((f.asset, iv));
         }
-        let ntl = notional(f.px, sz);
         *self.daily_exchange.entry(f.time / 86_400_000).or_default() += ntl;
         while self.daily_exchange.len() > 60 {
             self.daily_exchange.pop_first();
@@ -547,6 +551,26 @@ impl Indexer {
             .get(&(asset, Interval::H1))
             .map(|q| q.iter().rev().take_while(|c| c.close_t >= from).map(|c| c.v).sum())
             .unwrap_or(0)
+    }
+
+    /// Quote notional traded in the last 24 h (1h candles), USD raw.
+    pub fn day_ntl_vlm(&self, asset: AssetId, now: u64) -> i128 {
+        let from = now.saturating_sub(24 * 3_600_000);
+        self.candles
+            .get(&(asset, Interval::H1))
+            .map(|q| q.iter().rev().take_while(|c| c.close_t >= from).map(|c| c.ntl).sum())
+            .unwrap_or(0)
+    }
+
+    /// Price 24 h ago: close of the last 1h candle that ended before the
+    /// window, else the open of the oldest candle inside it.
+    pub fn prev_day_px(&self, asset: AssetId, now: u64) -> Option<Px> {
+        let from = now.saturating_sub(24 * 3_600_000);
+        let q = self.candles.get(&(asset, Interval::H1))?;
+        if let Some(c) = q.iter().rev().find(|c| c.close_t < from) {
+            return Some(c.c);
+        }
+        q.iter().find(|c| c.close_t >= from).map(|c| c.o)
     }
 
     /// Per-day (date, taker notional, maker notional, exchange notional) USD

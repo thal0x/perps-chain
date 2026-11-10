@@ -161,3 +161,10 @@ new negative equity; isolated opens through the mark fund the instant loss.
    `{"outcomes":[],"questions":[]}`.
 Note: chaos depends on `consensus` for offline QC verification (process-level
 otherwise) — ARCHITECTURE §1 dependency note updated.
+
+**D26 [spot]** Spot fees accrue to the spot USDC balance of reserved
+account `state::SPOT_FEE_ACCOUNT` (0x…fee5) instead of the perp fee pool (no
+clearinghouse entry point needed; conservation stays exact). Spot asset ids
+are 10000 + pair index. Fees are charged in USDC on both sides (HL charges
+the received token; not modeled). Snapshot format and roots changed with the
+spot entity (no compatibility with older snapshots needed pre-launch).

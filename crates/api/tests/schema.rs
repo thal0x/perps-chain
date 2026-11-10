@@ -58,6 +58,26 @@ async fn outputs_match_ts_sdk_schemas() {
     let a = user_a().to_hex();
     let b = user_b().to_hex();
     let mut sm = Samples(vec![]);
+    // Spot (D25): PURR/USDC book, ctx and a resting spot buy of user A.
+    {
+        let mut st = s.backend.state.lock();
+        st.books.insert(10_000, (vec![(px("0.99"), sz("100"), 2)], vec![(px("1.01"), sz("250"), 1)]));
+        st.ctxs.insert(
+            10_000,
+            MarketCtx {
+                asset: 10_000,
+                oracle_px: px("1.005"),
+                mark_px: px("1.005"),
+                mid_px: Some(px("1")),
+                funding: Rate::ZERO,
+                premium: Rate::ZERO,
+                open_interest: sz("0"),
+                day_ntl_vlm: usd("0"),
+                prev_day_px: px("1.005"),
+            },
+        );
+        st.orders.get_mut(&user_a()).unwrap().push(order_view(10_000, 12, Side::Bid, "0.5", "24", None));
+    }
 
     // ---- WS subscribers first so they see the history blocks
     let mut ws = ws_connect(&s.ws_url).await;
@@ -66,6 +86,10 @@ async fn outputs_match_ts_sdk_schemas() {
         json!({"type": "l2Book", "coin": "ETH", "nSigFigs": null, "mantissa": null}),
         json!({"type": "l2Book", "coin": "PURR/USDC"}),
         json!({"type": "trades", "coin": "ETH"}),
+        json!({"type": "trades", "coin": "PURR/USDC"}),
+        json!({"type": "bbo", "coin": "PURR/USDC"}),
+        json!({"type": "candle", "coin": "PURR/USDC", "interval": "1m"}),
+        json!({"type": "activeAssetCtx", "coin": "PURR/USDC"}),
         json!({"type": "bbo", "coin": "ETH"}),
         json!({"type": "bbo", "coin": "BTC"}),
         json!({"type": "candle", "coin": "ETH", "interval": "5m"}),
@@ -96,11 +120,18 @@ async fn outputs_match_ts_sdk_schemas() {
         }
     }
     s.block(rich_events()).await;
+    let mut spot_fill = fill_event(5, Side::Bid, "1.01", "20", T0 + 61_000);
+    spot_fill.asset = 10_000;
+    spot_fill.maker_closed_pnl = usd("0");
+    spot_fill.taker_start_pos = sz("50");
+    spot_fill.maker_start_pos = sz("1000");
     // a second block: more fills (different oid/time), funding
     s.block(vec![
         Event::Fill(fill_event(4, Side::Ask, "3001", "0.05", T0 + 60_000)),
         Event::Funding { user: user_a(), asset: 0, usdc: usd("0.5"), szi: sz("-0.5"), funding_rate: Rate::parse("-0.00001").unwrap(), time: T0 + 3_600_000 },
         Event::BookChanged { asset: 0 },
+        Event::Fill(spot_fill),
+        Event::BookChanged { asset: 10_000 },
     ])
     .await;
     // drain WS for a while
@@ -157,6 +188,9 @@ async fn outputs_match_ts_sdk_schemas() {
         ("referral", json!({"type": "referral", "user": a})),
         ("maxBuilderFee", json!({"type": "maxBuilderFee", "user": a, "builder": b})),
         ("recentTrades", json!({"type": "recentTrades", "coin": "ETH"})),
+        ("recentTrades", json!({"type": "recentTrades", "coin": "PURR/USDC"})),
+        ("l2Book", json!({"type": "l2Book", "coin": "@0"})),
+        ("outcomeMeta", json!({"type": "outcomeMeta"})),
         ("activeAssetData", json!({"type": "activeAssetData", "user": a, "coin": "ETH"})),
         ("activeAssetData", json!({"type": "activeAssetData", "user": a, "coin": "BTC"})),
         ("predictedFundings", json!({"type": "predictedFundings"})),
@@ -180,6 +214,9 @@ async fn outputs_match_ts_sdk_schemas() {
         let v = s.info(json!({"type": "candleSnapshot", "req": {"coin": "ETH", "interval": iv, "startTime": 0}})).await;
         sm.add("info", "candleSnapshot", iv, v);
     }
+    let v = s.info(json!({"type": "candleSnapshot", "req": {"coin": "PURR/USDC", "interval": "1h", "startTime": 0}})).await;
+    assert_eq!(v.as_array().map(|a| a.len()), Some(1), "spot candle: {v}");
+    sm.add("info", "candleSnapshot", "PURR/USDC 1h", v);
 
     // ---- exchange responses
     let order_ok = ActionResponse::Order(vec![

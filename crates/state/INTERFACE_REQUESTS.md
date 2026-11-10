@@ -49,3 +49,23 @@ the contracts explicit.
    `all_entity_hashes`. Fix suggestion: never push index 0 in `take_dirty`'s
    account loop (set `dirty_insurance` instead). Covered by
    `tests/determinism.rs::restored_entity_set_equals_live`.
+
+7. **Spot fees into the fee pool (D25).** The clearinghouse fee pool is perp
+   cash; the trait has no way to credit it from spot USDC, so spot fees go
+   to the spot USDC balance of the reserved account `state::SPOT_FEE_ACCOUNT`
+   (`0x…fee5`) via `spot_send` (conservation stays exact: spot USDC is in the
+   clearinghouse total). Proposal:
+   ```rust
+   /// Move `fee` of `user`'s spot USDC (token 0) into the fee pool.
+   fn collect_spot_fee(&mut self, user: Address, fee: Usd) -> Result<(), ExecError>;
+   /// Pay a maker rebate from the fee pool into spot USDC.
+   fn pay_spot_rebate(&mut self, user: Address, amount: Usd) -> Result<(), ExecError>;
+   ```
+8. **Spot holds in queries (D25).** `AccountView.spot_balances` has no hold;
+   the API recomputes it from `open_orders` with the same formula
+   (`api::spot::order_hold`, cross-checked against `state::spot::order_hold`
+   in `crates/api/tests/spot_chain.rs`). Proposal: `StateQuery::spot_hold(&self,
+   user: &Address) -> Vec<(u32, Usd)>` (default empty).
+9. **Spot asset ids.** `AssetId` docs say "perp asset index"; spot uses
+   10000 + pair index (HL). Proposal: document it on `AssetId` and on
+   `Genesis.spot_tokens` (spot trading for pair 0 now exists, D25).

@@ -40,6 +40,11 @@ bookkeeping, and maintains the state root. Integer-only and deterministic.
   `SimpleOracle`, `test_genesis`, order builders.
   `BookEngines` = real `book`/`oracle` + fake clearinghouse;
   `FakeEngines` = all fakes. Aliases `FakeChain`, `AllFakeChain`.
+* Spot (D25, `src/spot.rs`): `SPOT_ASSET` (10000), `SPOT_FEE_ACCOUNT`,
+  `SpotPairSpec`, `SpotHold`, `order_hold`, `spot_fee`; chain extras
+  `spot_pair()`, `spot_book()`, `spot_hold(user)`, `spot_free(user, token)`,
+  `spot_last_px()`. `Engines::spot_balance` (default via `account_view`,
+  HlEngines: `Clearinghouse::spot_balance`).
 * `HL_ERRORS.md` — every error string returned.
 
 ## Block execution (`execute_block`)
@@ -104,6 +109,43 @@ bookkeeping, and maintains the state root. Integer-only and deterministic.
   WithdrawalFinalized drops the withdrawal once quorum stake attested.
 * scheduleCancel must be ≥ now + 5 s; `None` clears.
 
+## Spot trading (D25)
+* One pair: index 0 = token 1 / token 0 ("PURR/USDC"), asset **10000**,
+  enabled when genesis has spot tokens 0 and 1. Its book is a `E::Book`
+  built from a synthetic `MarketSpec` (`SpotPairSpec::market_spec`).
+* Admission: limit orders only (GTC/IOC/ALO; triggers and TP/SL groupings
+  rejected), HL spot price rule (5 sig figs, ≤ 8 − szDecimals decimals),
+  size multiple of 10^-szDecimals (PURR: whole units), $10 minimum,
+  reduce-only rejected (`Reduce only order would increase position.`: no
+  spot position), duplicate cloid, and free balance ≥ the order's hold
+  (`Insufficient spot balance asset=10000`).
+* Holds: resting buy holds `n + ceil(n·max(taker, maker, 0))` USDC with
+  `n = ceil(px·sz)`; resting sell holds `sz` PURR. Kept per user in
+  `SpotCore.holds` (exactly Σ `order_hold` of the user's resting orders).
+  spotSend and spot→perp class transfers may only use free balance.
+* Fill (price = maker px): base `sz` seller→buyer, `q = floor(px·sz)` USDC
+  buyer→seller, taker fee `ceil(q·taker_fee)`, maker fee `ceil(q·maker_fee)`
+  (rebate `floor(q·|maker_fee|)` capped at the taker fee), all via
+  `Clearinghouse::spot_send`; net fees go to `SPOT_FEE_ACCOUNT`'s spot USDC
+  (the perp fee pool has no spot entry point, INTERFACE_REQUESTS 7). The
+  hook pre-checks both parties stay `balance ≥ hold` after the fill (taker
+  including the remainder it may rest); a failing maker is canceled
+  (`MarginCanceled`), a failing taker stops (`Insufficient spot balance`).
+  STP cancels the maker (`SelfTradeCanceled`). `FillEvent` has asset 10000,
+  zero closed PnL, start positions = base balance before the fill.
+* cancel / cancelByCloid / modify / batchModify / scheduleCancel cover spot
+  (modify checks funds with the old order's hold released). Liquidations
+  do not touch spot orders.
+* Queries: `l2_book`, `mid`, `open_orders`, `order_by_*` include the spot
+  book; `market_ctx(10000)` = mark (median of last trade, bid, ask; else
+  last, else 1.0) + mid; volume fields zero (the API derives them).
+* Root: `StateKey::Book(10000)` = blake3(len ‖ book.encode() ‖
+  borsh(SpotCore{holds, last_px})). Snapshot carries the same; `restore`
+  re-checks holds against the book. Invariants (every checked block):
+  spot book not crossed, holds == Σ order holds, every resting order's user
+  in the map, `balance ≥ hold` per token; USDC (incl. the fee account) and
+  PURR supply are conserved exactly by the clearinghouse check.
+
 ## State root (§5.5)
 `root = blake3(height_le8 || Σ_sorted(borsh(StateKey) || hash))` over the
 union of clearinghouse entities (`take_dirty`) and state-owned entities:
@@ -132,6 +174,11 @@ cargo test --release -p state --test bench -- --ignored --nocapture
 * `tests/hl_e2e.rs` — production `HlChain` with real hlwire wallets:
   L1 orders via agent, user-signed approveAgent/usdSend/withdraw3, signed
   validator oracle txs, tampered signature, replay determinism.
+* `tests/spot.rs` — spot rest/hold/cancel, validation, fills + fees +
+  balances, GTC partial + ALO + held-balance transfers, STP,
+  modify/batchModify/cancelByCloid/scheduleCancel, snapshot/restore,
+  seeded random flow (deterministic roots/events, restore), proptest
+  `spot_conservation` (USDC/PURR totals exact, holds invariant, every block).
 * `tests/determinism.rs` — seeded random multi-account scenario: identical
   roots/receipts/events on replay, snapshot/restore mid-way, proptest with
   invariants every block (incl. liquidations from price shocks).
