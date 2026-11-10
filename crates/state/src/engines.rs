@@ -99,23 +99,9 @@ impl Engines for HlEngines {
     fn withdraw(ch: &mut Self::Ch, user: Address, amount: Usd, fee: Usd) -> Result<Usd, ExecError> {
         ch.withdraw_with_fee(user, amount, fee).map(|_| amount - fee)
     }
-    fn take_dirty(ch: &mut Self::Ch) -> Vec<(StateKey, Hash32)> {
-        // Workaround: `take_dirty` can report the insurance account (index 0)
-        // as `Account(INSURANCE)`, which `all_entity_hashes` covers under
-        // `StateKey::Insurance` only. Map it to the Insurance entity so live
-        // and restored entity sets agree.
-        let ins = clearinghouse::INSURANCE;
-        let mut v = ch.take_dirty();
-        if v.iter().any(|(k, _)| *k == StateKey::Account(ins)) {
-            v.retain(|(k, _)| *k != StateKey::Account(ins) && *k != StateKey::Insurance);
-            let acct = ch.account(&ins).expect("insurance account");
-            v.push((StateKey::Insurance, hash_borsh(&(acct, ch.ledger()))));
-        }
-        v
-    }
     fn all_entity_hashes(ch: &mut Self::Ch) -> Vec<(StateKey, Hash32)> {
         let mut v = ch.all_entity_hashes();
-        v.extend(Self::take_dirty(ch));
+        v.extend(ch.take_dirty());
         v
     }
     fn post_liquidation_check(ch: &Self::Ch, height: Height) -> Result<(), InvariantViolation> {

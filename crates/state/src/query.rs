@@ -61,6 +61,14 @@ impl<E: Engines, V: TxVerifier> StateQuery for Chain<E, V> {
     fn principal_of(&self, signer: &Address) -> Address {
         *self.core.agents.get(signer).unwrap_or(signer)
     }
+    fn leverage_of(&self, user: &Address, asset: AssetId) -> Option<Leverage> {
+        if (asset as usize) < self.genesis.markets.len() {
+            Some(self.ch.leverage_of(user, asset))
+        } else {
+            None
+        }
+    }
+    /// Timestamp of the last executed block (genesis time before block 1).
     fn block_time(&self) -> TimestampMs {
         self.core.time
     }
