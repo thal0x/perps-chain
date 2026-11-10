@@ -168,3 +168,11 @@ clearinghouse entry point needed; conservation stays exact). Spot asset ids
 are 10000 + pair index. Fees are charged in USDC on both sides (HL charges
 the received token; not modeled). Snapshot format and roots changed with the
 spot entity (no compatibility with older snapshots needed pre-launch).
+
+**D27 [AC5 harness]** The TS SDK throws `ApiRequestError` on an `err`
+response, so the verbatim README "Trading" snippet ends by throwing on the
+allowlisted `withdraw3({amount:"1"})` (D25) and node exits 1 — as it would
+against real HL. The TS harness treats this as pass only when the throw is the
+allowlisted, matched error, raised by the snippet's final call, with no other
+failure recorded; self-tests cover the negative cases. Equivalent to the
+Python rule (D23), not a relaxation of it.
