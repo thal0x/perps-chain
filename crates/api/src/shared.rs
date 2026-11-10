@@ -173,10 +173,16 @@ impl Shared {
         } else {
             HashMap::new()
         };
-        let delta = self.index.write().ingest(b, &|a| premiums.get(&a).copied().unwrap_or(Rate::ZERO));
+        self.index.write().ingest(b, &|a| premiums.get(&a).copied().unwrap_or(Rate::ZERO));
         // Resolve after indexing so a client's follow-up /info sees the block.
         self.waiters.resolve(&b.receipts);
-        self.hub.publish(self, b, &delta);
+        // The WS delta is only built when someone listens. Subscribing takes
+        // `publish_lock` (held here) for snapshot + registration, so a new
+        // subscriber either sees this block in its snapshot or as a delta.
+        if !self.hub.is_empty() {
+            let delta = crate::indexer::BlockDelta::build(b);
+            self.hub.publish(self, b, &delta);
+        }
     }
 
     /// "Server time" for responses: the latest executed block time (falls
@@ -203,22 +209,41 @@ impl Shared {
     }
 
     /// `/exchange` body (parsed JSON, e.g. a WS `post`) -> HL response JSON.
-    pub async fn exchange(&self, body: &Value, ip: String) -> String {
-        match crate::wire::parse_exchange_request(body) {
-            Ok(u) => self.submit_and_wait(u, ip).await,
-            Err(e) => render::err_string(&e),
-        }
+    pub async fn exchange(self: &Arc<Self>, body: &Value, ip: String) -> String {
+        let body = body.clone();
+        let s = self.clone();
+        let prep = tokio::task::spawn_blocking(move || match crate::wire::parse_exchange_request(&body) {
+            Ok(u) => s.submit(u, ip),
+            Err(e) => Err(render::err_string(&e)),
+        })
+        .await;
+        self.finish(prep).await
     }
 
     /// `/exchange` raw body bytes -> HL response JSON (fast parse path).
-    pub async fn exchange_bytes(&self, body: &[u8], ip: String) -> String {
-        match crate::wire::parse_exchange_bytes(body) {
-            Ok(u) => self.submit_and_wait(u, ip).await,
-            Err(e) => render::err_string(&e),
+    /// Parsing, hashing and `ApiBackend::submit` (signature recovery and
+    /// mempool admission) run on the blocking pool so they never starve the
+    /// async workers serving /info and WebSocket traffic.
+    pub async fn exchange_bytes(self: &Arc<Self>, body: axum::body::Bytes, ip: String) -> String {
+        let s = self.clone();
+        let prep = tokio::task::spawn_blocking(move || match crate::wire::parse_exchange_bytes(&body) {
+            Ok(u) => s.submit(u, ip),
+            Err(e) => Err(render::err_string(&e)),
+        })
+        .await;
+        self.finish(prep).await
+    }
+
+    async fn finish(&self, prep: Result<Result<Pending, String>, tokio::task::JoinError>) -> String {
+        match prep {
+            Ok(Ok(p)) => self.wait(p).await,
+            Ok(Err(resp)) => resp,
+            Err(_) => render::err_string("internal error"),
         }
     }
 
-    async fn submit_and_wait(&self, utx: UserTx, ip: String) -> String {
+    /// Register the receipt waiter, then submit. `Err` is a final response.
+    fn submit(&self, utx: UserTx, ip: String) -> Result<Pending, String> {
         let tx = Tx::User(utx);
         let mut h = tx.hash();
         let mut rx = self.waiters.register(h);
@@ -232,7 +257,7 @@ impl Shared {
                     if let Some(r) = self.waiters.recent(&h) {
                         drop(rx);
                         self.waiters.cancel(&h);
-                        return render::action_result_string(&r.result);
+                        return Err(render::action_result_string(&r.result));
                     }
                 }
             }
@@ -240,24 +265,34 @@ impl Shared {
                 if let Some(r) = self.waiters.recent(&h) {
                     drop(rx);
                     self.waiters.cancel(&h);
-                    return render::action_result_string(&r.result);
+                    return Err(render::action_result_string(&r.result));
                 }
                 // else: the original is still pending; wait for its receipt.
             }
             Err(e) => {
                 drop(rx);
                 self.waiters.cancel(&h);
-                return render::err_string(&admission_message(&e));
+                return Err(render::err_string(&admission_message(&e)));
             }
         }
-        match tokio::time::timeout(self.cfg.exchange_timeout, rx).await {
+        Ok(Pending { hash: h, rx })
+    }
+
+    async fn wait(&self, p: Pending) -> String {
+        match tokio::time::timeout(self.cfg.exchange_timeout, p.rx).await {
             Ok(Ok(r)) => render::action_result_string(&r.result),
             _ => {
-                self.waiters.cancel(&h);
+                self.waiters.cancel(&p.hash);
                 render::err_string("Timed out waiting for the transaction to be included in a block")
             }
         }
     }
+}
+
+/// A submitted tx waiting for its receipt.
+struct Pending {
+    hash: TxHash,
+    rx: oneshot::Receiver<Arc<TxReceipt>>,
 }
 
 /// HL-style text for admission failures.

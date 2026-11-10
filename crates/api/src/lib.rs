@@ -106,7 +106,7 @@ async fn exchange_handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     body: Bytes,
 ) -> Response {
-    let out = s.exchange_bytes(&body, addr.ip().to_string()).await;
+    let out = s.exchange_bytes(body, addr.ip().to_string()).await;
     (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], out).into_response()
 }
 
