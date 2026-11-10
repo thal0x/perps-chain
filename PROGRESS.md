@@ -10,7 +10,7 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 
 | agent (worktree /home/user/wt/<name>) | owns | status |
 |---|---|---|
-| hlwire | crates/hlwire | running (wave 1) |
+| hlwire | crates/hlwire | MERGED (35 tests, 94 SDK golden vectors) |
 | api | crates/api | running |
 | consensus | crates/consensus | running |
 | netmempool | crates/net, crates/mempool | MERGED (32 tests) |
@@ -18,7 +18,8 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 | clearinghouse | crates/clearinghouse | MERGED; fill 0.6–2.6 µs (target 1 µs) |
 | state | crates/state | running |
 | bridge | bridge/, crates/relayer | MERGED (41 forge + 26 rust); e2e script pending node |
-| (unassigned) | crates/node, crates/sim, crates/chaos | wave 2 after state+hlwire land |
+| sim | crates/sim | running (wave 2) |
+| (unassigned) | crates/node, crates/chaos | after state lands |
 
 ## Currently failing
 - All component crates are stubs (0 tests) — expected until M1.
@@ -34,3 +35,6 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 - Reference clones (not part of repo): `/home/user/ext/{hyperliquid-python-sdk,hyperliquid (nktkas TS SDK),forge-std}`.
 - Shared cargo target dir: `/home/user/.cargo-target/hlbft`.
 - 4 cores, 15 GB RAM, ~31 GB disk.
+
+## Blockers
+- (resolved) Remote `origin` = github.com/thal0x/perps-chain; push `main` after every merge/milestone.
