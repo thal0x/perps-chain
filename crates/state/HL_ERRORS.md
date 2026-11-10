@@ -18,7 +18,7 @@ inside an `ok` response; tx-level errors are `TxReceipt.result = Err(..)`
 | `Post only order would have immediately matched, bbo was {bid}@{ask}` | HL | ALO crossing; missing side printed as `None` |
 | `Order could not immediately match against any resting orders.` | HL | IOC (incl. market) with zero fill |
 | `Duplicate cloid.` | local | user already has an open order (any market) with this cloid |
-| `Invalid asset.` | local | asset index out of range |
+| `Invalid asset` | local (= clearinghouse `ERR_ASSET`) | asset index out of range |
 | `Parent order failed.` | local | normalTpsl child when the parent errored |
 | `TP/SL child order must be a trigger order.` | local | normalTpsl child that is a limit order |
 | `TP/SL child must have the same asset as the parent order.` | local | |
@@ -42,11 +42,21 @@ inside an `ok` response; tx-level errors are `TxReceipt.result = Err(..)`
 | `Vault actions are not supported.` | local | `vault_address` set (D6) |
 | `Cannot modify canceled or filled order` | HL | single `modify` target missing (other modify errors are the order error text) |
 | `Scheduled cancel time too early, must be at least 5 seconds after current time.` | HL | scheduleCancel < now + 5 s |
-| `Invalid leverage value.` | local | 0, > maxLeverage, or cross on only-isolated market |
-| `Invalid amount.` | local | non-positive transfer amount |
-| `Invalid token.` | local | spotSend token not `NAME:0x<tokenId>` of a genesis spot token |
+| `Invalid leverage value` | = clearinghouse `ERR_LEVERAGE` | 0 or > maxLeverage |
+| `Invalid amount` | = clearinghouse `ERR_AMOUNT` | non-positive transfer amount |
+| `Invalid token` | = clearinghouse `ERR_TOKEN` | spotSend token not `NAME:0x<tokenId>` of a genesis spot token |
 | `Withdrawal amount must be greater than the withdrawal fee.` | local | withdraw3 amount <= `params.withdraw_fee` |
 | `Agent address is already in use.` | local | agent already approved by another principal |
 | `Cannot approve self as agent.` | local | |
 | `Referrer already set.` | local | second setReferrer |
-| clearinghouse `ExecError` text | engine | usdSend / withdraw / leverage / isolated margin / class transfer failures pass through unchanged |
+| clearinghouse `ExecError` text | engine | passed through unchanged, see below |
+
+## Passed through from `clearinghouse` (its `ERR_*` constants)
+`Insufficient margin to place order.` (fills), `Insufficient balance for
+withdrawal`, `Insufficient balance for transfer`, `Insufficient balance for
+token transfer`, `Invalid amount`, `Invalid asset`, `Invalid token`,
+`Invalid leverage value`, `Cross margin is not allowed for this asset.`,
+`Cannot switch leverage type with open position.`, `Insufficient margin to
+decrease leverage.`, `No isolated position to update margin.`,
+`Insufficient margin to add.`, `Insufficient margin to remove.`,
+`Invalid user`, `Invalid fill`.

@@ -427,7 +427,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             }
             Action::UpdateLeverage { asset, is_cross, leverage } => {
                 let spec = self.spec(*asset).ok_or(err_msg::INVALID_ASSET)?;
-                if *leverage == 0 || *leverage > spec.max_leverage || (*is_cross && spec.only_isolated) {
+                if *leverage == 0 || *leverage > spec.max_leverage {
                     return Err(err_msg::INVALID_LEVERAGE.into());
                 }
                 self.ch.update_leverage(user, *asset, *is_cross, *leverage).map_err(|e| e.0)?;
