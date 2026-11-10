@@ -19,8 +19,9 @@ pub struct Genesis {
     pub markets: Vec<MarketSpec>,
     /// Perp collateral credited at genesis (test accounts).
     pub balances: Vec<(Address, Usd)>,
-    /// Spot tokens; index 0 must be USDC. Spot trading is not supported, only
-    /// balances and transfers (spotSend, usdClassTransfer for USDC).
+    /// Spot tokens; index 0 must be USDC. Spot pair 0 = PURR(1)/USDC(0) is
+    /// tradable (asset id = 10000 + pair index, D25); other tokens support
+    /// balances and transfers only.
     pub spot_tokens: Vec<SpotToken>,
     /// Spot balances at genesis: (user, token index, amount 1e-6 units).
     pub spot_balances: Vec<(Address, u32, Usd)>,
