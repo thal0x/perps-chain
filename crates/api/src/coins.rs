@@ -21,6 +21,9 @@ pub struct SpotPair {
     pub base: u32,
     pub quote: u32,
     pub is_canonical: bool,
+    /// Has an order book on chain (only pair 0, D25); other pairs (the "@1"
+    /// alias) are listed with nominal data.
+    pub tradable: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -46,11 +49,11 @@ impl Coins {
         for t in spot_tokens.iter().filter(|t| t.index != quote) {
             let index = spot_pairs.len() as u32;
             let name = if index == 0 { format!("{}/USDC", t.name) } else { format!("@{index}") };
-            spot_pairs.push(SpotPair { index, name, base: t.index, quote, is_canonical: index == 0 });
+            spot_pairs.push(SpotPair { index, name, base: t.index, quote, is_canonical: index == 0, tradable: index == 0 });
         }
         if spot_pairs.len() == 1 {
             let base = spot_pairs[0].base;
-            spot_pairs.push(SpotPair { index: 1, name: "@1".into(), base, quote, is_canonical: false });
+            spot_pairs.push(SpotPair { index: 1, name: "@1".into(), base, quote, is_canonical: false, tradable: false });
         }
         let mut by_name = HashMap::new();
         for p in &spot_pairs {
@@ -101,6 +104,11 @@ impl Coins {
 
     pub fn is_spot_asset(&self, asset: AssetId) -> bool {
         self.spot_pair_of_asset(asset).is_some()
+    }
+
+    /// Asset id of a spot pair that has an on-chain book.
+    pub fn tradable_spot_asset(&self, pair: u32) -> Option<AssetId> {
+        self.spot_pair(pair).filter(|p| p.tradable).map(|p| SPOT_ASSET_OFFSET + p.index)
     }
 
     pub fn token(&self, index: u32) -> Option<&SpotToken> {

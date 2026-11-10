@@ -59,10 +59,9 @@ pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
         }
         "metaAndAssetCtxs" => json!([render::meta(coins), asset_ctxs(s, now)]),
         "spotMeta" => render::spot_meta(coins),
-        "spotMetaAndAssetCtxs" => {
-            let ctxs: Vec<Value> = coins.spot_pairs.iter().map(|p| render::spot_ctx(coins, p.index)).collect();
-            json!([render::spot_meta(coins), ctxs])
-        }
+        "spotMetaAndAssetCtxs" => json!([render::spot_meta(coins), crate::spot::ctxs(s, now)]),
+        // Prediction markets are not deployed (TS SymbolConverter calls this).
+        "outcomeMeta" => json!({"outcomes": [], "questions": []}),
         "allMids" => {
             if dex_is_main(req) {
                 all_mids(s)
@@ -92,8 +91,7 @@ pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
         }
         "spotClearinghouseState" => {
             let user = user_field(req)?;
-            let a = s.with_state(|q| q.account(&user));
-            render::spot_clearinghouse(coins, &a)
+            crate::spot::clearinghouse(s, &user)
         }
         "openOrders" => {
             let user = user_field(req)?;
@@ -175,7 +173,7 @@ pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
             let iv = Interval::parse(str_field(r, "interval")?).ok_or_else(|| format!("{DESER}: bad interval"))?;
             let start = opt_u64(r, "startTime")?.unwrap_or(0);
             let end = opt_u64(r, "endTime")?.unwrap_or(u64::MAX);
-            match coins.perp(coin) {
+            match coins.asset(coin) {
                 Some(a) => {
                     let cs = s.index.read().candles(a, iv, start, end);
                     let skip = cs.len().saturating_sub(5000);
@@ -225,7 +223,7 @@ pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
         }
         "recentTrades" => {
             let coin = str_field(req, "coin")?;
-            match coins.perp(coin) {
+            match coins.asset(coin) {
                 Some(a) => {
                     let v = s.index.read().recent_trades(a, 100);
                     Value::Array(v.iter().map(|t| render::trade(coins, t)).collect())
@@ -344,7 +342,7 @@ pub fn all_mids(s: &Shared) -> Value {
             .collect()
     });
     let mut o = serde_json::Map::new();
-    for (n, p) in mids {
+    for (n, p) in mids.into_iter().chain(crate::spot::mids(s)) {
         o.insert(n, fmt::px(p).into());
     }
     Value::Object(o)
@@ -354,8 +352,14 @@ pub fn all_mids(s: &Shared) -> Value {
 pub fn l2_book(s: &Shared, coin: &str, n_sig: Option<u32>, mantissa: Option<u32>) -> Option<Value> {
     let time = s.now();
     match s.coins.resolve(coin)? {
-        CoinRef::Spot(_) => Some(json!({"coin": coin, "time": time, "levels": [[], []]})),
-        CoinRef::Perp(a) => {
+        CoinRef::Spot(p) if s.coins.tradable_spot_asset(p).is_none() => {
+            Some(json!({"coin": coin, "time": time, "levels": [[], []]}))
+        }
+        r => {
+            let a = match r {
+                CoinRef::Perp(a) => a,
+                CoinRef::Spot(p) => s.coins.tradable_spot_asset(p).expect("tradable"),
+            };
             let depth = if n_sig.is_some() { 2000 } else { 20 };
             let (bids, asks) = s.with_state(|q| q.l2_book(a, depth));
             let bids = render::aggregate_levels(&bids, n_sig, mantissa, false, 20);
@@ -373,8 +377,14 @@ pub fn bbo(s: &Shared, coin: &str) -> Option<Value> {
         None => Value::Null,
     };
     match s.coins.resolve(coin)? {
-        CoinRef::Spot(_) => Some(json!({"coin": coin, "time": time, "bbo": [null, null]})),
-        CoinRef::Perp(a) => {
+        CoinRef::Spot(p) if s.coins.tradable_spot_asset(p).is_none() => {
+            Some(json!({"coin": coin, "time": time, "bbo": [null, null]}))
+        }
+        r => {
+            let a = match r {
+                CoinRef::Perp(a) => a,
+                CoinRef::Spot(p) => s.coins.tradable_spot_asset(p).expect("tradable"),
+            };
             let (b, k) = s.with_state(|q| q.l2_book(a, 1));
             Some(json!({"coin": coin, "time": time, "bbo": [lvl(b.first()), lvl(k.first())]}))
         }
@@ -515,7 +525,7 @@ pub fn web_data2(s: &Shared, user: &Address, now: u64) -> Value {
     let coins = &s.coins;
     let acct = s.with_state(|q| q.account(user));
     let orders = sorted_open_orders(s, user);
-    let spot_ctxs: Vec<Value> = coins.spot_pairs.iter().map(|p| render::spot_ctx(coins, p.index)).collect();
+    let spot_ctxs = crate::spot::ctxs(s, now);
     json!({
         "clearinghouseState": render::clearinghouse(coins, &acct, now),
         "leadingVaults": [],
@@ -530,7 +540,7 @@ pub fn web_data2(s: &Shared, user: &Address, now: u64) -> Value {
         "isVault": false,
         "user": fmt::addr(user),
         "twapStates": [],
-        "spotState": render::spot_clearinghouse(coins, &acct),
+        "spotState": crate::spot::clearinghouse_from(coins, &s.genesis.params, &acct, &orders),
         "spotAssetCtxs": spot_ctxs,
     })
 }

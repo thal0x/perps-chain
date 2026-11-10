@@ -22,5 +22,6 @@ tokio-util = { workspace = true }
 proptest = { workspace = true }
 hlwire = { workspace = true }
 relayer = { workspace = true }
+state = { workspace = true }
 reqwest = { workspace = true }
 tokio-tungstenite = "0.29"
