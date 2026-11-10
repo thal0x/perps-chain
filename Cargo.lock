@@ -271,7 +271,18 @@ dependencies = [
 name = "chaos"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "clap",
+ "consensus",
+ "hex",
+ "hlwire",
  "interfaces",
+ "libc",
+ "proptest",
+ "rand 0.8.8",
+ "rand_chacha",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
