@@ -1,16 +1,16 @@
 {
  "ac": "ac5",
  "mode": "full",
- "pass": false,
+ "pass": true,
  "python_passed": 15,
  "python_failed": 0,
- "ts_passed": 5,
- "ts_failed": 1,
- "source_fingerprint": "c21c8101d1e3:db263aa35d91:6e887265af98:c4472c949e1c",
- "git_head": "a02fc0debe032bdfe9a5faa66f68982f6987d93e",
+ "ts_passed": 6,
+ "ts_failed": 0,
+ "source_fingerprint": "c21c8101d1e3:db263aa35d91:6e887265af98:af3525ddaf6f",
+ "git_head": "f28844828bf9a805ac759f5bf7ca7c507f8413e3",
  "git_dirty": false,
- "time_utc": "2026-11-10T16:17:59Z",
- "summary": "python 15/15, ts 5/6; failing: ts:02_trading",
+ "time_utc": "2026-11-10T16:26:14Z",
+ "summary": "python 15/15, ts 6/6",
  "pins": {
   "python_sdk": "hyperliquid-python-sdk",
   "python_sdk_commit": "2fdb18f9517675ea03695a0962bd19eece9c83f0",
@@ -60,7 +60,7 @@
     "script": "basic_order_with_cloid",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 1.1,
+    "elapsed_s": 1.0,
     "exchange_calls": 2,
     "info_calls": 8,
     "errors": [],
@@ -82,7 +82,7 @@
     "script": "cancel_open_orders",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 0.9,
+    "elapsed_s": 0.8,
     "exchange_calls": 1,
     "info_calls": 7,
     "errors": [],
@@ -93,7 +93,7 @@
     "script": "basic_leverage_adjustment",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 1.5,
+    "elapsed_s": 1.7,
     "exchange_calls": 3,
     "info_calls": 8,
     "errors": [
@@ -107,10 +107,10 @@
         "isBuy": true,
         "ntli": 1000000
        },
-       "nonce": 1794327318260,
+       "nonce": 1794327810103,
        "signature": {
-        "r": "0xd69f05d7eec29972e5d4fa2b771dd5101fb71606361753c38f20ff0c1c5e1986",
-        "s": "0x522195da5d90d96ff2646f093ef231b58cd1188a02e834a0705096f545f88db3",
+        "r": "0x1c236fe77d49e80ba3928b21fc7bd15ae07c27f76b85a59602d88b55556042f4",
+        "s": "0x2fbd07f30d9a4e58de57320181a9645820b45fc0082a1491e96d4a080488f5d6",
         "v": 28
        },
        "vaultAddress": null,
@@ -141,7 +141,7 @@
     "script": "basic_tpsl",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 2.9,
+    "elapsed_s": 2.7,
     "exchange_calls": 6,
     "info_calls": 6,
     "errors": [],
@@ -152,7 +152,7 @@
     "script": "basic_schedule_cancel",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 11.0,
+    "elapsed_s": 11.1,
     "exchange_calls": 2,
     "info_calls": 8,
     "errors": [],
@@ -196,7 +196,7 @@
     "script": "basic_spot_to_perp",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 1.1,
+    "elapsed_s": 1.2,
     "exchange_calls": 2,
     "info_calls": 6,
     "errors": [],
@@ -207,7 +207,7 @@
     "script": "basic_withdraw",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 0.9,
+    "elapsed_s": 0.7,
     "exchange_calls": 1,
     "info_calls": 6,
     "errors": [],
@@ -218,7 +218,7 @@
     "script": "basic_adding",
     "pass": true,
     "rc": 143,
-    "elapsed_s": 41.0,
+    "elapsed_s": 41.3,
     "exchange_calls": 2,
     "info_calls": 14,
     "errors": [],
@@ -246,7 +246,7 @@
     "script": "basic_ws",
     "pass": true,
     "rc": 143,
-    "elapsed_s": 41.3,
+    "elapsed_s": 41.2,
     "exchange_calls": 0,
     "info_calls": 6,
     "errors": [],
@@ -270,10 +270,10 @@
       "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482"
      ],
      "messages": {
-      "activeAssetCtx:@1": 201,
-      "activeAssetCtx:btc": 201,
-      "activeAssetData:btc,0x4b88977da0f07d0454746eff401bf4f733c2e482": 201,
-      "allMids": 201,
+      "activeAssetCtx:@1": 200,
+      "activeAssetCtx:btc": 200,
+      "activeAssetData:btc,0x4b88977da0f07d0454746eff401bf4f733c2e482": 200,
+      "allMids": 200,
       "bbo:eth": 3,
       "candle:eth,1m": 3,
       "l2Book:eth": 3,
@@ -283,7 +283,7 @@
       "userFills:0x4b88977da0f07d0454746eff401bf4f733c2e482": 4,
       "userFundings:0x4b88977da0f07d0454746eff401bf4f733c2e482": 1,
       "userNonFundingLedgerUpdates:0x4b88977da0f07d0454746eff401bf4f733c2e482": 3,
-      "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482": 201
+      "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482": 200
      },
      "missing": [],
      "undelivered_messages": {}
@@ -370,8 +370,8 @@
    "HttpTransport": "{ apiUrl: \"http://127.0.0.1:3001\", isTestnet: true }",
    "WebSocketTransport": "{ url: \"ws://127.0.0.1:3001/ws\", isTestnet: true }"
   },
-  "passed": 5,
-  "failed": 1,
+  "passed": 6,
+  "failed": 0,
   "scripts": [
    {
     "script": "01_read_data",
@@ -398,12 +398,10 @@
    },
    {
     "script": "02_trading",
-    "rc": 1,
+    "rc": 0,
     "elapsed_s": 1.5,
-    "pass": false,
-    "reasons": [
-     "exit code 1"
-    ],
+    "pass": true,
+    "reasons": [],
     "exchange_calls": 3,
     "info_calls": 0,
     "calls": [
@@ -422,16 +420,10 @@
       "allowlisted": true
      }
     ],
-    "log_tail": [
-     "    at async file:///home/user/.cache/hlbft-acc-ts/run/02_trading.ts:38:1 {",
-     "  response: {",
-     "    status: 'err',",
-     "    response: 'Withdrawal amount must be greater than the withdrawal fee.'",
-     "  }",
-     "}",
-     "",
-     "Node.js v22.23.4"
-    ]
+    "allowlisted_final_throw": {
+     "name": "ApiRequestError",
+     "message": "Withdrawal amount must be greater than the withdrawal fee."
+    }
    },
    {
     "script": "03_order_modify_cancel",
