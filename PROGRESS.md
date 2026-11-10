@@ -4,24 +4,21 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 
 ## Completed milestones
 - M0 Plan — docs, interfaces crate, status tooling.
+- M1–M8 — all components merged; all unit suites + forge green (STATUS.md, bf87e52).
+- AC2, AC3, AC4, AC5, AC6 PASS with full evidence on the D30-frozen tree (fingerprint 3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f). AC1 smoke passes.
+- Extra (user request): `frontend/` trading UI (Vite/React, @nktkas/hyperliquid), Playwright e2e passes. Mac portability fixes (D31).
 
-## In progress (owner -> directory, worktree /home/user/wt/<name>, branch agent/<name>)
-All wave-1/2 components MERGED: interfaces, hlwire, consensus, net, mempool, book, oracle, clearinghouse, state, api, relayer+bridge, sim, node, chaos, acceptance runners (AC5/AC6).
-
-| agent | owns | status |
-|---|---|---|
-| spot | crates/state, crates/api (spot PURR/USDC + outcomeMeta, D25) | MERGED |
-| api (perf) | Indexer::ingest 2x cheaper, spawn_blocking submit | running |
-| hlwire (perf) | allocation-free decode_action | running |
-| integ | crates/node, scripts/localnet.sh, scripts/acceptance.sh, acceptance/ | AC3 PASS + AC5 PASS merged; running AC2 full then AC4 |
+## In progress
+Nothing running. All agents finished; worktrees under /home/user/wt are idle.
 
 ## Currently failing
-- None in unit suites. Evidence: AC3 PASS (fresh). AC5/AC6 PASS but STALE (rerun queued). AC1/AC2/AC4 full runs pending. AC2+AC4 5M dry run passed (0 mismatches, 0 violations).
+- AC1: no full evidence. **ON HOLD by the user** — do NOT start the 12 h run until the user explicitly asks.
 
-## Next three actions (CODE FROZEN, D30)
-1. integ agent: full AC5, AC6, then AC2 (50M week, ~4.5 h), AC4 — on the frozen tree.
-2. integ agent: AC1 12 h chaos run (7 validators) last.
-3. Lead: merge evidence, `scripts/status.sh --md` on a clean clone, final commit M9.
+## Next actions (when the user asks for AC1)
+1. Pre-AC1 cleanup (changes the fingerprint, so a re-freeze D32): gate `crates/chaos` prctl/PDEATHSIG behind `cfg(target_os = "linux")` (macOS build); make clearinghouse/state proptest configs honour `PROPTEST_CASES`.
+2. Rerun AC3, AC5, AC6, AC2 (50M), AC4 on the new frozen tree (~5 h).
+3. `scripts/acceptance.sh ac1` (12 h), then `scripts/status.sh --md` on a clean clone, commit M9 "Done".
+Optional node API gaps found by the frontend: WS `spotState` and `webData3` subscriptions missing.
 
 ## Known risks
 - Throughput with one validator down ~2.5 blocks/s (no leader reputation).
