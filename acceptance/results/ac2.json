@@ -1,0 +1,123 @@
+{
+ "ac": "ac2",
+ "mode": "full",
+ "pass": true,
+ "actions": 50000002,
+ "order_actions": 48798130,
+ "sim_days": 7.0,
+ "blocks": 100800,
+ "validators": 4,
+ "runs": 2,
+ "mismatches": 0,
+ "roots_digest": "47eed582adf70013ef6cbe441aaace5087e8d99fea0a8bed3171cbe06f3b1f53",
+ "final_height_ok": true,
+ "digests_equal": true,
+ "divergence_log_lines": {
+  "A0": 0,
+  "A1": 0,
+  "A2": 0,
+  "A3": 0,
+  "B0": 0,
+  "B1": 0,
+  "B2": 0,
+  "B3": 0
+ },
+ "first_mismatches": [],
+ "out_of_range_heights": {},
+ "node_replay": {
+  "A0": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2703445,
+   "order_actions": 48469916
+  },
+  "A1": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2703308,
+   "order_actions": 48469916
+  },
+  "A2": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2703371,
+   "order_actions": 48469916
+  },
+  "A3": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2703371,
+   "order_actions": 48469916
+  },
+  "B0": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2699774,
+   "order_actions": 48469916
+  },
+  "B1": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2699774,
+   "order_actions": 48469916
+  },
+  "B2": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2699864,
+   "order_actions": 48469916
+  },
+  "B3": {
+   "last_height": 100800,
+   "invariant_checks": 100800,
+   "violations": 0,
+   "wall_ms": 2699940,
+   "order_actions": 48469916
+  }
+ },
+ "offline": {
+  "blocks": 100800,
+  "invariant_checks": 100800,
+  "order_actions": 48469916,
+  "wall_ms": 1759766,
+  "violations": 0
+ },
+ "gen": {
+  "wall_ms": 2013866,
+  "log_bytes": 1626711294
+ },
+ "phases": [
+  {
+   "phase": "gen",
+   "seconds": 2014,
+   "info": "log_mb=1551 peak_rss_mb=101"
+  },
+  {
+   "phase": "replay_A",
+   "seconds": 2705,
+   "info": "peak_disk_mb=4748 peak_rss_mb=956,952,947,956"
+  },
+  {
+   "phase": "replay_B",
+   "seconds": 2702,
+   "info": "peak_disk_mb=4756 peak_rss_mb=902,913,899,896"
+  },
+  {
+   "phase": "offline",
+   "seconds": 1760,
+   "info": "peak_rss_mb=76 peak_disk_mb=1596"
+  }
+ ],
+ "source_fingerprint": "3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f",
+ "git_head": "e1d24731fb145905771760f5f7a9581866751e25",
+ "git_dirty": false,
+ "time_utc": "2026-11-10T21:50:08Z",
+ "summary": "50000002 actions / 100800 blocks / 7 sim-days; 2 runs x 4 validators + offline sim replay + gen roots compared per height; 0 mismatches; roots_digest 47eed582adf70013"
+}
