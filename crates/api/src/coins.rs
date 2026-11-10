@@ -4,6 +4,9 @@
 use interfaces::*;
 use std::collections::HashMap;
 
+/// HL: spot asset id = 10000 + spot pair index.
+pub const SPOT_ASSET_OFFSET: AssetId = 10_000;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CoinRef {
     Perp(AssetId),
@@ -75,9 +78,29 @@ impl Coins {
         self.markets.get(asset as usize).filter(|m| m.asset == asset).or_else(|| self.markets.iter().find(|m| m.asset == asset))
     }
 
-    /// HL coin name of a perp asset ("?<id>" if unknown).
+    /// HL coin name of an asset: perp name, or the spot pair name for
+    /// `10000 + pair` ("PURR/USDC", "@1"); "?<id>" if unknown.
     pub fn name(&self, asset: AssetId) -> String {
+        if let Some(p) = self.spot_pair_of_asset(asset) {
+            return p.name.clone();
+        }
         self.market(asset).map(|m| m.name.clone()).unwrap_or_else(|| format!("?{asset}"))
+    }
+
+    /// Asset id (10000 + index) of a coin, perp or spot.
+    pub fn asset(&self, coin: &str) -> Option<AssetId> {
+        match self.resolve(coin)? {
+            CoinRef::Perp(a) => Some(a),
+            CoinRef::Spot(i) => Some(SPOT_ASSET_OFFSET + i),
+        }
+    }
+
+    pub fn spot_pair_of_asset(&self, asset: AssetId) -> Option<&SpotPair> {
+        asset.checked_sub(SPOT_ASSET_OFFSET).and_then(|i| self.spot_pair(i))
+    }
+
+    pub fn is_spot_asset(&self, asset: AssetId) -> bool {
+        self.spot_pair_of_asset(asset).is_some()
     }
 
     pub fn token(&self, index: u32) -> Option<&SpotToken> {
