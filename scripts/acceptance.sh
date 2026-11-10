@@ -76,9 +76,10 @@ run_ac5() {
   start_evidence
   build_release
   require_free_ports 3001 3002 3003 3004 26600 26601 26602 26603
-  local net="$ROOT/run/localnet" py_json="$TMP/ac5_python.json" ts_json="$TMP/ac5_ts.json" prc trc
+  local py_json="$TMP/ac5_python.json" ts_json="$TMP/ac5_ts.json" prc trc
+  AC5_NET="$ROOT/run/localnet"; local net="$AC5_NET"
   export LOCALNET_DIR="$net"
-  trap 'scripts/localnet.sh stop >/dev/null 2>&1; rm -rf "$net"' EXIT
+  trap 'scripts/localnet.sh stop >/dev/null 2>&1; rm -rf "$AC5_NET"' EXIT
   rm -f "$py_json" "$ts_json"
 
   log "fresh localnet (scripts/localnet.sh dev = 4 validators + seed ladder) for Python examples"

@@ -1,0 +1,255 @@
+{
+ "ac": "ac6",
+ "mode": "full",
+ "pass": true,
+ "e2e_pass": true,
+ "forge_passed": 41,
+ "forge_failed": 0,
+ "forge_required_families": {
+  "test_ReplayProtection": {
+   "passed": 5,
+   "failed": 0
+  },
+  "test_SignatureThreshold": {
+   "passed": 13,
+   "failed": 0
+  },
+  "test_ValidatorSetRotation": {
+   "passed": 11,
+   "failed": 0
+  }
+ },
+ "source_fingerprint": "e2c476e958d7:db263aa35d91:e37eff47bf16:b8f9c6b40cdf",
+ "git_head": "b9a9c9eb453e7e8a0d904d73ad22ee4f4078e5c9",
+ "git_dirty": false,
+ "time_utc": "2026-11-10T15:31:27Z",
+ "summary": "e2e ok; anvil delta 499 USDC; forge 41 passed / 0 failed",
+ "bridge": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+ "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+ "validators": [
+  "0x7f6146719d29617a5ee07BE847fE0aFcF88A5cFe",
+  "0xba61569b790027D84Ad81AD6Bb74275bAaD4f370",
+  "0xf846Cb439a68264d1c8AF0246226ee65603CFE0c",
+  "0xFf2082E51782F5eA14dFBF2Ada04F28Ac5D74F43"
+ ],
+ "user": "0x4B88977DA0F07D0454746eFF401bf4f733C2E482",
+ "l1_account_value_before_deposit": "1000000.0",
+ "approve_tx": "0x5bfc54fa959cc60100dccb29536283e46710bddf3acefd6cfa4e6a1b11c1218c",
+ "deposit_tx": "0x34fdbc6e621e7ec49d2eac8a9dfa2a7106656dcf0dfcf3453803ad76054e6be8",
+ "deposit_block": 9,
+ "l1_account_value_after_deposit": "1001000.0",
+ "l1_deposit_credit": "1000.0",
+ "deposit_credit_s": 2,
+ "trade_fill_hash": "0x6585c877f3e7b2f193b347548724809c2ebcfa8f8b239e3866f7631cd9829c64",
+ "pending_withdrawal": [
+  {
+   "id": 1,
+   "user": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
+   "destination": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
+   "amount": "499",
+   "created_at": 1794324679407,
+   "signatures": []
+  }
+ ],
+ "anvil_usdc_before_withdraw_raw": "0",
+ "anvil_usdc_after_withdraw_raw": "499000000",
+ "anvil_usdc_delta": "499",
+ "withdraw_tx": "0xecbcf371745f2736b7b990afd330e267c6cca2b872448fcf7055ea378db108fa",
+ "relay_wait_s": 2,
+ "relayer_events": [
+  {
+   "event": "withdrawSubmitted",
+   "id": 1,
+   "txHash": "0xecbcf371745f2736b7b990afd330e267c6cca2b872448fcf7055ea378db108fa"
+  }
+ ],
+ "withdraw_receipt": {
+  "status": "0x1",
+  "block": 14,
+  "gasUsed": 114538
+ },
+ "bridge_used_withdrawal": "true",
+ "bridge_usdc_after_raw": "501000000",
+ "l1_withdrawal_finalized": true,
+ "l1_account_value_final": "1000499.976498",
+ "steps": [
+  {
+   "step": "anvil_start",
+   "ok": true,
+   "details": {
+    "rpc": "http://127.0.0.1:8545",
+    "block_time_s": 1
+   }
+  },
+  {
+   "step": "deploy",
+   "ok": true,
+   "details": {
+    "bridge": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "chainId": 31337,
+    "deployBlock": 0,
+    "epoch": 1,
+    "minDeposit": 5000000,
+    "powers": [
+     100,
+     100,
+     100,
+     100
+    ],
+    "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+    "validators": [
+     "0x7f6146719d29617a5ee07BE847fE0aFcF88A5cFe",
+     "0xba61569b790027D84Ad81AD6Bb74275bAaD4f370",
+     "0xf846Cb439a68264d1c8AF0246226ee65603CFE0c",
+     "0xFf2082E51782F5eA14dFBF2Ada04F28Ac5D74F43"
+    ]
+   }
+  },
+  {
+   "step": "genesis",
+   "ok": true,
+   "details": {
+    "bridge_contract": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+    "eth_chain_id": 31337
+   }
+  },
+  {
+   "step": "localnet_start",
+   "ok": true,
+   "details": {
+    "validators": 4,
+    "bridge_rpc": "http://127.0.0.1:8545"
+   }
+  },
+  {
+   "step": "seed",
+   "ok": true,
+   "details": "liquidity: 60/60 resting orders from 0x3F56738A7F88734f9ee485539Fb077Fc3620838E"
+  },
+  {
+   "step": "relayer_start",
+   "ok": true,
+   "details": {
+    "sender": "anvil dev account 9"
+   }
+  },
+  {
+   "step": "fund_user",
+   "ok": true,
+   "details": {
+    "eth_tx": "0x7c12339a12b15373a57b6b50a7a2ac09c3d8dd2fa2fe356ee812a7010cd3c6de",
+    "mint_tx": "0x263519878705a7f78d211c27280c5772d7e7d621d548ec5ba281536c439b858f",
+    "usdc_raw": "1000000000"
+   }
+  },
+  {
+   "step": "approve_deposit",
+   "ok": true,
+   "details": {
+    "approve_tx": "0x5bfc54fa959cc60100dccb29536283e46710bddf3acefd6cfa4e6a1b11c1218c",
+    "deposit_tx": "0x34fdbc6e621e7ec49d2eac8a9dfa2a7106656dcf0dfcf3453803ad76054e6be8",
+    "block": 9,
+    "bridge_usdc_raw": "1000000000"
+   }
+  },
+  {
+   "step": "l1_credit_plus_1000",
+   "ok": true,
+   "details": {
+    "before": "1000000.0",
+    "after": "1001000.0",
+    "delta": "1000.0",
+    "waited_s": 2
+   }
+  },
+  {
+   "step": "trade",
+   "ok": true,
+   "details": {
+    "order_response": {
+     "status": "ok",
+     "response": {
+      "type": "order",
+      "data": {
+       "statuses": [
+        {
+         "filled": {
+          "totalSz": "0.01",
+          "avgPx": "3000.3",
+          "oid": 61
+         }
+        }
+       ]
+      }
+     }
+    },
+    "fill_hash": "0x6585c877f3e7b2f193b347548724809c2ebcfa8f8b239e3866f7631cd9829c64",
+    "best_ask": {
+     "px": "3000.3",
+     "sz": "6.6693",
+     "n": 1
+    }
+   }
+  },
+  {
+   "step": "withdraw3",
+   "ok": true,
+   "details": {
+    "withdraw_response": {
+     "status": "ok",
+     "response": {
+      "type": "default"
+     }
+    },
+    "pending": [
+     {
+      "id": 1,
+      "user": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
+      "destination": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
+      "amount": "499",
+      "created_at": 1794324679407,
+      "signatures": []
+     }
+    ],
+    "account_value_after_trade": "1000999.964498",
+    "account_value_after_withdraw": "1000499.968498"
+   }
+  },
+  {
+   "step": "pending_withdrawal_net_499",
+   "ok": true,
+   "details": [
+    {
+     "id": 1,
+     "user": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
+     "destination": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
+     "amount": "499",
+     "created_at": 1794324679407,
+     "signatures": []
+    }
+   ]
+  },
+  {
+   "step": "relayer_submitted",
+   "ok": true,
+   "details": {
+    "tx": "0xecbcf371745f2736b7b990afd330e267c6cca2b872448fcf7055ea378db108fa",
+    "waited_s": 2
+   }
+  },
+  {
+   "step": "anvil_balance_plus_499",
+   "ok": true,
+   "details": {
+    "before_raw": "0",
+    "after_raw": "499000000",
+    "delta_raw": 499000000
+   }
+  },
+  {
+   "step": "no_state_divergence",
+   "ok": true,
+   "details": null
+  }
+ ]
+}
