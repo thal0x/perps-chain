@@ -194,3 +194,7 @@ snapshots are kept and re-verified; (2) pacemaker backoff carried over from a
 lossy episode could delay resume past 10 s after a heal — fix: no backoff
 escalation for views without a proposal, and node caps view timeout at 4 s.
 All evidence will be regenerated on the new frozen tree.
+
+**D30 [process] Re-freeze** at main 4232262 (after D29
+consensus + node fixes), source fingerprint `3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f`. Final sequence: AC3,
+AC5, AC6, AC2 (50M week), AC4, AC1 (12 h). Same rules as D28.

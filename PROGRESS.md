@@ -18,7 +18,7 @@ All wave-1/2 components MERGED: interfaces, hlwire, consensus, net, mempool, boo
 ## Currently failing
 - None in unit suites. Evidence: AC3 PASS (fresh). AC5/AC6 PASS but STALE (rerun queued). AC1/AC2/AC4 full runs pending. AC2+AC4 5M dry run passed (0 mismatches, 0 violations).
 
-## Next three actions (CODE FROZEN, D28)
+## Next three actions (CODE FROZEN, D30)
 1. integ agent: full AC5, AC6, then AC2 (50M week, ~4.5 h), AC4 — on the frozen tree.
 2. integ agent: AC1 12 h chaos run (7 validators) last.
 3. Lead: merge evidence, `scripts/status.sh --md` on a clean clone, final commit M9.
