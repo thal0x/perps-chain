@@ -99,7 +99,13 @@ Full runs: `scripts/acceptance.sh acN` (writes the evidence file).
   basic_market_order, basic_tpsl, basic_adding, basic_leverage_adjustment,
   basic_transfer, basic_spot_transfer (PURR balance transfer; spot tokens supported for balances/transfers only), basic_spot_to_perp,
   basic_withdraw, basic_agent, basic_schedule_cancel, cancel_open_orders,
-  basic_ws. Pass = exit code 0 and no `"status": "err"` in output.
+  basic_ws. Pass = exit code 0 (long-running WS examples: runs ≥ 30 s,
+  receives at least one message on every subscribed channel, then is
+  stopped) and no `"status": "err"` in output **except** entries in the
+  expected-error allowlist `acceptance/sdk/expected_errors.json`, each of
+  which must name the call, the exact error text, and why real HL returns an
+  error in that situation too (D23). The runner fails if an allowlisted error
+  does *not* occur (so the list cannot hide drift).
 * TypeScript: `@nktkas/hyperliquid` (pinned npm version): README examples
   saved as scripts in `acceptance/sdk/ts/` (verbatim except transport URL),
   covering order, cancel, modify, updateLeverage, usdSend, withdraw3,

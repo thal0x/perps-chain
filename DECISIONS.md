@@ -127,3 +127,14 @@ updateLeverage. Not adopted: `BlockOutcome.timestamp_ms` (API uses
 `RestingOrderView.is_position_tpsl/children` (cosmetic for
 frontendOpenOrders; revisit only if an SDK example needs it). Transfer
 ledger events: API dedupes by tx hash, either emission style works.
+
+**D23 [test fix, AC5]** "No `status: err` in example output" was stricter
+than HL itself: `basic_leverage_adjustment.py` sets ETH to 21x cross, then
+21x isolated, then adds $1 isolated margin "to the ETH position". With no
+ETH position, HL rejects the margin add (nothing to add margin to); with an
+open position, HL rejects the cross->isolated switch. No starting state makes
+every call succeed on real HL. The criterion now allows errors only via
+`acceptance/sdk/expected_errors.json` (call, exact text, justification), and
+the runner fails if an allowlisted error does not occur. The chain is not
+special-cased for any example. Also: long-running examples (basic_ws,
+basic_adding) are judged by channel/message receipt within a timeout.
