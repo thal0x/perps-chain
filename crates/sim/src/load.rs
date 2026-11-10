@@ -166,6 +166,18 @@ pub fn run_load(a: &LoadArgs) -> anyhow::Result<LoadReport> {
         let mm = (n * 4 / 5).max(1);
         keys.kinds = (0..n).map(|i| if i < mm || n == 1 { AgentKind::MarketMaker } else { AgentKind::Taker }).collect();
     }
+    // Anchor the agents' reference walk at "now" and, when the node serves
+    // `allMids`, at its current prices (the walk otherwise starts from
+    // genesis prices at genesis time).
+    let mut genesis = genesis;
+    genesis.genesis_time_ms = now_ms();
+    if let Ok(mids) = fetch_mids(&a.targets[0]) {
+        for m in genesis.markets.iter_mut() {
+            if let Some(px) = mids.get(&m.name) {
+                m.initial_px = crate::px::round_px(m, px.0, false);
+            }
+        }
+    }
     let keys = Arc::new(keys);
     let n_targets = a.targets.len();
     // requests per second ~ rate / (mean order actions per request)
@@ -228,6 +240,28 @@ pub fn run_load(a: &LoadArgs) -> anyhow::Result<LoadReport> {
     let report = rt.block_on(send_all(a, rx))?;
     producer.join().map_err(|_| anyhow::anyhow!("producer panicked"))??;
     Ok(report)
+}
+
+/// `POST /info {"type":"allMids"}` -> name -> px.
+pub fn fetch_mids(target: &str) -> anyhow::Result<std::collections::BTreeMap<String, Px>> {
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    rt.block_on(async {
+        let c = reqwest::Client::builder().timeout(Duration::from_secs(3)).build()?;
+        let v: serde_json::Value = c
+            .post(format!("{}/info", target.trim_end_matches('/')))
+            .json(&serde_json::json!({"type": "allMids"}))
+            .send()
+            .await?
+            .json()
+            .await?;
+        let mut out = std::collections::BTreeMap::new();
+        for (k, v) in v.as_object().ok_or_else(|| anyhow::anyhow!("allMids: not an object"))? {
+            if let Some(px) = v.as_str().and_then(|s| hlwire::parse_px(s).ok()) {
+                out.insert(k.clone(), px);
+            }
+        }
+        Ok(out)
+    })
 }
 
 #[derive(Default)]

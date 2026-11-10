@@ -36,8 +36,8 @@ fn load_bench_against_mock_exchange() {
     });
     let args = sim::load::LoadArgs {
         targets: vec![format!("http://{addr}"), format!("http://{addr}/")],
-        rate: 20_000,
-        duration: 2,
+        rate: std::env::var("SIM_LOAD_RATE").ok().and_then(|v| v.parse().ok()).unwrap_or(20_000),
+        duration: std::env::var("SIM_LOAD_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(2),
         mode: "bench".into(),
         keys: None,
         genesis: None,
@@ -51,12 +51,14 @@ fn load_bench_against_mock_exchange() {
         sign_threads: 2,
         out: None,
     };
+    let t = std::time::Instant::now();
     let r = sim::load::run_load(&args).unwrap();
+    eprintln!("load took {:?}: {r:?}", t.elapsed());
     assert!(r.submitted > 100, "{r:?}");
     assert_eq!(r.accepted, r.submitted, "{r:?}");
     assert_eq!(bad.load(Ordering::Relaxed), 0);
     assert_eq!(good.load(Ordering::Relaxed), r.submitted);
-    assert!(r.order_actions_submitted >= 30_000, "{r:?}");
+    assert!(r.order_actions_submitted >= args.rate * args.duration * 3 / 4, "{r:?}");
     assert_eq!(r.entry_errors, r.accepted);
     assert!(r.latency_ms.p50 > 0.0);
 }

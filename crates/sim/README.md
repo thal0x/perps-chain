@@ -108,12 +108,37 @@ modify inside a batch counts 1; a transfer counts 1). The per-block budget is
 
 ## Performance
 
-Per block: generate (sequential) → sign (rayon, order kept) → execute in the
-embedded chain → refresh the world (accounts that acted + a rotating window of
-64) → log write on a separate thread. Known-good txs are primed into the
-chain's `SigCache` (decoded action + signer), so the embedded chain does not
-redo ECDSA recovery during generation (recovery is a pure function of the
-bytes; gen roots == replay roots is tested).
+Pipelined per block: the executor thread runs block h on the embedded chain
+and collects the world delta (market summaries, views of accounts that acted /
+are on the liquidation watchlist / in a rotating window of 64, their open
+orders, pending withdrawals) while the main thread generates block h+1 from
+the world after h-1 and signs it with rayon (order kept). Feedback therefore
+lags one block — a fixed schedule, so output stays deterministic. Accounts
+that acted in h+1 keep their local order view until h+1's own refresh. Log
+writing (borsh + zstd level 3, single-threaded) runs on a third thread.
+Known-good txs are primed into the chain's `SigCache` (typed action +
+signer), so the embedded chain skips ECDSA recovery during generation
+(gen roots == replay roots is tested).
+
+Measured on the shared 4-core box (load avg ~4.5 from other agents),
+release, `--threads 2`, 2000 accounts, AC2 density (~500 actions / 6 s
+block), 1M actions:
+
+| | wall | actions/s |
+|---|---|---|
+| `gen --app null` (generate + sign + log only) | 11-13 s | 75-90k |
+| `gen` (embedded HlChain) | 20-33 s | 30-50k |
+| `replay --check-invariants every` (recovers every signature) | 38 s | 26k |
+
+`phase_ms` in the gen summary splits wall time into generate / sign /
+execute / refresh / log back-pressure; executing the block in HlChain is the
+bottleneck (~16-24 s per 1M actions under load), then signing (~300k txs
+per 1M actions: takers send single orders). Log size: ~36 MB per 1M actions
+=> **~1.8 GB projected for the 50M-action AC2 week** (100,800 blocks).
+
+`sim load --mode bench` against an in-process signature-verifying mock
+sustained 120k order actions/s (2 targets, 2,800 req/s, p50 2.6 ms) with
+bodies pre-signed by 2 threads.
 
 ## Tests
 
