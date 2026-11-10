@@ -271,31 +271,68 @@ impl World {
         }
     }
 
-    /// Refresh market summaries, the given accounts and open-order lists.
-    pub fn refresh(&mut self, q: &dyn StateQuery, accounts: &[(usize, Address)], orders: &[(usize, Address)]) {
+    /// Read market summaries, the given accounts' views and open orders.
+    pub fn collect(q: &dyn StateQuery, feedback: bool, accounts: &[(usize, Address)], orders: &[(usize, Address)]) -> WorldDelta {
+        if !feedback {
+            return WorldDelta::default();
+        }
+        let height = q.height();
+        let n = q.markets().len();
+        let markets = (0..n)
+            .map(|i| {
+                let c = q.market_ctx(i as AssetId);
+                let (b, a) = q.l2_book(i as AssetId, 1);
+                MarketObs {
+                    mark: Some(c.mark_px),
+                    oracle: Some(c.oracle_px),
+                    best_bid: b.first().map(|x| x.0),
+                    best_ask: a.first().map(|x| x.0),
+                }
+            })
+            .collect();
+        WorldDelta {
+            height,
+            markets,
+            accounts: accounts.iter().map(|(i, a)| (*i, AccountObs::from_view(&q.account(a), height))).collect(),
+            open_orders: orders.iter().map(|(i, a)| (*i, q.open_orders(a))).collect(),
+            pending_withdrawals: q.pending_withdrawals(),
+        }
+    }
+
+    /// Apply a delta: open orders are replaced (only accounts in the delta
+    /// have `Some`), account views updated, markets/withdrawals replaced.
+    pub fn apply(&mut self, d: WorldDelta) {
         if !self.feedback {
             return;
         }
-        self.height = q.height();
-        for (i, m) in self.markets.iter_mut().enumerate() {
-            let c = q.market_ctx(i as AssetId);
-            let (b, a) = q.l2_book(i as AssetId, 1);
-            *m = MarketObs {
-                mark: Some(c.mark_px),
-                oracle: Some(c.oracle_px),
-                best_bid: b.first().map(|x| x.0),
-                best_ask: a.first().map(|x| x.0),
-            };
+        self.height = d.height;
+        if !d.markets.is_empty() {
+            self.markets = d.markets;
         }
-        for (i, a) in accounts {
-            self.accounts[*i] = Some(AccountObs::from_view(&q.account(a), self.height));
+        for (i, a) in d.accounts {
+            self.accounts[i] = Some(a);
         }
         for o in self.open_orders.iter_mut() {
             *o = None;
         }
-        for (i, a) in orders {
-            self.open_orders[*i] = Some(q.open_orders(a));
+        for (i, o) in d.open_orders {
+            self.open_orders[i] = Some(o);
         }
-        self.pending_withdrawals = q.pending_withdrawals();
+        self.pending_withdrawals = d.pending_withdrawals;
     }
+
+    /// `collect` + `apply`.
+    pub fn refresh(&mut self, q: &dyn StateQuery, accounts: &[(usize, Address)], orders: &[(usize, Address)]) {
+        let d = World::collect(q, self.feedback, accounts, orders);
+        self.apply(d);
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct WorldDelta {
+    pub height: Height,
+    pub markets: Vec<MarketObs>,
+    pub accounts: Vec<(usize, AccountObs)>,
+    pub open_orders: Vec<(usize, Vec<RestingOrderView>)>,
+    pub pending_withdrawals: Vec<PendingWithdrawal>,
 }

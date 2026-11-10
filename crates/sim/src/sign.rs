@@ -114,7 +114,7 @@ pub fn sign_one(cx: &SignCtx<'_>, u: &Unsigned) -> Signed {
             let known = if *invalid || *corruption != Corruption::None {
                 None
             } else {
-                hlwire::decode_action(&utx.action_bytes).ok().map(|a| (a, w.address()))
+                Some((action.clone(), w.address()))
             };
             let body = if cx.want_body {
                 let b = hlwire::build_exchange_request(json, *nonce, sig, None, *expires_after);

@@ -126,7 +126,22 @@ impl<W: Write> LogWriter<W> {
         Ok(LogWriter { enc, footer: LogFooter::default(), digest: blake3::Hasher::new(), buf: Vec::new(), last_height: 0 })
     }
 
+    /// Append a block, counting order actions by decoding each user tx.
     pub fn append(&mut self, rec: &BlockRecord) -> anyhow::Result<()> {
+        let mut oa = 0;
+        let mut act = 0;
+        for tx in &rec.txs {
+            if let Tx::User(u) = tx {
+                let n = crate::sign::order_action_count_bytes(&u.action_bytes);
+                oa += n;
+                act += n.max(1);
+            }
+        }
+        self.append_counted(rec, oa, act)
+    }
+
+    /// Append with precomputed totals (Σ order actions, Σ max(1, order actions)).
+    pub fn append_counted(&mut self, rec: &BlockRecord, order_actions: u64, actions: u64) -> anyhow::Result<()> {
         anyhow::ensure!(rec.height == self.last_height + 1, "non-contiguous height {} after {}", rec.height, self.last_height);
         self.buf.clear();
         rec.serialize(&mut self.buf)?;
@@ -140,15 +155,12 @@ impl<W: Write> LogWriter<W> {
         f.blocks += 1;
         for tx in &rec.txs {
             match tx {
-                Tx::User(u) => {
-                    f.user_txs += 1;
-                    let n = crate::sign::order_action_count_bytes(&u.action_bytes);
-                    f.order_actions += n;
-                    f.actions += n.max(1);
-                }
+                Tx::User(_) => f.user_txs += 1,
                 Tx::Validator(_) => f.validator_txs += 1,
             }
         }
+        f.order_actions += order_actions;
+        f.actions += actions;
         Ok(())
     }
 

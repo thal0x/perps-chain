@@ -62,6 +62,8 @@ pub struct GenSummary {
     pub bad_debt_events: u64,
     /// Result histogram: tx-level errors and per-entry statuses (truncated).
     pub results: Vec<(String, u64)>,
+    /// Wall ms spent in: generate, sign, execute, refresh, log back-pressure.
+    pub phase_ms: [u64; 5],
 }
 
 /// Histogram key for a message: digits collapsed so ids don't explode it.
@@ -156,22 +158,24 @@ pub fn generate<W: Write + Send>(
             validators: true,
         },
     );
-    let mut world = World::new(genesis.markets.len(), cfg.accounts, app.has_feedback());
+    let feedback = app.has_feedback();
+    let mut world = World::new(genesis.markets.len(), cfg.accounts, feedback);
     let max_actions_per_block = (genesis.params.max_block_order_actions as u64 * 9 / 10).max(1);
 
     // Log writing (borsh + zstd) runs on its own thread.
-    let (tx, rx) = crossbeam_channel::bounded::<BlockRecord>(8);
+    let (tx, rx) = crossbeam_channel::bounded::<(BlockRecord, u64, u64)>(8);
     let t0 = Instant::now();
     let mut roots = blake3::Hasher::new();
     let mut final_root = Hash32::ZERO;
     let (mut ok, mut err) = (0u64, 0u64);
     let mut hist = std::collections::BTreeMap::<String, u64>::new();
+    let mut phase = [0u64; 5];
     let (mut fills, mut liq_fills, mut bad_debt) = (0u64, 0u64, 0u64);
     let footer = std::thread::scope(|s| -> anyhow::Result<LogFooter> {
         let writer = s.spawn(move || -> anyhow::Result<LogFooter> {
             let mut w = LogWriter::new(out, &header)?;
-            for rec in rx {
-                w.append(&rec)?;
+            for (rec, oa, act) in rx {
+                w.append_counted(&rec, oa, act)?;
             }
             w.finish()
         });
@@ -179,58 +183,102 @@ pub fn generate<W: Write + Send>(
         let mut generated = 0u64;
         let mut last_report = Instant::now();
         let n_val = genesis.validators.validators.len() as u64;
-        for h in 1..=blocks {
-            let ts = genesis.genesis_time_ms + h * cfg.block_ms;
-            let target = (cfg.actions as u128 * h as u128 / blocks as u128) as u64;
-            let budget = target.saturating_sub(generated).min(max_actions_per_block);
-            let unsigned = pop.step(h, ts, budget, &world, &keys);
-            let signed = sign_all(&cx, &unsigned);
-            let mut txs = Vec::with_capacity(signed.len());
-            for sgn in signed {
-                if let Tx::User(_) = &sgn.tx {
-                    generated += sgn.order_actions.max(1);
-                }
-                if let Some((a, signer)) = sgn.known {
-                    app.prime_recovered(sgn.tx.hash(), a, signer);
-                }
-                txs.push(sgn.tx);
-            }
-            let rec = BlockRecord {
-                height: h,
-                timestamp_ms: ts,
-                proposer: genesis.validators.validators[(h % n_val) as usize].address,
-                txs,
-            };
-            let outcome = app.execute_block(&rec.context(), &rec.txs);
-            for r in &outcome.receipts {
-                if r.result.is_ok() {
-                    ok += 1;
+        // Pipeline: block h executes (and its world delta is collected) on a
+        // scoped thread while block h+1 is generated from the world after
+        // h-1 and signed. The schedule is fixed, so output is deterministic.
+        let mut inflight: Option<(BlockRecord, Interest, u64, u64)> = None;
+        let mut h = 1u64;
+        while h <= blocks + 1 {
+            let app_ref = &mut app;
+            let (exec_res, next) = std::thread::scope(|s2| {
+                let jh = inflight.take().map(|(rec, it, oa, act)| {
+                    s2.spawn(move || {
+                        let tp = Instant::now();
+                        let outcome = app_ref.execute_block(&rec.context(), &rec.txs);
+                        let te = tp.elapsed().as_micros() as u64;
+                        let tp = Instant::now();
+                        let delta = World::collect(app_ref.query(), feedback, &it.accounts, &it.orders);
+                        (rec, it, oa, act, outcome, delta, te, tp.elapsed().as_micros() as u64)
+                    })
+                });
+                let next = if h <= blocks {
+                    let ts = genesis.genesis_time_ms + h * cfg.block_ms;
+                    let target = (cfg.actions as u128 * h as u128 / blocks as u128) as u64;
+                    let budget = target.saturating_sub(generated).min(max_actions_per_block);
+                    let tp = Instant::now();
+                    let unsigned = pop.step(h, ts, budget, &world, &keys);
+                    let (accounts, orders) = pop.interest();
+                    phase[0] += tp.elapsed().as_micros() as u64;
+                    let tp = Instant::now();
+                    let signed = sign_all(&cx, &unsigned);
+                    phase[1] += tp.elapsed().as_micros() as u64;
+                    let acted: Vec<usize> = orders.iter().map(|o| o.0).collect();
+                    Some((ts, signed, Interest { accounts, orders, acted }))
                 } else {
-                    err += 1;
-                }
-                tally_receipt(&mut hist, r);
-            }
-            for e in &outcome.events {
-                match e {
-                    Event::Fill(f) => {
-                        fills += 1;
-                        if f.liquidation.is_some() {
-                            liq_fills += 1;
-                        }
+                    None
+                };
+                (jh.map(|j| j.join().expect("executor thread panicked")), next)
+            });
+            if let Some((rec, _it, oa, act, outcome, delta, te, tr)) = exec_res {
+                phase[2] += te;
+                phase[3] += tr;
+                for r in &outcome.receipts {
+                    if r.result.is_ok() {
+                        ok += 1;
+                    } else {
+                        err += 1;
                     }
-                    Event::BadDebtCovered { .. } => bad_debt += 1,
-                    _ => {}
+                    tally_receipt(&mut hist, r);
+                }
+                for e in &outcome.events {
+                    match e {
+                        Event::Fill(f) => {
+                            fills += 1;
+                            if f.liquidation.is_some() {
+                                liq_fills += 1;
+                            }
+                        }
+                        Event::BadDebtCovered { .. } => bad_debt += 1,
+                        _ => {}
+                    }
+                }
+                final_root = outcome.state_root;
+                roots.update(&rec.height.to_le_bytes());
+                roots.update(&outcome.state_root.0);
+                on_root(rec.height, outcome.state_root);
+                world.apply(delta);
+                // accounts that acted in the block generated meanwhile keep
+                // their local view until that block's own refresh
+                let skip: &[usize] = next.as_ref().map(|n| &n.2.acted[..]).unwrap_or(&[]);
+                pop.after_block(&world, skip);
+                let tp = Instant::now();
+                let sent = tx.send((rec, oa, act));
+                phase[4] += tp.elapsed().as_micros() as u64;
+                if sent.is_err() {
+                    break; // writer failed; its error is reported below
                 }
             }
-            final_root = outcome.state_root;
-            roots.update(&h.to_le_bytes());
-            roots.update(&outcome.state_root.0);
-            on_root(h, outcome.state_root);
-            let (accts, orders) = pop.interest();
-            world.refresh(app.query(), &accts, &orders);
-            pop.after_block(&world);
-            if tx.send(rec).is_err() {
-                break; // writer failed; its error is reported below
+            if let Some((ts, signed, it)) = next {
+                let mut txs = Vec::with_capacity(signed.len());
+                let (mut oa, mut act) = (0u64, 0u64);
+                for sgn in signed {
+                    if let Tx::User(_) = &sgn.tx {
+                        generated += sgn.order_actions.max(1);
+                        oa += sgn.order_actions;
+                        act += sgn.order_actions.max(1);
+                    }
+                    if let Some((a, signer)) = sgn.known {
+                        app.prime_recovered(sgn.tx.hash(), a, signer);
+                    }
+                    txs.push(sgn.tx);
+                }
+                let rec = BlockRecord {
+                    height: h,
+                    timestamp_ms: ts,
+                    proposer: genesis.validators.validators[(h % n_val) as usize].address,
+                    txs,
+                };
+                inflight = Some((rec, it, oa, act));
             }
             if cfg.progress_ms > 0 && last_report.elapsed().as_millis() as u64 >= cfg.progress_ms {
                 last_report = Instant::now();
@@ -241,6 +289,7 @@ pub fn generate<W: Write + Send>(
                     generated as f64 / secs
                 );
             }
+            h += 1;
         }
         drop(tx);
         writer.join().map_err(|_| anyhow::anyhow!("log writer panicked"))?
@@ -259,7 +308,14 @@ pub fn generate<W: Write + Send>(
         liquidation_fills: liq_fills,
         bad_debt_events: bad_debt,
         results: hist.into_iter().collect(),
+        phase_ms: phase.map(|x| x / 1000),
     })
+}
+
+struct Interest {
+    accounts: Vec<(usize, Address)>,
+    orders: Vec<(usize, Address)>,
+    acted: Vec<usize>,
 }
 
 /// Keys behind a config (same derivation as [`generate`]).

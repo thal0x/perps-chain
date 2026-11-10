@@ -202,6 +202,7 @@ pub struct Population {
     mm_acted: Vec<u64>,
     acted_now: Vec<usize>,
     refresh_cursor: usize,
+    watch: BTreeSet<usize>,
     height: u64,
     turns: [u64; 9],
     actions: [u64; 9],
@@ -312,6 +313,7 @@ impl Population {
             bridge: BridgeSim::default(),
             acted_now: Vec::new(),
             refresh_cursor: 0,
+            watch: BTreeSet::new(),
             height: 0,
             turns: [0; 9],
             actions: [0; 9],
@@ -404,6 +406,7 @@ impl Population {
     pub fn interest(&mut self) -> (Vec<(usize, Address)>, Vec<(usize, Address)>) {
         let n = self.accts.len();
         let mut set: BTreeSet<usize> = self.acted_now.iter().copied().collect();
+        set.extend(self.watch.iter().copied());
         let window = 64.min(n);
         for k in 0..window {
             set.insert((self.refresh_cursor + k) % n.max(1));
@@ -418,12 +421,29 @@ impl Population {
     }
 
     /// Absorb refreshed open orders (call after `World::refresh`).
-    pub fn after_block(&mut self, world: &World) {
+    /// `skip`: sorted accounts whose local view is newer (they acted in a
+    /// block generated after the refreshed one).
+    pub fn after_block(&mut self, world: &World, skip: &[usize]) {
         if !world.feedback {
             return;
         }
+        // watchlist: accounts close to liquidation are refreshed every block
+        for (i, a) in world.accounts.iter().enumerate() {
+            let Some(a) = a else { continue };
+            if a.height != world.height {
+                continue;
+            }
+            if !a.positions.is_empty() && a.maintenance > 0 && a.account_value * 100 < a.maintenance * 200 {
+                self.watch.insert(i);
+            } else {
+                self.watch.remove(&i);
+            }
+        }
         for (i, oo) in world.open_orders.iter().enumerate() {
             let Some(oo) = oo else { continue };
+            if skip.binary_search(&i).is_ok() {
+                continue;
+            }
             let a = &mut self.accts[i];
             for q in a.quotes.iter_mut() {
                 q.clear();
@@ -787,7 +807,7 @@ impl Population {
         }
         let eq = self.equity_usd(i, world);
         let pos = self.position(i, asset, world);
-        if pos != 0 && self.accts[i].rng.gen_range(0..3) == 0 {
+        if pos != 0 && self.accts[i].rng.gen_range(0..10) == 0 {
             let fair = self.fair[asset as usize];
             let mut o = self.ioc(i, asset, pos < 0, notional_raw(fair, Sz(pos)), 200, true);
             o.sz = Sz(pos.abs());
@@ -798,9 +818,10 @@ impl Population {
         if eq < 15 * USD_SCALE && self.accts[i].rng.gen_range(0..4) != 0 {
             return; // broke: mostly idle until refilled
         }
-        let pct = self.accts[i].rng.gen_range(40..95) as i128;
+        let pct = self.accts[i].rng.gen_range(60..98) as i128;
         let usd = (eq.max(USD_SCALE * 20) * spec.max_leverage as i128 * pct / 100).max(12 * USD_SCALE);
-        let is_buy = self.accts[i].rng.gen_bool(0.5);
+        // pile into the existing direction (builds leverage up to the max)
+        let is_buy = if pos != 0 && self.accts[i].rng.gen_range(0..100) < 85 { pos > 0 } else { self.accts[i].rng.gen_bool(0.5) };
         let o = self.ioc(i, asset, is_buy, usd, 100, false);
         let u = self.l1(i, ts, Action::Order { orders: vec![o], grouping: Grouping::Na }, false);
         out.push(u);
@@ -1059,8 +1080,8 @@ impl Population {
         let fair = self.fair[asset as usize];
         let eq = self.equity_usd(i, world).max(0);
         let usd = heavy_tail_usd(&mut self.accts[i].rng, 1_000 * USD_SCALE, (eq * 2).max(2_000 * USD_SCALE).min(500_000 * USD_SCALE));
-        let sweep = self.ioc(i, asset, push_buy, usd, 200, false);
-        let rest_px = px_offset_bps(&spec, fair, if push_buy { 50 } else { -50 }, push_buy);
+        let sweep = self.ioc(i, asset, push_buy, usd, 300, false);
+        let rest_px = px_offset_bps(&spec, fair, if push_buy { 100 } else { -100 }, push_buy);
         let rest = Self::limit(asset, push_buy, rest_px, order_sz(&spec, usd / 4, rest_px), Tif::Gtc, false, None);
         self.stats.liq_pushes += 1;
         let u = self.l1(i, ts, Action::Order { orders: vec![sweep, rest], grouping: Grouping::Na }, false);
