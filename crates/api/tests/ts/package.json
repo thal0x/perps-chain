@@ -1,0 +1,9 @@
+{
+  "name": "hlbft-api-ts-smoke",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@nktkas/hyperliquid": "0.33.3",
+    "viem": "2.31.0"
+  }
+}

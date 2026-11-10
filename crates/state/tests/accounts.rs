@@ -194,3 +194,17 @@ fn signature_cache_is_used_by_execution() {
     assert!(o.receipts[0].result.is_ok());
     assert_eq!(h.chain.sig_cache().len(), before - 1);
 }
+
+#[test]
+fn leverage_query_and_block_time() {
+    let mut h = setup();
+    let a = addr(ALICE);
+    assert_eq!(h.chain.q().leverage_of(&a, 9), None);
+    h.send(a, Action::UpdateLeverage { asset: 1, is_cross: true, leverage: 7 }).unwrap();
+    assert_eq!(h.chain.q().leverage_of(&a, 1), Some(Leverage::Cross(7)));
+    h.send(a, Action::UpdateLeverage { asset: 1, is_cross: false, leverage: 3 }).unwrap();
+    assert_eq!(h.chain.q().leverage_of(&a, 1), Some(Leverage::Isolated(3)));
+    let o = h.block(vec![]);
+    assert_eq!(h.chain.q().block_time(), h.time);
+    assert_eq!(h.chain.q().height(), o.height);
+}

@@ -5,3 +5,22 @@ edition.workspace = true
 
 [dependencies]
 interfaces = { workspace = true }
+hlwire = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value"] }
+tokio = { workspace = true }
+axum = { workspace = true }
+tower-http = { workspace = true }
+futures = { workspace = true }
+parking_lot = { workspace = true }
+tracing = { workspace = true }
+hex = { workspace = true }
+crossbeam-channel = { workspace = true }
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
+hlwire = { workspace = true }
+relayer = { workspace = true }
+reqwest = { workspace = true }
+tokio-tungstenite = "0.29"

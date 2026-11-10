@@ -11,7 +11,7 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 | agent (worktree /home/user/wt/<name>) | owns | status |
 |---|---|---|
 | hlwire | crates/hlwire | MERGED (35 tests, 94 SDK golden vectors) |
-| api | crates/api | running |
+| api | crates/api | MERGED (30 tests; Python+TS SDK vs fake backend; ~17k req/s); follow-up leverage_of running |
 | consensus | crates/consensus | MERGED (44 tests; 600-seed sweep ok, worst resume 6.2 s) |
 | netmempool | crates/net, crates/mempool | MERGED (32 tests) |
 | bookoracle | crates/book, crates/oracle | MERGED (58 tests) |
@@ -19,16 +19,17 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 | state | crates/state | MERGED (34 tests, 1.9M actions/s single-thread) |
 | bridge | bridge/, crates/relayer | MERGED (41 forge + 26 rust); e2e script pending node |
 | sim | crates/sim | running (wave 2) |
-| node | crates/node, scripts/localnet.sh | running (wave 2) |
+| node | crates/node, scripts/localnet.sh | MERGED (4-validator net, kill -9 recovery, 13 Python examples ok); --replay-log awaits sim |
+| acceptance | scripts/acceptance.sh, acceptance/ | running (AC5, AC6 full runs) |
 | chaos | crates/chaos | running (wave 2) |
 | clearinghouse (follow-up) | insurance StateKey fix | MERGED |
 
 ## Currently failing
-- All component crates are stubs (0 tests) — expected until M1.
+- state `invariants_hold_every_block` proptest: seed 4485867090622990286 -> negative equity after liquidation pass at height 98 (AC4 bug). Regression file kept in scratchpad; clearinghouse agent fixing.
 - No acceptance evidence yet.
 
 ## Next three actions
-1. Merge api, sim, node, chaos as they land; then M1 status + commit.
+1. Merge sim, node, chaos (+ state/api rev-4 follow-ups) as they land; then M1 status + commit.
 2. M2/M3: single node + 4/7-validator localnet with SDK smoke (node agent).
 3. Write scripts/acceptance.sh runners (ac1..ac6) wiring chaos/sim/sdk/bridge e2e.
 
@@ -45,3 +46,4 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 
 ## Blockers
 - (resolved) Remote `origin` = github.com/thal0x/perps-chain; push `main` after every merge/milestone.
+- Disk: ~9 GB free after api merge (D21 profile rebuilds). Prune stale debug/deps once all worktrees are on the D21 profile.
