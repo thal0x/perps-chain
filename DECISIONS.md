@@ -71,3 +71,10 @@ carry real statuses (resting oid / filled / error), as HL's do.
 
 **D14 [consensus] Round-robin leaders, equal stake in test configs**;
 quorum math is stake-weighted so unequal stakes work.
+
+**D15 (rev 2) [interfaces]** Added `ApiBackend` (node<->api), `BridgeHost`
+(node<->relayer watcher), `TriggerStore` (state<->book), and
+`ConsensusEnv::proposal_override` (replay mode, D8). Spot balances generalized
+to token indices (`AccountView.spot_balances`, `Clearinghouse::spot_send(token)`,
+`Genesis.spot_tokens/spot_balances`) because the in-scope SDK example
+basic_spot_transfer sends PURR.

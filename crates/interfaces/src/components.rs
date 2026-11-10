@@ -89,6 +89,28 @@ pub trait OrderBook {
     fn encode(&self) -> Vec<u8>;
 }
 
+/// Store of trigger (TP/SL) orders for one market, implemented in `crates/book`.
+pub trait TriggerStore {
+    fn insert(&mut self, o: TriggerOrder);
+    fn remove(&mut self, oid: Oid) -> Option<TriggerOrder>;
+    fn get(&self, oid: Oid) -> Option<&TriggerOrder>;
+    /// Remove and return all orders whose condition holds at `mark`, in
+    /// deterministic order (by oid). Condition: TP sell / SL buy trigger when
+    /// mark >= trigger_px; TP buy / SL sell trigger when mark <= trigger_px.
+    /// Orders with `parent_oid` still set are not eligible.
+    fn take_triggered(&mut self, mark: Px) -> Vec<TriggerOrder>;
+    /// Clear `parent_oid` on children of `parent` (parent filled) and return their oids.
+    fn release_children(&mut self, parent: Oid) -> Vec<Oid>;
+    /// Remove children of `parent` (parent canceled) and return them.
+    fn remove_children(&mut self, parent: Oid) -> Vec<TriggerOrder>;
+    fn user_orders(&self, user: &Address) -> Vec<&TriggerOrder>;
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    fn encode(&self) -> Vec<u8>;
+}
+
 // --------------------------------------------------------- clearinghouse ---
 
 /// Fill as applied to the clearinghouse (both sides at once).

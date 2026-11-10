@@ -199,6 +199,11 @@ pub trait ConsensusEnv {
     fn root_at(&self, h: Height) -> Option<Hash32>;
     /// Latest local snapshot, to serve SnapshotRequest.
     fn snapshot(&self) -> Option<Snapshot>;
+    /// Replay mode: if Some, the leader must propose exactly this
+    /// (timestamp, payload) for `height` instead of mempool contents.
+    fn proposal_override(&mut self, _height: Height) -> Option<(TimestampMs, Vec<Tx>)> {
+        None
+    }
     fn sign(&self, digest: &[u8; 32]) -> Sig65;
     fn verify(&self, digest: &[u8; 32], sig: &Sig65, signer: &Address) -> bool;
     fn store(&mut self) -> &mut dyn BlockStore;
@@ -210,4 +215,54 @@ pub trait ConsensusCore {
     fn handle(&mut self, input: ConsensusInput, env: &mut dyn ConsensusEnv) -> Vec<ConsensusOutput>;
     fn committed_height(&self) -> Height;
     fn current_view(&self) -> View;
+}
+
+// -------------------------------------------------------------- node <-> api ---
+
+/// Node status for `/admin/status` and harnesses.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct NodeStatus {
+    pub validator: Option<Address>,
+    pub committed_height: Height,
+    pub executed_height: Height,
+    pub view: View,
+    pub exec_root: Hash32,
+    pub mempool_len: usize,
+    pub peers: Vec<Address>,
+    pub last_commit_ms: u64,
+}
+
+/// Callback receiving every executed block, in height order.
+pub type BlockCallback = Box<dyn Fn(std::sync::Arc<BlockOutcome>) + Send + Sync>;
+
+/// What the API server needs from the node. Implemented in `crates/node`
+/// (and by an in-memory fake in api tests).
+pub trait ApiBackend: Send + Sync + 'static {
+    fn genesis(&self) -> Genesis;
+    /// Run `f` against a consistent view of the latest executed state.
+    fn query(&self, f: &mut dyn FnMut(&dyn StateQuery));
+    /// Submit a tx to the local mempool (gossiped to peers).
+    fn submit(&self, tx: Tx, source: TxSource) -> Result<TxHash, AdmissionError>;
+    /// Register for executed-block notifications (receipts + events).
+    fn on_block(&self, cb: BlockCallback);
+    fn status(&self) -> NodeStatus;
+    /// Apply a chaos config (JSON, see net::ChaosConfig). Admin only.
+    fn set_chaos(&self, _cfg_json: &str) -> Result<(), String> {
+        Err("chaos not supported".into())
+    }
+}
+
+// ----------------------------------------------------------- node <-> bridge ---
+
+/// What the in-node bridge watcher (crates/relayer) needs from its validator.
+pub trait BridgeHost: Send + Sync + 'static {
+    /// This validator's address (None for non-validators).
+    fn validator(&self) -> Option<Address>;
+    /// Sign & submit a validator action to the local mempool.
+    fn submit_validator_action(&self, a: ValidatorAction) -> Result<(), String>;
+    fn pending_withdrawals(&self) -> Vec<PendingWithdrawal>;
+    fn processed_deposit(&self, deposit_id: u64) -> bool;
+    /// Sign a 32-byte digest with the validator key (withdrawal EIP-712 digest).
+    fn sign_digest(&self, digest: &[u8; 32]) -> Option<Sig65>;
+    fn genesis(&self) -> Genesis;
 }

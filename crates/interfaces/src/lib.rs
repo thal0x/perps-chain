@@ -25,4 +25,4 @@ pub use traits::*;
 pub use tx::*;
 
 /// Interface revision; bump on every DECISIONS.md interface change.
-pub const INTERFACES_REV: u32 = 1;
+pub const INTERFACES_REV: u32 = 2;
