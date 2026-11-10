@@ -76,6 +76,12 @@ pub struct Core {
     my_timeout: Option<TimeoutMsg>,
     view_deadline: u64,
     timeout_streak: u32,
+    /// Local time we entered the current view.
+    view_entered_at: u64,
+    /// Evidence in the current view that messages are slow (late proposal).
+    view_slow: bool,
+    /// Local time of our first timeout in the current view.
+    local_timeout_at: Option<u64>,
     next_rebroadcast: u64,
     next_propose_at: Option<u64>,
     next_status: u64,
@@ -179,6 +185,9 @@ impl Core {
             my_timeout: None,
             view_deadline: 0,
             timeout_streak: 0,
+            view_entered_at: 0,
+            view_slow: false,
+            local_timeout_at: None,
             next_rebroadcast: 0,
             next_propose_at: None,
             next_status: 0,
@@ -280,6 +289,7 @@ impl Core {
 
     fn startup(&mut self, env: &mut dyn ConsensusEnv) {
         self.started = true;
+        self.view_entered_at = self.now;
         self.view_deadline = self.now + self.cfg.view_timeout(0);
         self.next_rebroadcast = self.now;
         self.next_status = self.now;
@@ -408,11 +418,33 @@ impl Core {
             return;
         }
         self.view = new_view;
+        // Backoff exists to outgrow message delays. Escalate only when the
+        // view that just failed showed that messages are slow: the leader's
+        // proposal arrived late, or the TC formed well after our own timeout.
+        // A view that failed with a prompt network (dead or equivocating
+        // leader, drops) does not escalate and resets the streak, so a
+        // streak built up during a slow period does not outlive it.
+        // Likewise a QC resets the streak only if it formed promptly;
+        // a QC that needed most of a long timeout keeps it (otherwise a
+        // network slower than the base timeout can never certify two views
+        // in a row).
+        let half = self.cfg.base_timeout_ms / 2;
         if via_tc {
-            self.timeout_streak = self.timeout_streak.saturating_add(1);
+            let slow_tc = self.local_timeout_at.is_some_and(|t| self.now >= t + half);
+            if self.view_slow || slow_tc {
+                self.timeout_streak = self.timeout_streak.saturating_add(1);
+            } else {
+                self.timeout_streak = 0;
+            }
         } else {
-            self.timeout_streak = 0;
+            let slow_qc = self.view_slow || self.now >= self.view_entered_at + self.cfg.min_block_interval_ms + half;
+            if !slow_qc {
+                self.timeout_streak = 0;
+            }
         }
+        self.view_entered_at = self.now;
+        self.view_slow = false;
+        self.local_timeout_at = None;
         self.view_deadline = self.now + self.cfg.view_timeout(self.timeout_streak);
         self.my_timeout = None;
         self.next_propose_at = None;
@@ -615,6 +647,13 @@ impl Core {
         self.process_qc(&justify, env);
         let h = &block.header;
         let direct = from == h.proposer && h.proposer == self.leader(h.view);
+        if direct {
+            let half = self.cfg.view_timeout(self.timeout_streak) / 2;
+            let late_in_view = h.view == self.view && self.now >= self.view_entered_at + half;
+            if late_in_view || h.view + 1 == self.view {
+                self.view_slow = true;
+            }
+        }
         if self.blocks.contains_key(&id) {
             if direct {
                 let b = self.blocks[&id].block.clone();
@@ -798,6 +837,9 @@ impl Core {
 
     fn local_timeout(&mut self, env: &mut dyn ConsensusEnv) {
         let v = self.view;
+        if self.local_timeout_at.is_none() {
+            self.local_timeout_at = Some(self.now);
+        }
         if self.safety.last_timeout_view < v {
             self.safety.last_timeout_view = v;
             self.stats.timeouts += 1;

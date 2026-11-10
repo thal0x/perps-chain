@@ -4,7 +4,7 @@
 //! safety is checked continuously.
 //!
 //! Default run: a handful of seeds per configuration.
-//! Long sweep:  `HLBFT_SIM_SEEDS=500 cargo test -p consensus --release --test sim_prop -- --ignored --nocapture`
+//! Long sweep:  `HLBFT_SIM_SEEDS=300 HLBFT_SIM_MS=120000 [HLBFT_SIM_BASE=..] [HLBFT_MAXTO=4000] cargo test -p consensus --release --test sim_prop long_seed_sweep -- --ignored --nocapture`
 
 use consensus::sim::*;
 use proptest::prelude::*;
@@ -27,6 +27,10 @@ fn run_schedule(n: usize, seed: u64, duration_ms: u64) -> Result<Outcome, String
     if rng.gen_range(0..3) == 0 {
         cfg.store = StoreKind::Mem { retain_heights: 60 };
         cfg.snapshot_every = 20;
+    }
+    // HLBFT_MAXTO=<ms>: override CoreConfig::max_timeout_ms (sweeps)
+    if std::env::var("HLBFT_MAXTO").is_ok() {
+        cfg.tweak = Some(|c| c.max_timeout_ms = std::env::var("HLBFT_MAXTO").unwrap().parse().expect("HLBFT_MAXTO"));
     }
     let mut sim = Sim::new(cfg);
     let mut order: Vec<usize> = (0..n).collect();
@@ -175,13 +179,18 @@ fn fixed_seeds_regression() {
     }
 }
 
-/// Regression: a restarted node far behind pruned peers could never certify
-/// a snapshot because header exec claims skipped heights (found in the
-/// main merge gate).
+/// Regressions found by the merge gate / sweeps (D29):
+/// * 7182031906024167429 (n=4): a restarted node far behind pruned peers
+///   could never certify a snapshot (header exec claims skipped heights).
+/// * 9438599898672929746 (n=7), 5000000079 (n=4): view-timeout backoff
+///   built up during a lossy/slow episode outlived the heal; a faulty
+///   leader right after the heal then cost > 10 s.
 #[test]
-fn regression_snapshot_claim_gap() {
-    let o = run_schedule(4, 7182031906024167429, 120_000).unwrap_or_else(|e| panic!("{e}"));
-    assert!(o.height > 10);
+fn regression_seeds() {
+    for (seed, n) in [(7182031906024167429u64, 4usize), (9438599898672929746, 7), (5000000079, 4)] {
+        let o = run_schedule(n, seed, 120_000).unwrap_or_else(|e| panic!("{e}"));
+        assert!(o.height > 10 && o.max_resume_ms <= 10_000, "seed {seed}: {o:?}");
+    }
 }
 
 #[test]
