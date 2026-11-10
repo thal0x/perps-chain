@@ -3,5 +3,28 @@ name = "chaos"
 version.workspace = true
 edition.workspace = true
 
+[[bin]]
+name = "hlchaos"
+path = "src/main.rs"
+
+# Tiny stand-in for `hlnode` (testnet-gen + run) used by the harness's own
+# integration tests until/independently of the real node.
+[[bin]]
+name = "fake-hlnode"
+path = "src/bin/fake_hlnode.rs"
+
 [dependencies]
 interfaces = { workspace = true }
+hlwire = { workspace = true }
+consensus = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+clap = { workspace = true }
+hex = { workspace = true }
+libc = "0.2"
+
+[dev-dependencies]
+proptest = { workspace = true }
