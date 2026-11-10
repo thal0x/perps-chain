@@ -5,37 +5,29 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 ## Completed milestones
 - M0 Plan — docs, interfaces crate, status tooling.
 
-## In progress (owner -> directory, worktree, branch)
-(see "Agents" below; worktrees under /home/user/wt/<name>, branch agent/<name>)
+## In progress (owner -> directory, worktree /home/user/wt/<name>, branch agent/<name>)
+All wave-1/2 components MERGED: interfaces, hlwire, consensus, net, mempool, book, oracle, clearinghouse, state, api, relayer+bridge, sim, node, chaos, acceptance runners (AC5/AC6).
 
-| agent (worktree /home/user/wt/<name>) | owns | status |
+| agent | owns | status |
 |---|---|---|
-| hlwire | crates/hlwire | MERGED (35 tests, 94 SDK golden vectors) |
-| api | crates/api | MERGED (30 tests; Python+TS SDK vs fake backend; ~17k req/s); follow-up leverage_of running |
-| consensus | crates/consensus | MERGED (44 tests; 600-seed sweep ok, worst resume 6.2 s) |
-| netmempool | crates/net, crates/mempool | MERGED (32 tests) |
-| bookoracle | crates/book, crates/oracle | MERGED (58 tests) |
-| clearinghouse | crates/clearinghouse | MERGED; fill 0.6–2.6 µs (target 1 µs) |
-| state | crates/state | MERGED (34 tests, 1.9M actions/s single-thread) |
-| bridge | bridge/, crates/relayer | MERGED (41 forge + 26 rust); e2e script pending node |
-| sim | crates/sim | running (wave 2) |
-| node | crates/node, scripts/localnet.sh | MERGED (4-validator net, kill -9 recovery, 13 Python examples ok); --replay-log awaits sim |
-| acceptance | scripts/acceptance.sh, acceptance/ | running (AC5, AC6 full runs) |
-| chaos | crates/chaos | running (wave 2) |
-| clearinghouse (follow-up) | insurance StateKey fix | MERGED |
+| spot | crates/state, crates/api (spot PURR/USDC + outcomeMeta, D25) | running |
+| integ | crates/node, scripts/localnet.sh, scripts/acceptance.sh, acceptance/ (replay, AC2/3/4 runners, AC3 profiling) | running |
 
 ## Currently failing
-- state `invariants_hold_every_block` proptest: seed 4485867090622990286 -> negative equity after liquidation pass at height 98 (AC4 bug). Regression file kept in scratchpad; clearinghouse agent fixing.
-- No acceptance evidence yet.
+- AC5: basic_ws `trades PURR/USDC` never gets messages (no spot book -> spot agent); TS market-order guide fails on missing `outcomeMeta` (spot agent); TS withdraw3 "1" rejected (allowlist per D25, integ agent).
+- AC1–AC4: runners/evidence pending (integ agent; AC1 12 h run scheduled last on final code).
+- AC6: PASS evidence exists but is STALE after later merges (rerun at end).
 
 ## Next three actions
-1. Merge sim, node, chaos (+ state/api rev-4 follow-ups) as they land; then M1 status + commit.
-2. M2/M3: single node + 4/7-validator localnet with SDK smoke (node agent).
-3. Write scripts/acceptance.sh runners (ac1..ac6) wiring chaos/sim/sdk/bridge e2e.
+1. Merge spot + integ; extend `scripts/localnet.sh seed` with a PURR/USDC ladder.
+2. Act on AC3 profiling findings (assign optimizations per crate).
+3. Freeze code, run all ACs (AC1 12 h last), commit evidence, README.
 
 ## Known risks
 - Throughput with one validator down ~2.5 blocks/s (no leader reputation).
 - Clearinghouse fill cost 1.6–2.6 µs at 100k accounts.
+- sim gen 30–50k actions/s (50M week ≈ 20–30 min) — acceptable.
+- AC3 untested at target; 4 validators + load on 4 cores.
 - Insurance fund can go negative in a corner case (D19).
 
 ## Environment notes
