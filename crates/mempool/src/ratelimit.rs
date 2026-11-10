@@ -3,7 +3,7 @@
 
 use parking_lot::Mutex;
 use std::collections::HashMap;
-use std::hash::{BuildHasher, Hash, Hasher};
+use std::hash::{BuildHasher, Hash};
 
 #[derive(Clone, Copy, Debug)]
 struct Bucket {
@@ -61,9 +61,7 @@ impl<K: Hash + Eq + Clone> RateLimiter<K> {
         if self.rate == 0 {
             return true;
         }
-        let mut h = self.hasher.build_hasher();
-        key.hash(&mut h);
-        let shard = &self.shards[(h.finish() % self.shards.len() as u64) as usize];
+        let shard = &self.shards[(self.hasher.hash_one(key) % self.shards.len() as u64) as usize];
         let mut s = shard.lock();
         let ok = if let Some(b) = s.map.get_mut(key) {
             self.refill(b, now_ms);
