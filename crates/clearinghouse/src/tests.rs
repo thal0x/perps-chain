@@ -571,3 +571,29 @@ fn liquidation_index_flags_moved_accounts() {
         assert_eq!(h.ch.liquidation_targets(), h.ch.liquidation_targets_full_scan(), "at px {p}");
     }
 }
+
+#[test]
+fn take_dirty_key_set_matches_all_entity_hashes() {
+    let mut h = H::new("10");
+    let mut acc: std::collections::BTreeMap<StateKey, Hash32> = Default::default();
+    let mut drain = |ch: &mut Clearinghouse, acc: &mut std::collections::BTreeMap<StateKey, Hash32>| {
+        for (k, v) in ch.take_dirty() {
+            assert_ne!(k, StateKey::Account(INSURANCE));
+            acc.insert(k, v);
+        }
+        let all: std::collections::BTreeMap<_, _> = ch.all_entity_hashes().into_iter().collect();
+        assert_eq!(*acc, all);
+    };
+    drain(&mut h.ch, &mut acc); // genesis
+    h.dep(1, "1000");
+    h.dep(2, "1000");
+    h.fill(1, 2, true, "2000", "0.1", 1).unwrap();
+    h.ch.on_block_funding(T0 + 3_600_000); // touches insurance (dust)
+    drain(&mut h.ch, &mut acc);
+    let mut d = Clearinghouse::decode(&h.ch.encode()).unwrap();
+    let restored: std::collections::BTreeMap<_, _> = d.all_entity_hashes().into_iter().collect();
+    assert_eq!(restored, acc);
+    d.set_prices(1, px("900"), px("900"), None, T0);
+    d.backstop_and_adl(addr(1), T0);
+    drain(&mut d, &mut acc);
+}

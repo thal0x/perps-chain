@@ -95,20 +95,44 @@ struct World {
     height: u64,
     adl_events: usize,
     bad_debt_events: usize,
+    /// Entity hashes accumulated from `take_dirty` since construction.
+    acc: std::collections::BTreeMap<StateKey, Hash32>,
 }
 
 impl World {
     fn new(n: u8, insurance: i64, seed_bal: i64) -> Self {
         let g = genesis(n, insurance, seed_bal);
         let flows = ExternalFlows { genesis: Clearinghouse::genesis_total(&g), ..Default::default() };
-        Self { ch: Clearinghouse::new(&g), flows, n, now: T0, height: 0, adl_events: 0, bad_debt_events: 0 }
+        Self {
+            ch: Clearinghouse::new(&g),
+            flows,
+            n,
+            now: T0,
+            height: 0,
+            adl_events: 0,
+            bad_debt_events: 0,
+            acc: Default::default(),
+        }
     }
 
     fn a(&self, i: u8) -> Address {
         addr(i % self.n)
     }
 
+    /// Drain `take_dirty` into the accumulated map; it must equal
+    /// `all_entity_hashes()` exactly (same key set, insurance only under
+    /// `StateKey::Insurance`).
+    fn check_commitment(&mut self) {
+        for (k, h) in self.ch.take_dirty() {
+            assert_ne!(k, StateKey::Account(INSURANCE), "insurance reported as an Account key");
+            self.acc.insert(k, h);
+        }
+        let all: std::collections::BTreeMap<StateKey, Hash32> = self.ch.all_entity_hashes().into_iter().collect();
+        assert_eq!(self.acc, all, "accumulated take_dirty != all_entity_hashes");
+    }
+
     fn check(&mut self) {
+        self.check_commitment();
         self.height += 1;
         if let Err(e) = self.ch.check_invariants(&self.flows, self.height) {
             panic!("{e}");
@@ -296,6 +320,8 @@ fn run(n: u8, insurance: i64, seed_bal: i64, ops: &[Op]) -> (usize, usize) {
             let d = Clearinghouse::decode(&bytes).unwrap();
             assert_eq!(d.encode(), bytes);
             assert_eq!(d.all_entity_hashes(), w.ch.all_entity_hashes());
+            let restored: std::collections::BTreeMap<StateKey, Hash32> = d.all_entity_hashes().into_iter().collect();
+            assert_eq!(restored, w.acc, "restored node's entity set differs from accumulated take_dirty");
             assert_eq!(d.liquidation_targets_full_scan(), w.ch.liquidation_targets_full_scan());
             // continue on the decoded copy half of the time: derived indices must be rebuilt correctly
             if i % 32 == 31 {
