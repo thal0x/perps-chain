@@ -116,6 +116,8 @@ pub struct FakeBackend {
     pub submitted: Mutex<Vec<(Tx, TxSource)>>,
     pub chaos: Mutex<Option<String>>,
     height: Mutex<Height>,
+    /// Used when the script queue is empty.
+    responder: Mutex<Option<Box<dyn Fn(&UserTx) -> Script + Send + Sync>>>,
 }
 
 pub fn addr(n: u8) -> Address {
@@ -178,7 +180,12 @@ impl FakeBackend {
             submitted: Mutex::new(vec![]),
             chaos: Mutex::new(None),
             height: Mutex::new(0),
+            responder: Mutex::new(None),
         })
+    }
+
+    pub fn set_responder(&self, f: impl Fn(&UserTx) -> Script + Send + Sync + 'static) {
+        *self.responder.lock() = Some(Box::new(f));
     }
 
     pub fn script(&self, s: Script) {
@@ -211,12 +218,15 @@ impl ApiBackend for FakeBackend {
     }
     fn submit(&self, tx: Tx, source: TxSource) -> Result<TxHash, AdmissionError> {
         let h = tx.hash();
+        let scripted = self.script.lock().pop_front();
+        let s = match scripted {
+            Some(s) => s,
+            None => match (&*self.responder.lock(), &tx) {
+                (Some(r), Tx::User(u)) => r(u),
+                _ => Script::Execute { user: Address::ZERO, result: Ok(ActionResponse::Default), events: vec![] },
+            },
+        };
         self.submitted.lock().push((tx, source));
-        let s = self.script.lock().pop_front().unwrap_or(Script::Execute {
-            user: Address::ZERO,
-            result: Ok(ActionResponse::Default),
-            events: vec![],
-        });
         match s {
             Script::Reject(e) => Err(e),
             Script::Drop => Ok(h),
@@ -237,5 +247,42 @@ impl ApiBackend for FakeBackend {
         serde_json::from_str::<serde_json::Value>(cfg_json).map_err(|e| e.to_string())?;
         *self.chaos.lock() = Some(cfg_json.to_string());
         Ok(())
+    }
+}
+
+/// HL action `type` of a msgpack-encoded action (first map entry "type").
+pub fn action_type(action_bytes: &[u8]) -> Option<String> {
+    // fixmap header, then fixstr "type", then fixstr/str8 value
+    let rest = action_bytes.get(1..)?;
+    let rest = rest.strip_prefix(b"\xa4type")?;
+    let (len, body) = match *rest.first()? {
+        b @ 0xa0..=0xbf => ((b & 0x1f) as usize, rest.get(1..)?),
+        0xd9 => (*rest.get(1)? as usize, rest.get(2..)?),
+        _ => return None,
+    };
+    String::from_utf8(body.get(..len)?.to_vec()).ok()
+}
+
+/// Plausible receipts by action type: every order rests (oid counter, one
+/// status per `"b"` key), cancels succeed, everything else is `default`.
+pub fn simple_responder(user: Address) -> impl Fn(&UserTx) -> Script + Send + Sync + 'static {
+    let next = std::sync::atomic::AtomicU64::new(1000);
+    move |u: &UserTx| {
+        let ty = action_type(&u.action_bytes).unwrap_or_default();
+        let count = |pat: &[u8]| u.action_bytes.windows(pat.len()).filter(|w| *w == pat).count().max(1);
+        let result = match ty.as_str() {
+            "order" | "batchModify" => {
+                let n = count(b"\xa1b");
+                Ok(ActionResponse::Order(
+                    (0..n)
+                        .map(|_| OrderStatusResp::Resting { oid: next.fetch_add(1, std::sync::atomic::Ordering::Relaxed), cloid: None })
+                        .collect(),
+                ))
+            }
+            "cancel" => Ok(ActionResponse::Cancel(vec![SimpleStatus::Success; count(b"\xa1o")])),
+            "cancelByCloid" => Ok(ActionResponse::Cancel(vec![SimpleStatus::Success; count(b"\xa5cloid")])),
+            _ => Ok(ActionResponse::Default),
+        };
+        Script::Execute { user, result, events: vec![] }
     }
 }
