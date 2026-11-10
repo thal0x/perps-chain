@@ -114,3 +114,8 @@ ancestry (safety depends only on QC/TC views; fixes a sync deadlock found by
 the seed sweep). Replay voters also check `proposal_override`; logs need two
 padding blocks. Proposals are authenticated by the p2p channel identity, not
 a separate signature (validator-only mesh, D5).
+
+**D21 [process]** Disk allowance (~30 GB) filled from incremental caches
+(13 GB) in the shared target dir. Dev/test profiles now use
+`incremental = false` and `debug = "line-tables-only"`. Agents must delete
+their own temp dirs (e.g. /tmp perf stores) after tests.
