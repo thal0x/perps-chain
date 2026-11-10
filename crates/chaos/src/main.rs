@@ -99,6 +99,9 @@ enum Cmd {
         /// on failure, bounded log tails are kept).
         #[arg(long)]
         keep_workdir: bool,
+        /// Skip the post-run commit-proof (QC) verification of the FileStores.
+        #[arg(long)]
+        no_verify_qcs: bool,
         #[arg(long, value_parser = dur, default_value = "30s")]
         progress_every: u64,
     },
@@ -153,6 +156,7 @@ fn main() {
             accounts,
             allow_gaps,
             keep_workdir,
+            no_verify_qcs,
             progress_every,
         } => {
             if episode_min == 0 || episode_min > episode_max {
@@ -186,6 +190,7 @@ fn main() {
                 accounts,
                 allow_gaps,
                 keep_workdir,
+                verify_qcs: !no_verify_qcs,
                 progress_every_ms: progress_every,
                 flush_every_ms: progress_every.min(30_000),
                 ..RunConfig::default()

@@ -27,6 +27,8 @@ pub enum ViolationKind {
     /// The chain advanced during a whole-network split where no group holds a
     /// quorum (recorded by the runner).
     ProgressWithoutQuorum,
+    /// Post-run FileStore check: bad commit proof / id mismatch with commits.log.
+    QcVerification,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -436,7 +438,11 @@ mod tests {
         assert_eq!(c.node_committed(1), Some(1));
         c.on_killed(0); // node0 died mid-line
         assert_eq!(c.stats.torn_lines, 1);
-        app(&homes[0].join("commits.log"), &format!("\n3 {} 3\n", id(3)));
+        // hlnode truncates the torn tail on restart and re-appends
+        let p0 = homes[0].join("commits.log");
+        let len = std::fs::metadata(&p0).unwrap().len();
+        std::fs::OpenOptions::new().write(true).open(&p0).unwrap().set_len(len - 12).unwrap();
+        app(&p0, &format!("3 {} 3\n", id(3)));
         app(&homes[1].join("console.log"), "boom STATE DIVERGENCE height 3\n");
         c.poll();
         assert_eq!(c.node_committed(0), Some(3));

@@ -9,6 +9,7 @@ pub mod checker;
 pub mod cluster;
 pub mod http;
 pub mod load;
+pub mod qc;
 pub mod report;
 pub mod runner;
 pub mod schedule;

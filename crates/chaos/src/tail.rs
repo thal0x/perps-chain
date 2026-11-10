@@ -89,12 +89,15 @@ impl LogTail {
         }
     }
 
-    /// Drop a buffered partial line (the writer died before finishing it).
+    /// Drop a buffered partial line (the writer died before finishing it)
+    /// and rewind to its start: hlnode truncates a torn last line on
+    /// restart, so the next complete line is appended at that offset.
     pub fn discard_partial(&mut self) -> Option<String> {
         if self.partial.is_empty() {
             return None;
         }
         self.torn_discarded += self.partial.len() as u64;
+        self.offset -= self.partial.len() as u64;
         let s = String::from_utf8_lossy(&self.partial).into_owned();
         self.partial.clear();
         Some(s)
@@ -125,9 +128,13 @@ mod tests {
         f.write_all(b"4 torn").unwrap();
         assert!(t.poll().is_empty());
         assert_eq!(t.discard_partial().as_deref(), Some("4 torn"));
-        f.write_all(b"\n4 d\n").unwrap();
-        // the leftover newline of the torn write yields one empty line
-        assert_eq!(t.poll(), vec!["", "4 d"]);
+        // the restarted writer truncates the torn tail, then appends
+        drop(f);
+        let len = std::fs::metadata(&p).unwrap().len();
+        std::fs::OpenOptions::new().write(true).open(&p).unwrap().set_len(len - 6).unwrap();
+        let mut f = std::fs::OpenOptions::new().append(true).open(&p).unwrap();
+        f.write_all(b"4 d\n5 e\n").unwrap();
+        assert_eq!(t.poll(), vec!["4 d", "5 e"]);
         // truncation resets
         drop(f);
         std::fs::write(&p, b"9 z\n").unwrap();

@@ -54,6 +54,8 @@ pub struct Report {
     pub progress_stalls: u64,
     pub unexpected_exits: u64,
     pub final_height: u64,
+    /// Post-run QC verification of the FileStores (None = disabled).
+    pub qc: Option<crate::qc::QcReport>,
     pub load: BTreeMap<String, u64>,
     pub episodes_by_kind: BTreeMap<String, u64>,
     pub violations_by_kind: BTreeMap<ViolationKind, u64>,

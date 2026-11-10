@@ -59,6 +59,8 @@ pub struct RunConfig {
     pub flush_every_ms: u64,
     /// Keep `run-*/net` (node data and logs) after the run.
     pub keep_workdir: bool,
+    /// Verify commit proofs in every node's FileStore after the run.
+    pub verify_qcs: bool,
 }
 
 impl Default for RunConfig {
@@ -89,6 +91,7 @@ impl Default for RunConfig {
             progress_every_ms: 30_000,
             flush_every_ms: 30_000,
             keep_workdir: false,
+            verify_qcs: true,
         }
     }
 }
@@ -603,6 +606,9 @@ impl Runner {
                 break;
             }
             let max_ep = remaining - obs;
+            if max_ep < self.cfg.episode_min_ms / 2 {
+                break; // too little time left for a meaningful episode
+            }
             let ep = sched.next_episode(Some(max_ep));
             self.run_episode(ep);
         }
@@ -655,6 +661,18 @@ impl Runner {
         self.cluster.stop_all(Duration::from_secs(5));
         // final drain (nodes may flush on shutdown); torn tails are harmless
         self.checker.poll();
+        if self.cfg.verify_qcs {
+            let homes: Vec<PathBuf> = self.cluster.nodes.iter().map(|n| n.home.clone()).collect();
+            let q = crate::qc::verify_homes(&self.cluster.genesis, &homes, 20_000);
+            self.say(format!(
+                "QC verification: {} nodes checked, {} skipped, {} blocks proven, {} failures",
+                q.nodes_checked, q.nodes_skipped, q.blocks_verified, q.failures.len()
+            ));
+            for f in &q.failures {
+                self.checker.record(Violation { kind: ViolationKind::QcVerification, node: usize::MAX, height: 0, detail: f.clone() });
+            }
+            self.report.qc = Some(q);
+        }
         self.fill_report();
         let r = &mut self.report;
         let mut reasons = vec![];

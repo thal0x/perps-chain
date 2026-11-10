@@ -40,7 +40,7 @@ fn mixed_episodes_pass_on_honest_fake_nodes() {
     let (code, r, out) = hlchaos(
         "mixed",
         &["--validators", "7", "--max-faulty", "2", "--seed", "7", "--duration", "40s", "--episode-min", "3s", "--episode-max", "5s",
-          "--observe", "2s", "--stall-window", "8s", "--load-rate", "20",
+          "--observe", "2s", "--stall-window", "8s", "--load-rate", "20", "--resume-limit-ms", "4000",
           "--kinds", "kill,rolling_kill,isolate,minority_partition,lossy,jitter,combo,split"],
         &[],
     );
@@ -48,9 +48,9 @@ fn mixed_episodes_pass_on_honest_fake_nodes() {
     assert_eq!(code, 0);
     assert_eq!(r["validators"], 7);
     assert_eq!(r["safety_violations"], 0);
-    assert!(r["episodes"].as_u64().unwrap() >= 4, "{}", r["episodes"]);
+    assert!(r["episodes"].as_u64().unwrap() >= 3, "{}", r["episodes"]);
     assert_eq!(r["heals"], r["episodes"]);
-    assert!(r["max_resume_ms"].as_u64().unwrap() <= 10_000);
+    assert!(r["max_resume_ms"].as_u64().unwrap() <= 4_000);
     assert!(r["duration_s"].as_u64().unwrap() >= 40);
     assert!(r["checker"]["cross_checked_commits"].as_u64().unwrap() > 50);
     assert_eq!(r["complete"], true);

@@ -25,7 +25,14 @@ pub struct LoadStats {
     pub orders: AtomicU64,
     pub cancels: AtomicU64,
     pub noops: AtomicU64,
+    /// Ticks skipped because too many requests were in flight.
+    pub skipped: AtomicU64,
+    pub inflight: AtomicU64,
 }
+
+/// Max concurrent `/exchange` requests (the endpoint answers after the tx
+/// is executed, so requests block while the chain is halted).
+pub const MAX_INFLIGHT: u64 = 32;
 
 impl LoadStats {
     pub fn snapshot(&self) -> BTreeMap<String, u64> {
@@ -38,6 +45,7 @@ impl LoadStats {
             ("orders", &self.orders),
             ("cancels", &self.cancels),
             ("noops", &self.noops),
+            ("skipped", &self.skipped),
         ] {
             m.insert(k.to_string(), v.load(Ordering::Relaxed));
         }
@@ -136,7 +144,7 @@ impl BuiltinLoad {
     pub fn spawn(self, stop: Arc<AtomicBool>) -> Arc<LoadStats> {
         let stats = Arc::new(LoadStats::default());
         let st = stats.clone();
-        std::thread::Builder::new().name("load".into()).spawn(move || self.run(&st, &stop)).expect("spawn load");
+        std::thread::Builder::new().name("load".into()).spawn(move || self.run(st, &stop)).expect("spawn load");
         stats
     }
 
@@ -148,7 +156,7 @@ impl BuiltinLoad {
         Some(&self.apis[live[rng.gen_range(0..live.len())]])
     }
 
-    fn run(self, st: &LoadStats, stop: &AtomicBool) {
+    fn run(self, st: Arc<LoadStats>, stop: &AtomicBool) {
         if self.wallets.is_empty() || self.rate <= 0.0 {
             return;
         }
@@ -178,6 +186,10 @@ impl BuiltinLoad {
             next += period;
             if next + Duration::from_secs(2) < Instant::now() {
                 next = Instant::now(); // don't burst after a stall
+            }
+            if st.inflight.load(Ordering::SeqCst) >= MAX_INFLIGHT {
+                st.skipped.fetch_add(1, Ordering::Relaxed);
+                continue;
             }
             let w = k % self.wallets.len();
             k += 1;
@@ -218,19 +230,24 @@ impl BuiltinLoad {
                 }
             };
             let body = hlwire::signed_l1_request(&self.wallets[w], action, nonce, None, None, self.is_mainnet);
-            let Some(api) = self.pick_api(&mut rng) else { continue };
+            let Some(api) = self.pick_api(&mut rng).map(|s| s.to_string()) else { continue };
             st.sent.fetch_add(1, Ordering::Relaxed);
-            match http::post_json(api, "/exchange", &body.to_string(), Duration::from_secs(2)) {
-                Ok(r) if r.ok() && r.text().contains("\"ok\"") => {
-                    st.accepted.fetch_add(1, Ordering::Relaxed);
+            st.inflight.fetch_add(1, Ordering::SeqCst);
+            let st2 = st.clone();
+            std::thread::spawn(move || {
+                match http::post_json(&api, "/exchange", &body.to_string(), Duration::from_secs(15)) {
+                    Ok(r) if r.ok() && r.text().contains("\"ok\"") => {
+                        st2.accepted.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Ok(_) => {
+                        st2.rejected.fetch_add(1, Ordering::Relaxed);
+                    }
+                    Err(_) => {
+                        st2.http_errors.fetch_add(1, Ordering::Relaxed);
+                    }
                 }
-                Ok(_) => {
-                    st.rejected.fetch_add(1, Ordering::Relaxed);
-                }
-                Err(_) => {
-                    st.http_errors.fetch_add(1, Ordering::Relaxed);
-                }
-            }
+                st2.inflight.fetch_sub(1, Ordering::SeqCst);
+            });
         }
     }
 }

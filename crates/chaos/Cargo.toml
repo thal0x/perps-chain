@@ -16,6 +16,7 @@ path = "src/bin/fake_hlnode.rs"
 [dependencies]
 interfaces = { workspace = true }
 hlwire = { workspace = true }
+consensus = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
