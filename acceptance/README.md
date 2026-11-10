@@ -8,8 +8,41 @@ A full run refuses to start with uncommitted changes in the fingerprinted source
 (`scripts/evidence.py --fingerprint`) is taken from HEAD. `--smoke` writes
 `acceptance/tmp/acN.smoke.json` and never touches committed evidence. Both build
 `hlnode`/`hlrelayer` in release mode and run private copies from `run/bin/`.
-AC1 delegates to `scripts/chaos_smoke.sh` (hlchaos); AC2..AC4 are placeholders
-(`run_acN` in `scripts/acceptance.sh`).
+AC1 delegates to `scripts/chaos_smoke.sh` (hlchaos).
+
+## AC2 — determinism (`run_ac2`, helpers in `replay_tools.py`)
+Work dir `run/ac2_<mode>` (`AC2_DIR`). `sim gen --seed 42 --actions 50M --sim-days 7
+--block-ms 6000 --validators 4 --threads 2 --genesis-dir` (smoke: 200k / 1 day) → `log.zst`,
+genesis.json, keys.json, gen roots (gzipped). Reused if params + source fingerprint match
+(`gen.key`). Replays A and B: 4 `hlnode run --replay-log log.zst --genesis genesis.json
+--invariants every --min-block-ms 1` (p2p ports from the log's genesis: 9000..9003; API
+on free ports from 3301); waits for every node's `replay.json`; stall timeout
+`REPLAY_STALL_S` (600 s). Keeps gzipped `roots.log` + `replay.json` per node, deletes node
+homes. Offline `sim replay --check-invariants every`. Comparison per height over
+A0..A3, B0..B3, offline and gen roots: any missing/different root or extra height =
+mismatch; every node's `replay.json` roots_digest must equal `sim replay`'s; final height
+= log length; no `STATE DIVERGENCE` lines. `phases.tsv` (wall time, peak disk, peak RSS
+per node / gen / offline) goes into the evidence. Dry runs: `AC2_ACTIONS=5000000
+AC2_DAYS=7 scripts/acceptance.sh ac2 --smoke`. The log is kept for AC4
+(`AC2_DELETE_LOG=1` deletes it).
+
+## AC3 — throughput (`run_ac3`, `ac3_measure.py`, `thread_cpu.py`)
+`localnet.sh start 4 --bench --release` (API from 3401, p2p from 26700, 200 funded
+accounts), `sim load --mode bench --rate 110000` (smoke 12000) over all 4 APIs, whole run
+pre-signed before sending (`--presign-s`, 4 sign threads). Measured from node0's
+commits.log (block timestamps) + roots.log (order actions): window starts 20 s after the
+first block with order actions, 120 s (smoke 20 s); `min_10s_window` = min over aligned
+and sliding 10 s windows; median of consecutive block timestamp deltas. Per-thread CPU of
+all nodes + the load generator is sampled during the window (`thread_cpu` in the
+evidence). `AC3_KEEP=1` keeps `run/ac3`.
+
+## AC4 — invariants (`run_ac4`, `proptest_cases.py`)
+`cargo test -p clearinghouse -p state`; proptest case counts come from each
+`proptest!` block's `cases` (proptest prints none) and count only if the test passed.
+Note: the blocks set `cases` explicitly, so `PROPTEST_CASES` has no effect. Replay part:
+reuses `AC2_DIR/invariants.json` when produced with the same fingerprint and mode
+(offline + 8 node replays, every block), else runs gen + replay A + offline itself.
+`replay_blocks_checked` = min over offline and node checks; must equal the log length.
 
 ## AC5 — SDK compatibility (`acceptance/sdk/`)
 Each language runs on its own fresh `scripts/localnet.sh dev` (4 validators, API
