@@ -8,29 +8,43 @@ use interfaces::*;
 
 /// Parse a cloid: `0x` + 32 hex digits (any case).
 pub fn parse_cloid(s: &str) -> Result<Cloid, String> {
-    let b = s.as_bytes();
+    parse_cloid_bytes(s.as_bytes())
+}
+
+pub(crate) fn parse_cloid_bytes(b: &[u8]) -> Result<Cloid, String> {
+    let s = || String::from_utf8_lossy(b).into_owned();
     if b.len() != 34 || b[0] != b'0' || (b[1] != b'x' && b[1] != b'X') {
-        return Err(format!("cloid must be 0x + 16 bytes hex: {s}"));
+        return Err(format!("cloid must be 0x + 16 bytes hex: {}", s()));
     }
     let mut out = [0u8; 16];
+    let mut bad = 0u8;
     for (i, o) in out.iter_mut().enumerate() {
-        match (nibble(b[2 + 2 * i]), nibble(b[3 + 2 * i])) {
-            (Some(h), Some(l)) => *o = (h << 4) | l,
-            _ => return Err(format!("bad cloid hex: {s}")),
-        }
+        let (h, l) = (HEX[b[2 + 2 * i] as usize], HEX[b[3 + 2 * i] as usize]);
+        bad |= h | l;
+        *o = (h << 4) | (l & 0x0f);
+    }
+    if bad & 0xf0 != 0 {
+        return Err(format!("bad cloid hex: {}", s()));
     }
     Ok(out)
 }
 
-#[inline]
-fn nibble(c: u8) -> Option<u8> {
-    match c {
-        b'0'..=b'9' => Some(c - b'0'),
-        b'a'..=b'f' => Some(c - b'a' + 10),
-        b'A'..=b'F' => Some(c - b'A' + 10),
-        _ => None,
+/// Hex digit value, 0xff for non-hex bytes.
+static HEX: [u8; 256] = {
+    let mut t = [0xffu8; 256];
+    let mut i = 0;
+    while i < 10 {
+        t[b'0' as usize + i] = i as u8;
+        i += 1;
     }
-}
+    let mut i = 0;
+    while i < 6 {
+        t[b'a' as usize + i] = 10 + i as u8;
+        t[b'A' as usize + i] = 10 + i as u8;
+        i += 1;
+    }
+    t
+};
 
 /// Lowercase `0x`-prefixed hex form of a cloid (what both SDKs send).
 pub fn cloid_to_hex(c: &Cloid) -> String {
@@ -158,6 +172,33 @@ fn shift_decimal(m: &str, exp: i32) -> Option<String> {
         )
     };
     Some(format!("{sign}{s}"))
+}
+
+fn bytes_str(b: &[u8]) -> std::borrow::Cow<'_, str> {
+    String::from_utf8_lossy(b)
+}
+
+/// [`parse_px`] on raw (UTF-8) string bytes, no allocation on success.
+pub(crate) fn parse_px_bytes(b: &[u8]) -> Result<Px, String> {
+    if b.iter().any(|&c| c == b'e' || c == b'E') {
+        return parse_px(&bytes_str(b));
+    }
+    match parse_plain(b, PX_DECIMALS) {
+        Ok(v) => u64::try_from(v).map(Px).map_err(|_| format!("invalid price: {}", bytes_str(b))),
+        Err(e) => Err(format!("{e}: {:?}", bytes_str(b))),
+    }
+}
+
+/// [`parse_sz`] on raw (UTF-8) string bytes, no allocation on success.
+pub(crate) fn parse_sz_bytes(b: &[u8]) -> Result<Sz, String> {
+    if b.iter().any(|&c| c == b'e' || c == b'E') {
+        return parse_sz(&bytes_str(b));
+    }
+    match parse_plain(b, SZ_DECIMALS) {
+        Ok(v) if v >= 0 => i64::try_from(v).map(Sz).map_err(|_| format!("invalid size: {}", bytes_str(b))),
+        Ok(_) => Err(format!("invalid size: {}", bytes_str(b))),
+        Err(e) => Err(format!("{e}: {:?}", bytes_str(b))),
+    }
 }
 
 /// Wire price string -> [`Px`] (exact, > 0 not enforced here).
@@ -407,6 +448,16 @@ pub fn is_user_signed_type(t: &str) -> bool {
 
 /// Decode HL wire msgpack into a typed [`Action`].
 pub fn decode_action(action_bytes: &[u8]) -> Result<Action, String> {
+    match crate::fast::decode_fast(action_bytes) {
+        crate::fast::Fast::Done(r) => r,
+        crate::fast::Fast::Fallback => decode_action_generic(action_bytes),
+    }
+}
+
+/// Reference decoder (validate, then walk lazy views). `decode_action` uses
+/// an allocation-free fast path for order/cancel/cancelByCloid/modify/
+/// batchModify that must agree with this function (see tests/props.rs).
+pub fn decode_action_generic(action_bytes: &[u8]) -> Result<Action, String> {
     let m = Reader::parse_all(action_bytes)?;
     decode_mp(&m)
 }

@@ -98,6 +98,17 @@ fn bench_hlwire() {
         let v: Value = serde_json::from_str(black_box(&body_txt)).unwrap();
         black_box(parse_exchange_request(&v).unwrap());
     });
+    time("parse_exchange_request_bytes (fast body)", 5_000, || {
+        black_box(parse_exchange_request_bytes(black_box(body_txt.as_bytes())).unwrap());
+    });
+    let cancel = vector("bulk_cancel");
+    let ctx = parse_exchange_request(&cancel).unwrap();
+    time("decode_action (cancel x2)", 20_000, || {
+        black_box(decode_action(black_box(&ctx.action_bytes)).unwrap());
+    });
+    time("decode_action_generic (50 orders)", 5_000, || {
+        black_box(decode_action_generic(black_box(&tx.action_bytes)).unwrap());
+    });
     time("HlVerifier decode + recover_signer", 5_000, || {
         let a = ver.decode(black_box(&tx)).unwrap();
         black_box(ver.recover_signer(&tx, &a).unwrap());
@@ -119,5 +130,28 @@ fn bench_hlwire() {
     if std::env::var("HLWIRE_BENCH_STRICT").is_ok() && !cfg!(debug_assertions) {
         assert!(ok_dec, "decode_action too slow: {dec} us");
         assert!(ok_rec, "recover too slow: {rec} us");
+    }
+}
+
+/// Fixed-work loop for instruction counting under callgrind, which is
+/// immune to machine load:
+///   valgrind --tool=callgrind <bench bin> --ignored --exact decode_only_loop
+#[test]
+#[ignore]
+fn decode_only_loop() {
+    let body = vector("bulk_orders_50");
+    let tx = parse_exchange_request(&body).unwrap();
+    for _ in 0..1000 {
+        black_box(decode_action(black_box(&tx.action_bytes)).unwrap());
+    }
+}
+
+#[test]
+#[ignore]
+fn exchange_body_loop() {
+    let body = vector("bulk_orders_50");
+    let txt = serde_json::to_string(&body).unwrap();
+    for _ in 0..1000 {
+        black_box(parse_exchange_request_bytes(black_box(txt.as_bytes())).unwrap());
     }
 }

@@ -16,6 +16,8 @@
 mod build;
 mod crypto;
 mod decode;
+mod fast;
+mod json;
 mod msgpack;
 mod sign;
 
@@ -23,6 +25,7 @@ pub use build::*;
 pub use crypto::*;
 pub use decode::*;
 pub use msgpack::{action_to_msgpack, json_to_msgpack, msgpack_to_json};
+pub use json::parse_exchange_request_fast;
 pub use sign::*;
 
 pub use interfaces::Sig65;

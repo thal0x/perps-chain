@@ -76,6 +76,10 @@ fn check_vectors(file: &str, sdk: &str) -> Stats {
 
         // 3. request parsing.
         let tx = parse_exchange_request(&body).unwrap_or_else(|e| panic!("{ctx}: parse: {e}"));
+        // fast body path (JSON text -> UserTx) must be taken and agree
+        let raw = v["body_raw"].as_str().unwrap().as_bytes();
+        assert_eq!(parse_exchange_request_fast(raw).as_ref(), Some(&tx), "{ctx}: fast body path");
+        assert_eq!(parse_exchange_request_bytes(raw).unwrap(), tx);
         assert_eq!(tx.action_bytes, mp);
         assert_eq!(tx.nonce, body["nonce"].as_u64().unwrap());
         assert_eq!(
