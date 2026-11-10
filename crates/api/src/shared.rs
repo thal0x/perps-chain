@@ -191,12 +191,23 @@ impl Shared {
         out.expect("ApiBackend::query must invoke the callback")
     }
 
-    /// `/exchange` body -> HL response JSON.
-    pub async fn exchange(&self, body: &Value, ip: String) -> Value {
-        let utx = match crate::wire::parse_exchange_request(body) {
-            Ok(u) => u,
-            Err(e) => return render::err(&e),
-        };
+    /// `/exchange` body (parsed JSON, e.g. a WS `post`) -> HL response JSON.
+    pub async fn exchange(&self, body: &Value, ip: String) -> String {
+        match crate::wire::parse_exchange_request(body) {
+            Ok(u) => self.submit_and_wait(u, ip).await,
+            Err(e) => render::err_string(&e),
+        }
+    }
+
+    /// `/exchange` raw body bytes -> HL response JSON (fast parse path).
+    pub async fn exchange_bytes(&self, body: &[u8], ip: String) -> String {
+        match crate::wire::parse_exchange_bytes(body) {
+            Ok(u) => self.submit_and_wait(u, ip).await,
+            Err(e) => render::err_string(&e),
+        }
+    }
+
+    async fn submit_and_wait(&self, utx: UserTx, ip: String) -> String {
         let tx = Tx::User(utx);
         let mut h = tx.hash();
         let mut rx = self.waiters.register(h);
@@ -210,7 +221,7 @@ impl Shared {
                     if let Some(r) = self.waiters.recent(&h) {
                         drop(rx);
                         self.waiters.cancel(&h);
-                        return render::action_result(&r.result);
+                        return render::action_result_string(&r.result);
                     }
                 }
             }
@@ -218,21 +229,21 @@ impl Shared {
                 if let Some(r) = self.waiters.recent(&h) {
                     drop(rx);
                     self.waiters.cancel(&h);
-                    return render::action_result(&r.result);
+                    return render::action_result_string(&r.result);
                 }
                 // else: the original is still pending; wait for its receipt.
             }
             Err(e) => {
                 drop(rx);
                 self.waiters.cancel(&h);
-                return render::err(&admission_message(&e));
+                return render::err_string(&admission_message(&e));
             }
         }
         match tokio::time::timeout(self.cfg.exchange_timeout, rx).await {
-            Ok(Ok(r)) => render::action_result(&r.result),
+            Ok(Ok(r)) => render::action_result_string(&r.result),
             _ => {
                 self.waiters.cancel(&h);
-                render::err("Timed out waiting for the transaction to be included in a block")
+                render::err_string("Timed out waiting for the transaction to be included in a block")
             }
         }
     }

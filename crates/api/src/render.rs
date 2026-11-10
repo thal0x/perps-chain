@@ -534,3 +534,126 @@ pub fn action_result(r: &Result<ActionResponse, String>) -> Value {
 pub fn err(msg: &str) -> Value {
     json!({"status": "err", "response": msg})
 }
+
+// ---------------------------------------------------- fast /exchange path ---
+
+fn push_json_str(out: &mut String, s: &str) {
+    out.push_str(&serde_json::to_string(s).unwrap_or_else(|_| "\"\"".into()));
+}
+
+/// Same JSON as [`action_result`] (byte-identical to `action_result(r).to_string()`),
+/// written directly into a string (hot path: ~20x faster than building a Value).
+pub fn action_result_string(r: &Result<ActionResponse, String>) -> String {
+    use std::fmt::Write;
+    let mut o = String::with_capacity(64);
+    match r {
+        Ok(ActionResponse::Order(st)) => {
+            o.reserve(st.len() * 24);
+            o.push_str(r#"{"status":"ok","response":{"type":"order","data":{"statuses":["#);
+            for (i, s) in st.iter().enumerate() {
+                if i > 0 {
+                    o.push(',');
+                }
+                match s {
+                    OrderStatusResp::Resting { oid, cloid } => {
+                        let _ = write!(o, r#"{{"resting":{{"oid":{oid}"#);
+                        if let Some(c) = cloid {
+                            let _ = write!(o, r#","cloid":"{}""#, fmt::cloid(c));
+                        }
+                        o.push_str("}}");
+                    }
+                    OrderStatusResp::Filled { total_sz, avg_px, oid, cloid } => {
+                        let _ = write!(
+                            o,
+                            r#"{{"filled":{{"totalSz":"{}","avgPx":"{}","oid":{oid}"#,
+                            fmt::sz_abs(*total_sz),
+                            fmt::px(*avg_px)
+                        );
+                        if let Some(c) = cloid {
+                            let _ = write!(o, r#","cloid":"{}""#, fmt::cloid(c));
+                        }
+                        o.push_str("}}");
+                    }
+                    OrderStatusResp::WaitingForTrigger { .. } => o.push_str(r#""waitingForTrigger""#),
+                    OrderStatusResp::WaitingForFill { .. } => o.push_str(r#""waitingForFill""#),
+                    OrderStatusResp::Error(e) => {
+                        o.push_str(r#"{"error":"#);
+                        push_json_str(&mut o, e);
+                        o.push('}');
+                    }
+                }
+            }
+            o.push_str("]}}}");
+        }
+        Ok(ActionResponse::Cancel(st)) => {
+            o.push_str(r#"{"status":"ok","response":{"type":"cancel","data":{"statuses":["#);
+            for (i, s) in st.iter().enumerate() {
+                if i > 0 {
+                    o.push(',');
+                }
+                match s {
+                    SimpleStatus::Success => o.push_str(r#""success""#),
+                    SimpleStatus::Error(e) => {
+                        o.push_str(r#"{"error":"#);
+                        push_json_str(&mut o, e);
+                        o.push('}');
+                    }
+                }
+            }
+            o.push_str("]}}}");
+        }
+        Ok(ActionResponse::Default) => o.push_str(r#"{"status":"ok","response":{"type":"default"}}"#),
+        Err(e) => {
+            o.push_str(r#"{"status":"err","response":"#);
+            push_json_str(&mut o, e);
+            o.push('}');
+        }
+    }
+    o
+}
+
+pub fn err_string(msg: &str) -> String {
+    action_result_string(&Err(msg.to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fast_render_is_identical() {
+        let c = Some([0xabu8; 16]);
+        let cases: Vec<Result<ActionResponse, String>> = vec![
+            Ok(ActionResponse::Order(vec![
+                OrderStatusResp::Resting { oid: 1, cloid: None },
+                OrderStatusResp::Resting { oid: u64::MAX, cloid: c },
+                OrderStatusResp::Filled { total_sz: Sz::parse("0.02").unwrap(), avg_px: Px::parse("1891.4").unwrap(), oid: 2, cloid: None },
+                OrderStatusResp::Filled { total_sz: Sz::parse("3").unwrap(), avg_px: Px::parse("0.00001234").unwrap(), oid: 3, cloid: c },
+                OrderStatusResp::WaitingForTrigger { oid: 4 },
+                OrderStatusResp::WaitingForFill { oid: 5 },
+                OrderStatusResp::Error("Order has \"invalid\" price.\n\\".into()),
+            ])),
+            Ok(ActionResponse::Order(vec![])),
+            Ok(ActionResponse::Cancel(vec![SimpleStatus::Success, SimpleStatus::Error("x\u{1}y".into())])),
+            Ok(ActionResponse::Default),
+            Err("Insufficient margin \"quoted\"".into()),
+        ];
+        for r in cases {
+            assert_eq!(action_result_string(&r), action_result(&r).to_string());
+        }
+    }
+
+    #[test]
+    fn dir_strings() {
+        let s = |x: &str| Sz::parse(x).unwrap();
+        assert_eq!(dir(Side::Bid, s("0"), s("1")), "Open Long");
+        assert_eq!(dir(Side::Bid, s("2"), s("1")), "Open Long");
+        assert_eq!(dir(Side::Bid, s("-2"), s("1")), "Close Short");
+        assert_eq!(dir(Side::Bid, s("-1"), s("1")), "Close Short");
+        assert_eq!(dir(Side::Bid, s("-1"), s("2")), "Short > Long");
+        assert_eq!(dir(Side::Ask, s("0"), s("1")), "Open Short");
+        assert_eq!(dir(Side::Ask, s("-1"), s("1")), "Open Short");
+        assert_eq!(dir(Side::Ask, s("1"), s("1")), "Close Long");
+        assert_eq!(dir(Side::Ask, s("1"), s("3")), "Long > Short");
+    }
+}

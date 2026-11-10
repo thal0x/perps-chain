@@ -604,7 +604,9 @@ fn handle_text(s: &Arc<Shared>, conn: &Arc<Conn>, my_subs: &mut HashMap<SubKey, 
                     let ip = ip.to_string();
                     tokio::spawn(async move {
                         let r = s.exchange(&payload, ip).await;
-                        conn.send_str(msg("post", json!({"id": id, "response": {"type": "action", "payload": r}})));
+                        conn.send_str(format!(
+                            r#"{{"channel":"post","data":{{"id":{id},"response":{{"type":"action","payload":{r}}}}}}}"#
+                        ));
                     });
                 }
                 _ => {

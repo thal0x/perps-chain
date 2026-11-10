@@ -78,6 +78,7 @@ dependencies = [
  "hlwire",
  "interfaces",
  "parking_lot",
+ "proptest",
  "relayer",
  "reqwest",
  "serde",

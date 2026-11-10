@@ -105,17 +105,8 @@ async fn exchange_handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     body: Bytes,
 ) -> Response {
-    let v: Value = match serde_json::from_slice(&body) {
-        Ok(v) => v,
-        Err(_) => {
-            return json_response(
-                StatusCode::OK,
-                &render::err("Failed to deserialize the JSON body into the target type"),
-            )
-        }
-    };
-    let out = s.exchange(&v, addr.ip().to_string()).await;
-    json_response(StatusCode::OK, &out)
+    let out = s.exchange_bytes(&body, addr.ip().to_string()).await;
+    (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], out).into_response()
 }
 
 async fn ws_handler(
