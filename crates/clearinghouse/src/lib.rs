@@ -109,6 +109,8 @@ pub(crate) struct TradeOut {
     pub deficit_delta: i128,
     pub closed_pnl: i128,
     pub risk_up: bool,
+    /// Isolated equity of the position before the trade (0 for cross).
+    pub pre_iso_eq: i128,
 }
 
 /// The clearinghouse. Construct with [`Clearinghouse::new`] from genesis or
@@ -553,7 +555,12 @@ impl Clearinghouse {
             }
             if open > 0 {
                 iso -= ds * nop;
-                let t = div_round(nop.abs(), lev.value() as i128, Rounding::Ceil);
+                // margin = ceil(N_open / lev), plus any immediate mark-to-market
+                // loss of the opened size (fill through the mark), so that a
+                // freshly opened isolated position never starts with negative
+                // equity.
+                let mtm = self.value(asset, Sz::from_raw(ds * open)) - ds * nop;
+                let t = div_round(nop.abs(), lev.value() as i128, Rounding::Ceil) + (-mtm).max(0);
                 iso += t;
                 cross -= t;
             }
@@ -569,7 +576,8 @@ impl Clearinghouse {
             cum_funding_since_change: Usd::ZERO,
         };
         let risk_up = s1.abs() > as0 || (s0 != 0 && s1 != 0 && s1.signum() != s0.signum());
-        TradeOut { pos, cross_delta: cross, deficit_delta: deficit, closed_pnl: closed, risk_up }
+        let pre_iso_eq = if lev.is_cross() { 0 } else { self.iso_equity(pos0) };
+        TradeOut { pos, cross_delta: cross, deficit_delta: deficit, closed_pnl: closed, risk_up, pre_iso_eq }
     }
 
     /// Plan one side of a trade for `user` (not committed).
@@ -590,13 +598,31 @@ impl Clearinghouse {
     /// Initial-margin check after a planned trade (only for risk-increasing
     /// trades): cross equity − cross initial margin >= 0 after the trade.
     pub(crate) fn plan_ok(&self, idx: Option<usize>, out: &TradeOut) -> bool {
-        if !out.risk_up {
-            return true;
-        }
         let empty = AccountState::default();
         let st = idx.map(|i| &self.accts[i]).unwrap_or(&empty);
         let (equity, im) = self.cross_equity_im(st, &out.pos, out.cross_delta);
-        equity - im >= 0
+        if out.risk_up {
+            return equity - im >= 0;
+        }
+        // Risk-reducing trades are allowed unless they would leave the
+        // account (cross, or the isolated position) with negative equity it
+        // did not already have — e.g. a resting order far through the mark
+        // filled by a liquidation sweep. Without this a non-liquidated side
+        // could end a liquidation pass with uncovered negative equity.
+        if equity < 0 {
+            let empty_pos = Position::empty(out.pos.asset, out.pos.leverage);
+            let pre = self.cross_equity_im(st, st.pos(out.pos.asset).unwrap_or(&empty_pos), 0).0;
+            if equity < pre {
+                return false;
+            }
+        }
+        if !out.pos.leverage.is_cross() && !out.pos.szi.is_zero() {
+            let post = self.iso_equity(&out.pos);
+            if post < 0 && post < out.pre_iso_eq {
+                return false;
+            }
+        }
+        true
     }
 
     /// Lean version of `cross_sum` (equity and initial margin only) with one
@@ -972,9 +998,8 @@ impl ClearinghouseApi for Clearinghouse {
         if c.sz.0 <= 0 || c.px.0 == 0 {
             return err(ERR_FILL);
         }
-        if c.reduce_only {
-            return Ok(());
-        }
+        // reduce-only orders go through the same check: reducing trades pass
+        // unless they would create negative equity (see `plan_ok`).
         let n = notional(c.px, c.sz, Rounding::Floor).raw();
         let rate = Rate::from_raw(self.params.taker_fee.raw().max(self.params.maker_fee.raw()).max(0));
         let fee = self.fee_for(n, rate);

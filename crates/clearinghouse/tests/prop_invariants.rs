@@ -79,6 +79,9 @@ fn op_strategy() -> impl Strategy<Value = Op> {
         1 => (a.clone(), 1i64..2_000_000_000, any::<bool>()).prop_map(|(u, x, f)| Op::Class(u, x, f)),
         10 => (0u32..3, a.clone(), a.clone(), any::<bool>(), -300i64..300, 10i64..400_000)
             .prop_map(|(m, t, k, b, o, n)| Op::Fill(m, t, k, b, o, n)),
+        // fills far through the mark (stale resting orders)
+        2 => (0u32..3, a.clone(), a.clone(), any::<bool>(), -9000i64..9000, 10i64..100_000)
+            .prop_map(|(m, t, k, b, o, n)| Op::Fill(m, t, k, b, o, n)),
         2 => (a.clone(), 0u32..3, any::<bool>(), 1u32..55).prop_map(|(u, m, c, l)| Op::Leverage(u, m, c, l)),
         1 => (a.clone(), 0u32..3, -500_000_000i64..500_000_000).prop_map(|(u, m, d)| Op::IsoMargin(u, m, d)),
         6 => (0u32..3, -1500i64..1500).prop_map(|(m, b)| Op::Price(m, b)),
@@ -159,7 +162,7 @@ impl World {
         for (k, t) in targets.iter().enumerate() {
             // market liquidation: try to close half against some other account
             // at the limit price (the book's worst acceptable price)
-            for (asset, sz, limit) in &t.closes {
+            for (j, (asset, sz, limit)) in t.closes.iter().enumerate() {
                 let cp = self.a((k as u8).wrapping_mul(7).wrapping_add(3));
                 if cp == t.user {
                     continue;
@@ -168,9 +171,19 @@ impl World {
                 if half.is_zero() {
                     continue;
                 }
+                // Alternate between the liquidation limit and a maker price far
+                // through the mark (a stale resting order the IOC sweeps;
+                // legal in the book and terrible for the maker).
+                let mark = self.ch.market_ctx(*asset).mark_px;
+                let px = match (k + j) % 3 {
+                    0 => *limit,
+                    1 if sz.0 > 0 => Px::from_raw(mark.raw() / 3 + 1),
+                    1 => Px::from_raw(mark.raw() * 3),
+                    _ => mark,
+                };
                 let f = FillParams {
                     asset: *asset,
-                    px: *limit,
+                    px,
                     sz: half,
                     taker: t.user,
                     maker: cp,
@@ -268,11 +281,15 @@ impl World {
                     reduce_only: false,
                 });
                 let fee_before = self.ch.ledger().fee_pool;
+                let neg_before = self.ch.negative_equity_accounts();
                 let r = self.atomic(|ch| ch.apply_fill(&f));
                 bump(if r.is_some() { 0 } else { 1 });
                 if let Some(r) = &r {
                     assert!(pre.is_ok(), "fill succeeded but taker pre-check failed");
                     assert_eq!(self.ch.ledger().fee_pool - fee_before, r.taker_fee + r.maker_fee);
+                    for a in self.ch.negative_equity_accounts() {
+                        assert!(neg_before.contains(&a), "fill created negative equity for {a:?}");
+                    }
                 }
             }
             Op::Leverage(u, m, c, l) => {

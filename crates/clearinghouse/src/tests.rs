@@ -597,3 +597,61 @@ fn take_dirty_key_set_matches_all_entity_hashes() {
     d.backstop_and_adl(addr(1), T0);
     drain(&mut d, &mut acc);
 }
+
+/// Regression (state proptest seed 4485867090622990286): a liquidation sweep
+/// filled a maker's stale resting order far through the mark. The maker was
+/// reducing, so no margin check ran, and it ended the pass with negative
+/// equity that nobody covered.
+#[test]
+fn reducing_fill_cannot_create_negative_equity() {
+    let mut h = H::new("1000000");
+    h.dep(1, "1000"); // liquidated user
+    h.dep(6, "1000"); // maker with a stale far-away ask
+    h.dep(7, "1000000");
+    h.price(0, "75000");
+    h.fill(6, 7, true, "75000", "0.2", 0).unwrap(); // 6 long 0.2 BTC
+    h.fill(1, 7, false, "75000", "0.2", 0).unwrap(); // 1 short 0.2 BTC
+    h.price(0, "79500"); // 1: 1000 − 5.25 − 900 = 94.75 < MM 159
+    assert_eq!(h.ch.liquidation_targets().len(), 1);
+    let fp = |px_: &str, sz_: &str| FillParams {
+        asset: 0,
+        px: px(px_),
+        sz: sz(sz_),
+        taker: addr(1),
+        maker: addr(6),
+        taker_side: Side::Bid,
+        liquidation_of: Some(addr(1)),
+        time: T0,
+    };
+    // selling 0.2 BTC at 3785 with mark 79500 would leave 6 at about −14k equity
+    let before = h.ch.encode();
+    assert_eq!(h.ch.apply_fill(&fp("3785.5", "0.2")).unwrap_err().0, ERR_MARGIN);
+    assert_eq!(before, h.ch.encode());
+    // the pre-check used by the match hook agrees (also for reduce-only orders)
+    let mc = |ro| MarginCheck { user: addr(6), asset: 0, side: Side::Ask, px: px("3785.5"), sz: sz("0.2"), reduce_only: ro };
+    assert!(h.ch.check_order_margin(&mc(false)).is_err());
+    assert!(h.ch.check_order_margin(&mc(true)).is_err());
+    // a reducing fill that loses money but keeps equity >= 0 is still allowed
+    h.ch.apply_fill(&fp("76000", "0.1")).unwrap();
+    h.inv();
+    h.ch.backstop_and_adl(addr(1), T0);
+    h.inv();
+    assert!(h.ch.negative_equity_accounts().is_empty());
+}
+
+/// Opening an isolated position through the mark tops up the margin by the
+/// immediate mark-to-market loss (found by the stale-order proptest).
+#[test]
+fn isolated_open_through_mark_covers_instant_loss() {
+    let mut h = H::new("0");
+    h.dep(1, "1000");
+    h.dep(2, "1000");
+    // ISO: mark 10, max lev 10 (isolated only). 1 sells 3 units at 3.
+    h.fill(1, 2, false, "3", "3", 2).unwrap();
+    let st = h.ch.account(&addr(1)).unwrap();
+    // N = 9, T = 0.9 + loss (30 − 9 = 21) = 21.9; iso cash = 9 + 21.9
+    assert_eq!(st.positions[0].iso_cash, usd("30.9"));
+    assert_eq!(h.view(1).positions[0].margin_used, usd("0.9"));
+    // the buyer got a bargain: its isolated equity is far above margin
+    assert!(h.ch.negative_equity_accounts().is_empty());
+}
