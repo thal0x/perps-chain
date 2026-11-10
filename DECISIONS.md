@@ -146,3 +146,18 @@ merge gate and status.sh on main build in a separate
 the shared dir for speed and `touch` sources if they suspect staleness.
 AC4 fix (clearinghouse e81b764): non-liquidated reducing fills may not create
 new negative equity; isolated opens through the mark fund the instant loss.
+
+**D25 [AC5]** Three AC5 gaps from the first full run:
+1. basic_ws subscribes to `trades` for PURR/USDC; HL trades it continuously,
+   our D10 had no spot books. Resolution: **implement spot trading for
+   PURR/USDC** (asset 10000, spot balance settlement, no margin) rather than
+   exempting the channel. Supersedes D10's "no spot order books".
+2. TS README `withdraw3({amount:"1"})` with HL's $1 fee nets zero; the chain
+   rejects ("Withdrawal amount must be greater than the withdrawal fee.").
+   HL's exact behaviour could not be verified offline; allowlisted in
+   expected_errors.json with this justification and marked text-unverified.
+   Revisit if HL's text/behaviour is learned.
+3. `/info outcomeMeta` missing (TS SymbolConverter calls it) — API bug; return
+   `{"outcomes":[],"questions":[]}`.
+Note: chaos depends on `consensus` for offline QC verification (process-level
+otherwise) — ARCHITECTURE §1 dependency note updated.

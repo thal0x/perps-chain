@@ -29,7 +29,7 @@ acceptance/      acceptance harness inputs + committed result evidence (results/
 Dependency direction (no cycles):
 `interfaces <- {hlwire, book, clearinghouse, oracle, consensus, net, mempool}`;
 `state <- {hlwire, book, clearinghouse, oracle}`; `api <- {state(via traits), hlwire}`;
-`node <- everything`; `sim <- {hlwire, state}`; `chaos <- (process-level only)`.
+`node <- everything`; `sim <- {hlwire, state}`; `chaos <- {hlwire, consensus}` (drives hlnode processes; uses consensus only to verify QCs offline).
 
 ## 2. Data flow
 
