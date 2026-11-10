@@ -23,6 +23,17 @@ pub use sigcache::SigCache;
 pub type FakeChain = Chain<testkit::BookEngines, testkit::FakeVerifier>;
 /// Chain entirely over the simple fakes.
 pub type AllFakeChain = Chain<testkit::FakeEngines, testkit::FakeVerifier>;
+/// The production chain: real engines + HL signature scheme.
+pub type HlChain = Chain<HlEngines, hlwire::HlVerifier>;
+
+impl HlChain {
+    /// Production constructor (verifier from `genesis.is_mainnet`).
+    pub fn new_hl(genesis: interfaces::Genesis, cfg: ChainConfig) -> Self {
+        let v = std::sync::Arc::new(hlwire::HlVerifier::new(genesis.is_mainnet));
+        Chain::new(genesis, v, cfg)
+    }
+}
+
 /// Production engines with a pluggable verifier (`hlwire::HlVerifier` in the node).
 pub type HlChainWith<V> = Chain<HlEngines, V>;
 /// Real engines with fake signatures (tests, simulations without ECDSA).

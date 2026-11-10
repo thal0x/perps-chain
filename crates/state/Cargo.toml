@@ -8,6 +8,7 @@ interfaces = { workspace = true }
 book = { workspace = true }
 oracle = { workspace = true }
 clearinghouse = { workspace = true }
+hlwire = { workspace = true }
 borsh = { workspace = true }
 blake3 = { workspace = true }
 rayon = { workspace = true }
@@ -18,6 +19,7 @@ sha3 = { workspace = true }
 hex = { workspace = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 relayer = { workspace = true }
 hex = { workspace = true }
 proptest = { workspace = true }

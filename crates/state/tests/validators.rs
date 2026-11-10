@@ -81,7 +81,7 @@ fn withdrawal_flow_with_real_validator_signatures() {
     let r = h.send_with_nonce(u, |n| Action::Withdraw3 { destination: dest, amount: usd("500"), time: n });
     assert_eq!(r, Ok(ActionResponse::Default));
     assert_eq!(h.chain.q().account(&u).withdrawable, usd("500"));
-    assert_eq!(h.chain.flows().withdrawals, usd("500"));
+    assert_eq!(h.chain.flows().withdrawals, usd("499")); // net leaves; fee stays in the fee pool
     let pw = h.chain.q().pending_withdrawals();
     assert_eq!(pw.len(), 1);
     assert_eq!((pw[0].user, pw[0].destination, pw[0].amount), (u, dest, usd("499")));
