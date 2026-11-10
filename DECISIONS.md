@@ -87,3 +87,12 @@ re-offered. Duplicate cloids per user must be rejected by the state crate.
 signer `Result<Address, AdmissionError>` (mempool request) so per-signer rate
 limiting doesn't recover the signature twice. Node wires it via
 `Pool::insert_prechecked` / `signer_of`.
+
+**D18 [bridge]** Bridge semantics the L1 must honor: deposit ids start at 0
+and are monotone; `PendingWithdrawal.amount` is the **net** amount the
+destination receives (user debited amount = net + withdraw_fee); validator
+actions are resubmitted by watchers, so duplicate attestations/signatures per
+(id, validator) are idempotent no-ops (not errors); genesis
+`bridge.contract` = deployed Bridge, `eth_chain_id` = 31337; Anvil runs with
+`--block-time 1` so confirmations progress. L1-driven validator-set rotation
+is out of scope for AC6 (contract rotation is tested in Foundry).

@@ -80,8 +80,8 @@ pub struct BridgeParams {
     pub eth_chain_id: u64,
     /// Bridge contract address on the EVM chain.
     pub contract: Address,
-    /// Deposit credited once attestations carry >= this fraction of stake
-    /// (2/3 quorum is used; field kept for documentation).
+    /// Minimum deposit amount accepted (mirrors Bridge.sol `minDeposit`).
+    /// Deposits are credited at quorum stake of identical attestations.
     pub min_deposit: Usd,
 }
 
