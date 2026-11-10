@@ -10,18 +10,18 @@ All wave-1/2 components MERGED: interfaces, hlwire, consensus, net, mempool, boo
 
 | agent | owns | status |
 |---|---|---|
-| spot | crates/state, crates/api (spot PURR/USDC + outcomeMeta, D25) | running |
-| integ | crates/node, scripts/localnet.sh, scripts/acceptance.sh, acceptance/ (replay, AC2/3/4 runners, AC3 profiling) | running |
+| spot | crates/state, crates/api (spot PURR/USDC + outcomeMeta, D25) | MERGED |
+| api (perf) | Indexer::ingest 2x cheaper, spawn_blocking submit | running |
+| hlwire (perf) | allocation-free decode_action | running |
+| integ | crates/node, scripts/localnet.sh, scripts/acceptance.sh, acceptance/ | AC3 PASS + AC5 PASS merged; running AC2 full then AC4 |
 
 ## Currently failing
-- AC5: basic_ws `trades PURR/USDC` never gets messages (no spot book -> spot agent); TS market-order guide fails on missing `outcomeMeta` (spot agent); TS withdraw3 "1" rejected (allowlist per D25, integ agent).
-- AC1–AC4: runners/evidence pending (integ agent; AC1 12 h run scheduled last on final code).
-- AC6: PASS evidence exists but is STALE after later merges (rerun at end).
+- None in unit suites (M1 STATUS.md). AC evidence: AC3 PASS (110k/s, min window 107k, median block 200 ms); AC5 and AC6 PASS but STALE (code changed since); AC1/AC2/AC4 full runs pending.
 
 ## Next three actions
-1. Merge spot + integ; extend `scripts/localnet.sh seed` with a PURR/USDC ladder.
-2. Act on AC3 profiling findings (assign optimizations per crate).
-3. Freeze code, run all ACs (AC1 12 h last), commit evidence, README.
+1. Merge api/hlwire perf work; then freeze code.
+2. On frozen code: AC2 (50M week x2), AC4, AC3, AC5, AC6 full runs; then AC1 12 h last.
+3. README.md; final clean-checkout status.sh.
 
 ## Known risks
 - Throughput with one validator down ~2.5 blocks/s (no leader reputation).
