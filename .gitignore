@@ -1,0 +1,10 @@
+/target
+**/target
+/data
+/run
+*.log
+bridge/out
+bridge/cache
+acceptance/tmp
+__pycache__
+node_modules

@@ -1,0 +1,7 @@
+[package]
+name = "hlwire"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+interfaces = { workspace = true }
