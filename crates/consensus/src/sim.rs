@@ -168,6 +168,8 @@ pub struct Sim {
     pub commit_times: Vec<(u64, Height)>,
     pub replay: Option<ReplayLog>,
     pub messages_delivered: u64,
+    /// (honest node, view) -> block voted (across restarts).
+    votes_cast: BTreeMap<(usize, View), BlockId>,
 }
 
 struct Env<'a> {
@@ -272,6 +274,7 @@ impl Sim {
             commit_times: vec![],
             replay: None,
             messages_delivered: 0,
+            votes_cast: BTreeMap::new(),
             cfg,
         };
         for i in 0..sim.cfg.n {
@@ -474,7 +477,42 @@ impl Sim {
         self.route(i, outs);
     }
 
+    /// Invariants on every outgoing vote/timeout of an honest node: the
+    /// safety state covering it is already persisted, and no two votes in
+    /// one view.
+    fn check_outgoing(&mut self, i: usize, msg: &ConsensusMsg) {
+        if !self.is_honest(i) {
+            return;
+        }
+        match msg {
+            ConsensusMsg::Vote(v) => {
+                let st = self.nodes[i].store.load_safety();
+                if st.as_ref().is_none_or(|s| s.last_voted_view < v.data.view) {
+                    self.violations.push(format!("node {i}: vote for view {} sent before safety persisted", v.data.view));
+                }
+                if let Some(prev) = self.votes_cast.insert((i, v.data.view), v.data.block_id) {
+                    if prev != v.data.block_id {
+                        self.violations.push(format!("node {i}: double vote in view {}", v.data.view));
+                    }
+                }
+            }
+            ConsensusMsg::Timeout(t) => {
+                let st = self.nodes[i].store.load_safety();
+                if st.as_ref().is_none_or(|s| s.last_timeout_view < t.data.view || s.high_qc.data.view < t.data.high_qc_view) {
+                    self.violations.push(format!("node {i}: timeout for view {} sent before safety persisted", t.data.view));
+                }
+            }
+            _ => {}
+        }
+    }
+
     fn route(&mut self, i: usize, outs: Vec<ConsensusOutput>) {
+        for o in &outs {
+            match o {
+                ConsensusOutput::Send { msg, .. } | ConsensusOutput::Broadcast(msg) => self.check_outgoing(i, msg),
+                _ => {}
+            }
+        }
         for o in outs {
             match o {
                 ConsensusOutput::Send { to, msg } => {
