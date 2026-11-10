@@ -330,7 +330,10 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     // ------------------------------------------------------------ user txs
 
     fn user_exists(&self, a: &Address) -> bool {
-        if self.core.users.contains_key(a) {
+        // Nonce records alone do not make an account (e.g. a revoked agent).
+        if self.core.users.get(a).is_some_and(|m| {
+            m.unnamed_agent.is_some() || !m.named_agents.is_empty() || m.referrer.is_some() || m.scheduled_cancel.is_some()
+        }) {
             return true;
         }
         let v = self.ch.account_view(a);
