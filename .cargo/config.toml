@@ -1,3 +1,0 @@
-[build]
-# Shared across git worktrees so registry deps compile once.
-target-dir = "/home/user/.cargo-target/hlbft"

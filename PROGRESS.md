@@ -33,7 +33,7 @@ All wave-1/2 components MERGED: interfaces, hlwire, consensus, net, mempool, boo
 ## Environment notes
 - Foundry: `~/.local/bin/{forge,anvil,cast}` symlinked from `/opt/foundry/node_modules/@foundry-rs/*-linux-amd64/bin` (npm install). Re-create if container is fresh: `cd /opt/foundry && npm i @foundry-rs/forge @foundry-rs/anvil @foundry-rs/cast`.
 - Reference clones (not part of repo): `/home/user/ext/{hyperliquid-python-sdk,hyperliquid (nktkas TS SDK),forge-std}`.
-- Shared cargo target dir: `/home/user/.cargo-target/hlbft`.
+- Cargo target dirs: set `CARGO_TARGET_DIR` per worktree (`/home/user/.cargo-target/<name>`; main verification uses `.../main`). No repo-level override since D31.
 - 4 cores, 15 GB RAM, ~31 GB disk.
 
 ## Blockers

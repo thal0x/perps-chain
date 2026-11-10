@@ -27,8 +27,8 @@ TEST_PLAN.md, DECISIONS.md at the repo root). The lead coordinates.
    have landed, run `git merge main` in your worktree (only main; resolve
    conflicts only in your files; Cargo.lock conflicts: take either side and
    re-run cargo build).
-6. The cargo target dir is shared (`/home/user/.cargo-target/hlbft`) across
-   worktrees; builds may wait on a lock — that is normal. The machine has 4
+6. Use your own target dir (`export CARGO_TARGET_DIR=/home/user/.cargo-target/<name>`;
+   D24/D31); builds may wait on a lock — that is normal. The machine has 4
    cores shared by ~8 agents: use `cargo test -p <crate>` (never
    `--workspace` loops), avoid release builds unless benchmarking.
 7. Write a short `crates/<yours>/README.md`: public API, design notes, how

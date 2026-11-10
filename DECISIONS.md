@@ -198,3 +198,15 @@ All evidence will be regenerated on the new frozen tree.
 **D30 [process] Re-freeze** at main 4232262 (after D29
 consensus + node fixes), source fingerprint `3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f`. Final sequence: AC3,
 AC5, AC6, AC2 (50M week), AC4, AC1 (12 h). Same rules as D28.
+
+**D31 [tooling] Portable checkout**: removed `.cargo/config.toml`, which forced
+`target-dir = /home/user/.cargo-target/hlbft` and broke every build outside the
+cloud box (e.g. macOS: "failed to create directory /home/user/.cargo-target").
+Default is now `./target`; the box's scripts and agents already set
+`CARGO_TARGET_DIR` explicitly (D24). `scripts/localnet.sh` seeding now finds the
+SDK python via `HL_PYTHON`, the dev venv, or `python3`, and says how to fix it
+when none has the SDK. Neither file is in the evidence fingerprint, so D30
+evidence stays valid. Known remaining non-Linux gap: `crates/chaos` uses
+`prctl(PR_SET_PDEATHSIG)` (Linux-only); build elsewhere with
+`--workspace --exclude chaos` until it is gated behind `cfg(target_os = "linux")`,
+which is deferred to the pre-AC1 refreeze because it changes the fingerprint.

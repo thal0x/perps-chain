@@ -124,8 +124,16 @@ cmd_start() {
 # so SDK examples that take liquidity (market orders, closes) can fill.
 # Also writes $DIR/sdk_config.json (checksummed example account) for the SDK examples.
 cmd_seed() {
-  local py="${HL_PYTHON:-/home/user/.venvs/hl/bin/python}"
-  [ -x "$py" ] || { echo "localnet: no SDK python at $py; skipping liquidity seeding" >&2; return 0; }
+  # SDK python: $HL_PYTHON, else the cloud dev venv if present, else python3.
+  local py="${HL_PYTHON:-}"
+  if [ -z "$py" ]; then
+    if [ -x /home/user/.venvs/hl/bin/python ]; then py=/home/user/.venvs/hl/bin/python; else py="$(command -v python3 || true)"; fi
+  fi
+  if [ -z "$py" ] || ! "$py" -c 'import hyperliquid, eth_account' 2>/dev/null; then
+    echo "localnet: no python with hyperliquid-python-sdk found (set HL_PYTHON=/path/to/venv/bin/python);" \
+         "skipping liquidity seeding and sdk_config.json" >&2
+    return 0
+  fi
   "$py" - "$DIR" "http://127.0.0.1:$BASE_API" <<'EOF'
 import json, os, sys
 import eth_account

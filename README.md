@@ -31,6 +31,14 @@ current status: [STATUS.md](STATUS.md) · per-crate docs: `crates/*/README.md`.
 cargo build --release
 ```
 
+On macOS (or any non-Linux host) leave out the fault-injection harness, which
+is Linux-only for now (D31):
+```bash
+cargo build --release --workspace --exclude chaos
+```
+`scripts/localnet.sh` seeds liquidity with the Python SDK; point it at your venv
+with `HL_PYTHON=/path/to/venv/bin/python` if `python3` doesn't have the SDK.
+
 ## Run a local network
 
 ```bash
