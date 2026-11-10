@@ -38,7 +38,7 @@ the contracts explicit.
    `batchModify`. Proposal: fix the doc comment on `ActionResponse::Order`
    ("also used for batchModify"; modify -> Default).
 
-6. **Clearinghouse entity-set mismatch (bug report for `crates/clearinghouse`).**
+6. **(Resolved upstream in 3e8c75d; workaround removed, regression test kept.)** Clearinghouse entity-set mismatch.
    `take_dirty` can report the insurance account (accts[0]) as
    `StateKey::Account(INSURANCE)` (e.g. at genesis, where `dirty_list`
    includes index 0), but `all_entity_hashes` (used after `decode`) covers it
