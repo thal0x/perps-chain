@@ -116,6 +116,10 @@ pub struct FakeBackend {
     pub submitted: Mutex<Vec<(Tx, TxSource)>>,
     pub chaos: Mutex<Option<String>>,
     height: Mutex<Height>,
+    /// If set, user txs whose signature does not recover (hlwire, testnet
+    /// flavour) are rejected with `BadSignature`; recovered signers are logged.
+    pub verify_signatures: std::sync::atomic::AtomicBool,
+    pub signers: Mutex<Vec<Address>>,
     /// Used when the script queue is empty.
     responder: Mutex<Option<Box<dyn Fn(&UserTx) -> Script + Send + Sync>>>,
 }
@@ -181,6 +185,8 @@ impl FakeBackend {
             chaos: Mutex::new(None),
             height: Mutex::new(0),
             responder: Mutex::new(None),
+            verify_signatures: std::sync::atomic::AtomicBool::new(false),
+            signers: Mutex::new(vec![]),
         })
     }
 
@@ -218,6 +224,14 @@ impl ApiBackend for FakeBackend {
     }
     fn submit(&self, tx: Tx, source: TxSource) -> Result<TxHash, AdmissionError> {
         let h = tx.hash();
+        if let Tx::User(u) = &tx {
+            if self.verify_signatures.load(std::sync::atomic::Ordering::Relaxed) {
+                match hlwire::recover_signer(u, self.genesis.is_mainnet) {
+                    Ok(a) => self.signers.lock().push(a),
+                    Err(_) => return Err(AdmissionError::BadSignature),
+                }
+            }
+        }
         let scripted = self.script.lock().pop_front();
         let s = match scripted {
             Some(s) => s,

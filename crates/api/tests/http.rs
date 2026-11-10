@@ -392,9 +392,7 @@ async fn exchange_flow_and_rendering() {
     assert_eq!(src, &TxSource::Api { ip: "127.0.0.1".into() });
     match tx {
         Tx::User(u) => {
-            let mut expect = Vec::new();
-            api::wire::local::to_msgpack(&order, &mut expect);
-            assert_eq!(u.action_bytes, expect);
+            assert_eq!(u.action_bytes, hlwire::json_to_msgpack(&order).unwrap());
             assert_eq!(u.signature.v, 27);
         }
         _ => panic!(),
@@ -490,4 +488,34 @@ async fn pending_withdrawals_roundtrip_through_relayer_parser() {
     let parsed = relayer::api::parse_pending_withdrawals(pw).unwrap();
     let expect = s.backend.state.lock().withdrawals.clone();
     assert_eq!(parsed, expect);
+}
+
+#[tokio::test]
+async fn exchange_real_signed_requests_reach_backend_intact() {
+    let s = start(ApiConfig::default()).await;
+    let w = hlwire::Wallet::from_bytes(&[7u8; 32]).unwrap();
+    let action = hlwire::order_action(
+        &[OrderRequest {
+            asset: 0,
+            is_buy: true,
+            limit_px: px("1100"),
+            sz: sz("0.2"),
+            reduce_only: false,
+            kind: OrderKind::Limit { tif: Tif::Gtc },
+            cloid: Some(cloid1()),
+        }],
+        Grouping::Na,
+    );
+    let l1 = hlwire::signed_l1_request(&w, action, 1_700_000_000_123, None, None, false);
+    let r: Value = s.client.post(format!("{}/exchange", s.base)).json(&l1).send().await.unwrap().json().await.unwrap();
+    assert_eq!(r["status"], "ok");
+    let us = hlwire::signed_user_request(&w, hlwire::usd_send_action(&user_b(), usd("1"), 1_700_000_000_124), false);
+    let r: Value = s.client.post(format!("{}/exchange", s.base)).json(&us).send().await.unwrap().json().await.unwrap();
+    assert_eq!(r["status"], "ok");
+    let subs = s.backend.submitted.lock();
+    for (tx, _) in subs.iter() {
+        let Tx::User(u) = tx else { panic!() };
+        assert_eq!(hlwire::recover_signer(u, false).unwrap(), w.address());
+    }
+    assert_eq!(subs.len(), 2);
 }

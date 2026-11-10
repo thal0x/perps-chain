@@ -25,6 +25,7 @@ async fn python_sdk_smoke() {
     };
     let s = start(ApiConfig::default()).await;
     s.backend.set_responder(simple_responder(user_a()));
+    s.backend.verify_signatures.store(true, std::sync::atomic::Ordering::Relaxed);
     // blocks keep flowing so pushes happen
     let backend = s.backend.clone();
     let pump = tokio::spawn(async move {
@@ -43,4 +44,8 @@ async fn python_sdk_smoke() {
     eprintln!("{so}\n{se}");
     assert!(out.status.success(), "python sdk smoke failed");
     assert!(so.contains("ws ok"));
+    // every action was signed by the SDK and recovered by hlwire
+    let n = s.backend.submitted.lock().len();
+    assert!(n >= 18, "{n}");
+    assert_eq!(s.backend.signers.lock().len(), n);
 }

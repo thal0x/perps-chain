@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 interfaces = { workspace = true }
+hlwire = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
@@ -18,6 +19,7 @@ crossbeam-channel = { workspace = true }
 tokio-util = { workspace = true }
 
 [dev-dependencies]
+hlwire = { workspace = true }
 relayer = { workspace = true }
 reqwest = { workspace = true }
 tokio-tungstenite = "0.29"
