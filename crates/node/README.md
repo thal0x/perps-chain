@@ -79,6 +79,9 @@ scripts/localnet.sh dev | seed | status | stop
   spinning worker per core, per node) burned CPU with 4 validators on 4 cores.
 * `exec stats` (info, every 10 s): blocks, txs, order actions, error receipts (top
   messages), SigCache misses at execution, lock wait / execute / post-execute ms.
+* `max_timeout_ms` (config.toml / `--max-timeout-ms`, default 4000, D29): pacemaker
+  view-timeout cap passed to `CoreConfig::max_timeout_ms` (consensus default 10 s let
+  backoff carried over from a partition exceed AC1's 10 s resume bound).
 * `fsync_commits` (config.toml): default true; replay mode default false.
 * `tests/exec_bench.rs` (ignored): per-stage single-core cost of bench traffic
   (`cargo test --release -p node --test exec_bench -- --ignored --nocapture`).

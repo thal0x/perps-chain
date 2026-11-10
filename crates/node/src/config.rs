@@ -33,6 +33,10 @@ pub struct NodeConfig {
     /// recovered at admission (SigCache), and idle rayon workers spin, which
     /// costs real CPU when 4 validators share 4 cores.
     pub exec_threads: Option<usize>,
+    /// Pacemaker timeout cap (consensus `CoreConfig::max_timeout_ms`), default
+    /// 4000 (D29: a cap of 10 s let backoff carried over from a partition exceed
+    /// AC1's 10 s post-heal resume bound).
+    pub max_timeout_ms: Option<u64>,
     pub mempool: mempool::PoolConfig,
 }
 
@@ -53,6 +57,9 @@ pub struct RunArgs {
     pub key: Option<PathBuf>,
     #[arg(long)]
     pub min_block_ms: Option<u64>,
+    /// Pacemaker view-timeout cap in ms (default 4000).
+    #[arg(long)]
+    pub max_timeout_ms: Option<u64>,
     #[arg(long)]
     pub invariants: Option<String>,
     #[arg(long)]
@@ -64,6 +71,9 @@ pub struct RunArgs {
     #[arg(long)]
     pub log_level: Option<String>,
 }
+
+/// Default pacemaker timeout cap (D29).
+pub const DEFAULT_MAX_TIMEOUT_MS: u64 = 4000;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Invariants {
@@ -156,6 +166,7 @@ pub struct Resolved {
     pub snapshot_interval: u64,
     pub fsync_commits: bool,
     pub exec_threads: usize,
+    pub max_timeout_ms: u64,
     pub mempool: mempool::PoolConfig,
 }
 
@@ -200,6 +211,7 @@ impl Resolved {
             snapshot_interval: cfg.snapshot_interval.unwrap_or(1000).max(1),
             fsync_commits,
             exec_threads: cfg.exec_threads.unwrap_or(1).max(1),
+            max_timeout_ms: a.max_timeout_ms.or(cfg.max_timeout_ms).unwrap_or(DEFAULT_MAX_TIMEOUT_MS),
             mempool: cfg.mempool,
             home,
         })
@@ -224,6 +236,19 @@ mod tests {
         assert_eq!(Invariants::parse("every").unwrap(), Invariants::Every);
         assert_eq!(Invariants::parse("50").unwrap(), Invariants::EveryN(50));
     }
+    #[test]
+    fn max_timeout_default_and_overrides() {
+        let home = std::env::temp_dir().join(format!("hlnode-cfg-{}", std::process::id()));
+        std::fs::create_dir_all(&home).unwrap();
+        let a = RunArgs { home: home.clone(), ..Default::default() };
+        assert_eq!(Resolved::from_args(&a).unwrap().max_timeout_ms, 4000);
+        std::fs::write(home.join("config.toml"), "max_timeout_ms = 6000\n").unwrap();
+        assert_eq!(Resolved::from_args(&a).unwrap().max_timeout_ms, 6000);
+        let b = RunArgs { max_timeout_ms: Some(2500), ..a };
+        assert_eq!(Resolved::from_args(&b).unwrap().max_timeout_ms, 2500);
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
     #[test]
     fn toml_roundtrip() {
         let c = NodeConfig { api_listen: Some("x:1".into()), ..Default::default() };
