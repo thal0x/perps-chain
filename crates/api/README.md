@@ -76,6 +76,8 @@ cargo test -p api
 * `tests/wire.rs`: fast parser == hlwire on SDK vectors, edge cases and proptest;
 * `tests/schema.rs`: every JSON shape emitted (126 samples, 67 SDK types: /info, /exchange, WS events) is validated against the TS SDK's TypeScript response types, converted to JSON Schema with `additionalProperties: false` the way the SDK's own tests do (node + ajv; `tests/schema/`);
 * `tests/python_sdk.rs`: the real Python SDK (`HL_PYTHON` = a python with hyperliquid-python-sdk installed) runs `Info`, `Exchange`, `market_open`/`close`, tpsl, transfers, agent and the `basic_ws` subscriptions. Every signature is recovered with hlwire;
+* `tests/spot_chain.rs`: spot end to end over the real `state::HlChain` (an in-test `ApiBackend` executes one block per submit): hlwire-signed spot ladder, basic_spot_order flow (rest, orderStatus, cancel), IOC sweep, userFills dir, recentTrades, candles, spotMetaAndAssetCtxs volume/mid/mark, holds (API formula == chain), WS trades/l2Book/userFills for PURR/USDC;
+* `tests/python/spot_seed.py`: PURR/USDC liquidity + one trade for a localnet (see the D25 notes in the final report / for `localnet.sh seed`);
 * `tests/ts_sdk.rs`: `@nktkas/hyperliquid` 0.33.3 from npm runs the README examples over HTTP and WebSocket (`tests/ts/`).
 
 The node/python tests skip with a message if their runtime is missing.

@@ -24,6 +24,9 @@ inside an `ok` response; tx-level errors are `TxReceipt.result = Err(..)`
 | `TP/SL child must have the same asset as the parent order.` | local | |
 | `positionTpsl orders must be trigger orders.` | local | |
 | `Cannot modify canceled or filled order` | HL | batchModify entry whose target is not open |
+| `Insufficient spot balance asset=10000` | HL wording, not verified offline | spot order whose hold exceeds free balance (admission), or a spot taker that cannot pay before any fill |
+| `Reduce only order would increase position.` | HL text; spot use not verified | any reduce-only spot order (no spot position) |
+| `Trigger orders are not supported for spot.` | local | trigger / TP/SL orders on asset 10000 |
 
 ## Cancel statuses
 | `Order was never placed, already canceled, or filled.` | HL | cancel / cancelByCloid target not open for this user |
