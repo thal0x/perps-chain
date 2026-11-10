@@ -8,6 +8,9 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# Authoritative builds on main use their own target dir: worktrees share
+# crate names, so a shared dir can serve another worktree's stale artifacts (D24).
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/home/user/.cargo-target/main}"
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 QUICK=0; MD=0
 for a in "$@"; do case "$a" in --quick) QUICK=1;; --md) MD=1;; esac; done

@@ -4,6 +4,9 @@
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+# Authoritative builds on main use their own target dir: worktrees share
+# crate names, so a shared dir can serve another worktree's stale artifacts (D24).
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-/home/user/.cargo-target/main}"
 name="$1"; shift || true
 br="agent/$name"
 [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] || { echo "not on main"; exit 1; }

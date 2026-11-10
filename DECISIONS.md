@@ -138,3 +138,11 @@ every call succeed on real HL. The criterion now allows errors only via
 the runner fails if an allowlisted error does not occur. The chain is not
 special-cased for any example. Also: long-running examples (basic_ws,
 basic_adding) are judged by channel/message receipt within a timeout.
+
+**D24 [process]** Worktrees sharing one target dir can get each other's
+stale artifacts (same crate names/metadata hash, mtime fingerprints). The
+merge gate and status.sh on main build in a separate
+`/home/user/.cargo-target/main` so verification is authoritative; agents keep
+the shared dir for speed and `touch` sources if they suspect staleness.
+AC4 fix (clearinghouse e81b764): non-liquidated reducing fills may not create
+new negative equity; isolated opens through the mark fund the instant loss.
