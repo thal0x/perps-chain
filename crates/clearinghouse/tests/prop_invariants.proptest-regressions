@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc cee94caf7746fcbf828fc7aa932e4b783c7aab4f2f248566b8da962a0f2334e6 # shrinks to n = 7, insurance = 0, ops = [Fill(0, 2, 8, true, 0, 1834), Fill(0, 6, 3, false, 0, 13782), Leverage(8, 1, false, 18), Fill(1, 2, 1, false, 0, 9857), Fill(1, 7, 1, false, 0, 33450), Price(1, -409), Price(1, 1085), Time(1), Time(1), Fill(1, 10, 0, false, -20, 1000), Fill(0, 11, 6, false, 0, 42789), Price(0, -1500), Leverage(0, 0, false, 10), Price(0, 2306), Price(0, -2255), Fill(0, 0, 0, false, 0, 1000), Fill(0, 0, 0, false, 0, 1000), Price(0, 475), Price(0, -1472), Price(0, 589), Leverage(0, 0, false, 10), Price(0, -1010), Fill(0, 0, 0, false, 0, 1000), Fill(0, 0, 0, false, 0, 1000), Fill(0, 0, 0, false, 0, 1000), Price(0, 1317), Price(1, -1065), Price(1, -648), Fill(0, 0, 0, false, 0, 1000)]
+cc c47e095e5333ea98fa1358993de635e0d1565c8cf0221aa960467bc872471a32 # shrinks to n = 16, insurance = 0, seed_bal = 50000, ops = [Fill(2, 2, 4, false, -190, 158417), Fill(2, 5, 0, false, -123, 217386), Price(2, -938), Price(2, -1300), Deposit(0, 1)]
