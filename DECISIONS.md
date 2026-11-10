@@ -105,3 +105,12 @@ are served by inherent methods on the concrete `Clearinghouse`
 concrete type. Known gap: the insurance fund can go negative when covering
 bad debt of an account with no positions left to ADL; conservation still
 holds and it's reported via BadDebtCovered. Revisit if AC4 evidence shows it.
+
+**D20 [consensus]** Votes are broadcast to all validators (n ≤ 7) so every
+node forms QCs (unicast-to-next-leader stalled badly with 2/7 crashed). Two
+vote domain tags (direct vs TC-extension) so commit proofs verify from QCs
+alone. Lagging nodes may vote on blocks with fetched-but-unconnected
+ancestry (safety depends only on QC/TC views; fixes a sync deadlock found by
+the seed sweep). Replay voters also check `proposal_override`; logs need two
+padding blocks. Proposals are authenticated by the p2p channel identity, not
+a separate signature (validator-only mesh, D5).
