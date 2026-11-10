@@ -184,3 +184,13 @@ under crates/, bridge/, Cargo.lock or acceptance/sdk after this point
 invalidates evidence (STALE) and requires reruns; only docs and runner-side
 fixes outside the fingerprint are allowed. API indexer stays fed in replay
 mode (real components; memory plateaus at its cap, ~1 GB/node).
+
+**D29 [consensus] Freeze lifted** (D28) after a merge-gate proptest seed
+exposed two real liveness bugs: (1) snapshot sync could never certify a
+snapshot when no header's exec claim landed exactly on the snapshot height
+(claims skip heights when execution lag varies; a lagging leader claims stale
+heights) — fix: claims never jump over the next snapshot height, pending
+snapshots are kept and re-verified; (2) pacemaker backoff carried over from a
+lossy episode could delay resume past 10 s after a heal — fix: no backoff
+escalation for views without a proposal, and node caps view timeout at 4 s.
+All evidence will be regenerated on the new frozen tree.
