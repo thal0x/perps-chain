@@ -15,7 +15,7 @@ scope (D6/D10).
 | spotMeta / spotMetaAndAssetCtxs | ✓ (nominal ctx) | pair 0 = `PURR/USDC`, others `@i`; an `@1` alias pair always exists (basic_ws subscribes to it). Spot ctx prices nominal "1.0" (no spot books, D10) |
 | allMids (`dex`) | ✓ | book mid, else mark, else oracle, else genesis px (so `market_open` works on an empty book); perps only |
 | l2Book (`nSigFigs` 2–5, `mantissa` 2/5 with 5) | ✓ | aggregation: bids floor, asks ceil, 20 levels/side; unknown coin -> `null`; spot coins -> empty levels |
-| clearinghouseState (`dex`) | ✓ | `assetPositions[].position` incl. `cumFunding`, `maxLeverage`, isolated `rawUsd` (= margin used); `time` = server time |
+| clearinghouseState (`dex`) | ✓ | `assetPositions[].position` incl. `cumFunding`, `maxLeverage`, isolated `rawUsd` (= margin used); `time` = latest block time |
 | spotClearinghouseState | ✓ | nonzero balances; `hold`/`entryNtl` "0.0" |
 | openOrders / frontendOpenOrders | ✓ | most recent first; `orderType` derived (Limit / Stop Market / Take Profit Limit / ...), `triggerCondition` "N/A" or "Price above/below X"; `children` [] |
 | orderStatus (by oid, or by cloid string as Python sends) | ✓ | live orders from state (status `open`, or `triggered` if indexed), else indexer history; `{"status":"unknownOid"}` |
@@ -32,7 +32,7 @@ scope (D6/D10).
 | referral | stub | `needToCreateCode` |
 | maxBuilderFee | stub | `0` |
 | recentTrades | ✓ | last 100, newest first, `users` [buyer, seller] |
-| activeAssetData | ✓ | leverage from position, else default 20x cross (interface request 1); available = withdrawable × leverage |
+| activeAssetData | ✓ | leverage from position, else `StateQuery::leverage_of`, else default 20x cross; available = withdrawable × leverage |
 | predictedFundings | ✓ | `[[coin, [["HlPerp", {fundingRate, nextFundingTime, fundingIntervalHours}]]]]` |
 | webData2 | ✓ | clearinghouse, open orders, meta, ctxs, spot state |
 | exchangeStatus | ✓ | |

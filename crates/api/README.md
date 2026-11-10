@@ -58,7 +58,8 @@ channels: see [COMPAT.md](COMPAT.md).
   `Websocket connection established.`, as on HL.
 * **Formatting.** Decimals follow HL style ("1100.0", "0.0", "1891.4"):
   trimmed, but whole numbers keep one fractional digit. Addresses and hashes
-  are lowercase hex.
+  are lowercase hex. `time` fields use the latest executed block time
+  (`StateQuery::block_time`).
 * **Robustness.** Handlers never panic on input: bad `/info` requests get 422
   with text, as on HL, and bad `/exchange` requests get
   `{"status":"err",...}`. A panic on one block is caught, and the indexer

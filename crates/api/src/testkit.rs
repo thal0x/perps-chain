@@ -14,6 +14,7 @@ pub struct FakeState {
     pub accounts: HashMap<Address, AccountView>,
     pub orders: HashMap<Address, Vec<RestingOrderView>>,
     pub agents: HashMap<Address, Address>,
+    pub leverages: HashMap<(Address, AssetId), Leverage>,
     pub time: TimestampMs,
     pub height: Height,
     pub withdrawals: Vec<PendingWithdrawal>,
@@ -29,6 +30,7 @@ impl Default for FakeState {
             accounts: HashMap::new(),
             orders: HashMap::new(),
             agents: HashMap::new(),
+            leverages: HashMap::new(),
             time: 0,
             height: 0,
             withdrawals: vec![],
@@ -79,6 +81,9 @@ impl StateQuery for FakeState {
     }
     fn principal_of(&self, signer: &Address) -> Address {
         self.agents.get(signer).copied().unwrap_or(*signer)
+    }
+    fn leverage_of(&self, user: &Address, asset: AssetId) -> Option<Leverage> {
+        self.leverages.get(&(*user, asset)).copied()
     }
     fn block_time(&self) -> TimestampMs {
         self.time

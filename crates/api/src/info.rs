@@ -48,7 +48,7 @@ fn dex_is_main(v: &Value) -> bool {
 pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
     let ty = req.get("type").and_then(|t| t.as_str()).ok_or_else(|| format!("{DESER}: missing field `type`"))?;
     let coins = &s.coins;
-    let now = fmt::now_ms();
+    let now = s.now();
     Ok(match ty {
         "meta" => {
             if dex_is_main(req) {
@@ -352,7 +352,7 @@ pub fn all_mids(s: &Shared) -> Value {
 
 /// l2Book JSON for `coin`; None if the coin is unknown.
 pub fn l2_book(s: &Shared, coin: &str, n_sig: Option<u32>, mantissa: Option<u32>) -> Option<Value> {
-    let time = fmt::now_ms();
+    let time = s.now();
     match s.coins.resolve(coin)? {
         CoinRef::Spot(_) => Some(json!({"coin": coin, "time": time, "levels": [[], []]})),
         CoinRef::Perp(a) => {
@@ -367,7 +367,7 @@ pub fn l2_book(s: &Shared, coin: &str, n_sig: Option<u32>, mantissa: Option<u32>
 
 /// Best bid / offer for the WS `bbo` channel.
 pub fn bbo(s: &Shared, coin: &str) -> Option<Value> {
-    let time = fmt::now_ms();
+    let time = s.now();
     let lvl = |l: Option<&(Px, Sz, u32)>| match l {
         Some((p, z, n)) => json!({"px": fmt::px(*p), "sz": fmt::sz_abs(*z), "n": n}),
         None => Value::Null,
@@ -474,11 +474,11 @@ pub fn default_leverage(m: &MarketSpec) -> Leverage {
 pub fn active_asset_data(s: &Shared, user: &Address, coin: &str) -> Option<Value> {
     let asset = s.coins.perp(coin)?;
     let m = s.coins.market(asset)?.clone();
-    let (acct, ctx) = s.with_state(|q| (q.account(user), q.market_ctx(asset)));
-    let pos = acct.positions.iter().find(|p| p.asset == asset);
+    let (acct, ctx, setting) = s.with_state(|q| (q.account(user), q.market_ctx(asset), q.leverage_of(user, asset)));
+    let pos = acct.positions.iter().find(|p| p.asset == asset && !p.szi.is_zero());
     let (lev, raw) = match pos {
         Some(p) => (p.leverage, p.margin_used),
-        None => (default_leverage(&m), Usd::ZERO),
+        None => (setting.unwrap_or_else(|| default_leverage(&m)), Usd::ZERO),
     };
     let avail = acct.withdrawable.raw().max(0) * lev.value() as i128;
     let mark = if ctx.mark_px.0 > 0 { ctx.mark_px.raw() } else { m.initial_px.raw().max(1) };

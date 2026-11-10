@@ -145,6 +145,13 @@ async fn info_user_state() {
     assert_eq!(aad["maxTradeSzs"][0], "66.1666");
     let aad2 = s.info(json!({"type": "activeAssetData", "user": addr(50).to_hex(), "coin": "BTC"})).await;
     assert_eq!(aad2["leverage"], json!({"type": "cross", "value": 20}));
+    // flat account with a leverage setting (StateQuery::leverage_of)
+    s.backend.state.lock().leverages.insert((addr(50), 1), Leverage::Isolated(7));
+    let aad3 = s.info(json!({"type": "activeAssetData", "user": addr(50).to_hex(), "coin": "BTC"})).await;
+    assert_eq!(aad3["leverage"], json!({"type": "isolated", "value": 7, "rawUsd": "0.0"}));
+    // times come from the executed block time
+    assert_eq!(ch["time"], T0);
+    assert_eq!(s.info(json!({"type": "l2Book", "coin": "ETH"})).await["time"], T0);
 
     let fees = s.info(json!({"type": "userFees", "user": a})).await;
     assert_eq!(fees["userCrossRate"], "0.00035");
