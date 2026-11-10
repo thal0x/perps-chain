@@ -29,7 +29,7 @@ HEAD="$(git rev-parse HEAD)"
 log "cargo build --release -p node -p chaos -p sim"
 cargo build -q --release -p node -p chaos -p sim || die "release build failed"
 TDIR="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import sys,json;print(json.load(sys.stdin)["target_directory"])')"
-BIN="$ROOT/run/bin"; mkdir -p "$BIN"
+BIN="$ROOT/run/bin_ac1"; mkdir -p "$BIN"
 cp "$TDIR/release/hlnode" "$TDIR/release/hlchaos" "$TDIR/release/sim" "$BIN/"   # private copies
 WORK="$ROOT/run/ac1"; rm -rf "$WORK"; mkdir -p "$WORK"
 REPORT="$WORK/report.json"
@@ -56,7 +56,9 @@ import json, sys, datetime
 rep, out, fp, head, rc, dirty = sys.argv[1:]
 r = json.load(open(rep))
 qc = r.get("qc") or {}
-ok = bool(r.get("pass")) and rc == "0" and r.get("complete", False) and qc.get("failures", 1) == 0
+qf = qc.get("failures", None)
+qc_failures = len(qf) if isinstance(qf, list) else (qf if isinstance(qf, int) else 1)
+ok = bool(r.get("pass")) and rc == "0" and r.get("complete", False) and qc_failures == 0 and (qc.get("blocks_verified") or 0) > 0
 ev = {
     "ac": "ac1", "mode": "full", "pass": ok,
     "duration_s": r["duration_s"], "validators": r["validators"], "max_faulty": r.get("max_faulty"),
@@ -65,7 +67,7 @@ ev = {
     "safety_violations": r["safety_violations"], "kills": r.get("kills"), "partitions": r.get("partitions"),
     "splits": r.get("splits"), "lossy_episodes": r.get("lossy_episodes"), "progress_stalls": r.get("progress_stalls"),
     "unexpected_exits": r.get("unexpected_exits"),
-    "qc_verified_blocks": qc.get("blocks_verified"), "qc_failures": qc.get("failures"), "qc_nodes_checked": qc.get("nodes_checked"),
+    "qc_verified_blocks": qc.get("blocks_verified"), "qc_failures": qc_failures, "qc_failure_details": (qf if isinstance(qf, list) else [])[:20], "qc_nodes_checked": qc.get("nodes_checked"),
     "final_height": r.get("final_height"), "seed": r["seed"], "episodes_by_kind": r.get("episodes_by_kind"),
     "violations": (r.get("violations") or [])[:20], "checker": r.get("checker"), "load": r.get("load"),
     "complete": r.get("complete"), "hlchaos_exit": int(rc),
