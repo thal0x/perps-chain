@@ -167,6 +167,9 @@ impl Clearinghouse {
                 }
                 prev = Some(p.asset);
                 let lev = self.lev_in(st, p.asset);
+                if p.leverage != lev {
+                    return fail(format!("position leverage out of sync for {}", st.address));
+                }
                 if lev.is_cross() && !p.iso_cash.is_zero() {
                     return fail(format!("cross position with isolated cash for {}", st.address));
                 }

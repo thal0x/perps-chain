@@ -19,9 +19,12 @@ pub const INSURANCE: Address = Address([0xFF; 20]);
 /// `N`). `basis` is the signed cost basis of the open size (long > 0) and is
 /// only used for entry price / realized-PnL *reporting*; equity is always
 /// `cash + szi * mark`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
 pub struct Position {
     pub asset: AssetId,
+    /// Leverage in force for this position (always equal to the account's
+    /// setting for the asset; kept here so margin loops touch one array).
+    pub leverage: Leverage,
     pub szi: Sz,
     /// Signed cost basis (sum of notionals of the open size).
     pub basis: Usd,
@@ -31,6 +34,20 @@ pub struct Position {
     pub cum_funding_since_open: Usd,
     /// Funding paid since the size last changed.
     pub cum_funding_since_change: Usd,
+}
+
+impl Position {
+    pub fn empty(asset: AssetId, leverage: Leverage) -> Self {
+        Self {
+            asset,
+            leverage,
+            szi: Sz::ZERO,
+            basis: Usd::ZERO,
+            iso_cash: Usd::ZERO,
+            cum_funding_since_open: Usd::ZERO,
+            cum_funding_since_change: Usd::ZERO,
+        }
+    }
 }
 
 /// Per (account, asset) settings and lifetime counters.

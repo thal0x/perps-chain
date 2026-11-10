@@ -35,6 +35,17 @@ pub const ERR_ISO_REMOVE: &str = "Insufficient margin to remove.";
 pub const ERR_USER: &str = "Invalid user";
 pub const ERR_FILL: &str = "Invalid fill";
 
+/// ceil(n / d) for n >= 0 using 64-bit division when possible.
+#[inline]
+pub(crate) fn div_ceil_small(n: i128, d: u64) -> i128 {
+    debug_assert!(n >= 0 && d > 0);
+    if n <= u64::MAX as i128 {
+        (n as u64).div_ceil(d) as i128
+    } else {
+        div_round(n, d as i128, Rounding::Ceil)
+    }
+}
+
 fn err<T>(s: &str) -> Result<T, ExecError> {
     Err(ExecError::new(s))
 }
@@ -378,20 +389,36 @@ impl Clearinghouse {
     /// Signed position value at mark, Floor.
     #[inline]
     pub(crate) fn value(&self, asset: AssetId, szi: Sz) -> i128 {
-        notional(self.mark(asset), szi, Rounding::Floor).raw()
+        self.val_ntl(asset, szi).0
     }
     /// |notional| at mark, Ceil.
     #[inline]
     pub(crate) fn ntl_abs(&self, asset: AssetId, szi: Sz) -> i128 {
-        notional(self.mark(asset), szi.abs(), Rounding::Ceil).raw()
+        self.val_ntl(asset, szi).1
     }
+    /// (signed value Floor, |notional| Ceil) at mark with a single division;
+    /// identical to `notional(mark, szi, Floor)` / `notional(mark, |szi|, Ceil)`.
+    #[inline]
+    pub(crate) fn val_ntl(&self, asset: AssetId, szi: Sz) -> (i128, i128) {
+        const D: u128 = (PX_SCALE * SZ_SCALE / USD_SCALE) as u128;
+        let p = self.mark(asset).0 as u128 * szi.0.unsigned_abs() as u128;
+        let q = p / D;
+        let up = (q + (q * D != p) as u128) as i128;
+        if szi.0 >= 0 {
+            (q as i128, up)
+        } else {
+            (-up, up)
+        }
+    }
+    /// Maintenance margin = ceil(|ntl| / (2·max_leverage)) (exact HL fraction).
     #[inline]
     pub(crate) fn mm_of(&self, asset: AssetId, ntl: i128) -> i128 {
-        mul_div(ntl, self.mmr[asset as usize].raw(), RATE_SCALE, Rounding::Ceil)
+        div_ceil_small(ntl, 2 * self.specs[asset as usize].max_leverage as u64)
     }
+    /// Sensitivity bound |ntl|·(1 + mmr) (rounded up).
     #[inline]
     pub(crate) fn sens_of(&self, asset: AssetId, ntl: i128) -> i128 {
-        mul_div(ntl, RATE_SCALE + self.mmr[asset as usize].raw(), RATE_SCALE, Rounding::Ceil)
+        ntl + self.mm_of(asset, ntl)
     }
 
     /// Cross aggregate, optionally with one position replaced (`over_pos`,
@@ -407,17 +434,18 @@ impl Clearinghouse {
         let add = |p: &Position, s: &mut CrossSum| {
             let lev = match over_lev {
                 Some((a, l)) if a == p.asset => l,
-                _ => self.lev_in(st, p.asset),
+                _ => p.leverage,
             };
             if !lev.is_cross() {
                 return;
             }
-            let ntl = self.ntl_abs(p.asset, p.szi);
-            s.equity += self.value(p.asset, p.szi);
-            s.im += div_round(ntl, lev.value() as i128, Rounding::Ceil);
-            s.mm += self.mm_of(p.asset, ntl);
+            let (v, ntl) = self.val_ntl(p.asset, p.szi);
+            let mm = self.mm_of(p.asset, ntl);
+            s.equity += v;
+            s.im += div_ceil_small(ntl, lev.value() as u64);
+            s.mm += mm;
             s.ntl += ntl;
-            s.sens += self.sens_of(p.asset, ntl);
+            s.sens += ntl + mm;
             s.n += 1;
         };
         let over_asset = over_pos.map(|p| p.asset);
@@ -532,6 +560,7 @@ impl Clearinghouse {
         let fresh = s0 == 0 || (s1 != 0 && s1.signum() != s0.signum());
         let pos = Position {
             asset,
+            leverage: lev,
             szi: Sz::from_raw(s1),
             basis: Usd::from_raw(if s1 == 0 { 0 } else { b1 }),
             iso_cash: Usd::from_raw(iso),
@@ -544,28 +573,63 @@ impl Clearinghouse {
 
     /// Plan one side of a trade for `user` (not committed).
     pub(crate) fn plan(&self, user: &Address, asset: AssetId, d: Sz, n: i128, fee: i128, liq: bool) -> (Sz, TradeOut) {
+        self.plan_at(self.idx(user), user, asset, d, n, fee, liq)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[inline]
+    pub(crate) fn plan_at(&self, idx: Option<usize>, user: &Address, asset: AssetId, d: Sz, n: i128, fee: i128, liq: bool) -> (Sz, TradeOut) {
         let empty = AccountState::new(*user);
-        let st = self.account(user).unwrap_or(&empty);
-        let pos0 = st.pos(asset).cloned().unwrap_or(Position { asset, ..Default::default() });
+        let st = idx.map(|i| &self.accts[i]).unwrap_or(&empty);
         let lev = self.lev_in(st, asset);
+        let pos0 = st.pos(asset).cloned().unwrap_or_else(|| Position::empty(asset, lev));
         (pos0.szi, self.trade(&pos0, lev, d, n, fee, liq))
     }
 
     /// Initial-margin check after a planned trade (only for risk-increasing
     /// trades): cross equity − cross initial margin >= 0 after the trade.
-    pub(crate) fn plan_ok(&self, user: &Address, out: &TradeOut) -> bool {
+    pub(crate) fn plan_ok(&self, idx: Option<usize>, out: &TradeOut) -> bool {
         if !out.risk_up {
             return true;
         }
-        let empty = AccountState::new(*user);
-        let st = self.account(user).unwrap_or(&empty);
-        let s = self.cross_sum(st, Some(&out.pos), None, out.cross_delta);
-        s.equity - s.im >= 0
+        let empty = AccountState::default();
+        let st = idx.map(|i| &self.accts[i]).unwrap_or(&empty);
+        let (equity, im) = self.cross_equity_im(st, &out.pos, out.cross_delta);
+        equity - im >= 0
+    }
+
+    /// Lean version of `cross_sum` (equity and initial margin only) with one
+    /// position replaced; used on the fill hot path.
+    #[inline]
+    pub(crate) fn cross_equity_im(&self, st: &AccountState, over: &Position, cash_delta: i128) -> (i128, i128) {
+        let mut equity = st.cash.raw() + cash_delta;
+        let mut im = 0i128;
+        let mut add = |p: &Position| {
+            let lev = p.leverage;
+            if lev.is_cross() {
+                let (v, ntl) = self.val_ntl(p.asset, p.szi);
+                equity += v;
+                im += div_ceil_small(ntl, lev.value() as u64);
+            }
+        };
+        for p in &st.positions {
+            if p.asset != over.asset {
+                add(p);
+            }
+        }
+        if !over.szi.is_zero() {
+            add(over);
+        }
+        (equity, im)
     }
 
     /// Commit a planned side.
     pub(crate) fn commit(&mut self, user: Address, asset: AssetId, out: TradeOut) {
         let i = self.get_or_create(user);
+        self.commit_at(i, user, asset, out)
+    }
+
+    pub(crate) fn commit_at(&mut self, i: usize, user: Address, asset: AssetId, out: TradeOut) {
         let default_lev = self.default_lev(asset);
         let st = &mut self.accts[i];
         let old = st.pos(asset).cloned();
@@ -855,7 +919,11 @@ impl ClearinghouseApi for Clearinghouse {
         }
         let i = self.get_or_create(user);
         let dl = self.default_lev(asset);
-        self.accts[i].setting_mut(asset, dl).leverage = new;
+        let st = &mut self.accts[i];
+        st.setting_mut(asset, dl).leverage = new;
+        if let Ok(k) = st.positions.binary_search_by_key(&asset, |p| p.asset) {
+            st.positions[k].leverage = new;
+        }
         self.touch(i);
         Ok(())
     }
@@ -910,8 +978,9 @@ impl ClearinghouseApi for Clearinghouse {
         let rate = Rate::from_raw(self.params.taker_fee.raw().max(self.params.maker_fee.raw()).max(0));
         let fee = self.fee_for(n, rate);
         let d = Sz::from_raw(c.sz.raw() * c.side.sign() as i128);
-        let (_, out) = self.plan(&c.user, c.asset, d, n, fee, false);
-        if self.plan_ok(&c.user, &out) {
+        let i = self.idx(&c.user);
+        let (_, out) = self.plan_at(i, &c.user, c.asset, d, n, fee, false);
+        if self.plan_ok(i, &out) {
             Ok(())
         } else {
             err(ERR_MARGIN)
@@ -940,9 +1009,11 @@ impl ClearinghouseApi for Clearinghouse {
         let md = Sz::from_raw(-f.sz.raw() * ts);
         let t_liq = f.liquidation_of == Some(f.taker);
         let m_liq = f.liquidation_of == Some(f.maker);
-        let (t0, tout) = self.plan(&f.taker, f.asset, td, n, taker_fee, t_liq);
-        let (m0, mout) = self.plan(&f.maker, f.asset, md, n, maker_fee, m_liq);
-        if (!t_liq && !self.plan_ok(&f.taker, &tout)) || (!m_liq && !self.plan_ok(&f.maker, &mout)) {
+        let ti = self.idx(&f.taker);
+        let mi = self.idx(&f.maker);
+        let (t0, tout) = self.plan_at(ti, &f.taker, f.asset, td, n, taker_fee, t_liq);
+        let (m0, mout) = self.plan_at(mi, &f.maker, f.asset, md, n, maker_fee, m_liq);
+        if (!t_liq && !self.plan_ok(ti, &tout)) || (!m_liq && !self.plan_ok(mi, &mout)) {
             return err(ERR_MARGIN);
         }
         let res = FillResult {
@@ -953,8 +1024,10 @@ impl ClearinghouseApi for Clearinghouse {
             taker_start_pos: t0,
             maker_start_pos: m0,
         };
-        self.commit(f.taker, f.asset, tout);
-        self.commit(f.maker, f.asset, mout);
+        let ti = ti.unwrap_or_else(|| self.get_or_create(f.taker));
+        self.commit_at(ti, f.taker, f.asset, tout);
+        let mi = mi.unwrap_or_else(|| self.get_or_create(f.maker));
+        self.commit_at(mi, f.maker, f.asset, mout);
         self.ledger.fee_pool = Usd::from_raw(self.ledger.fee_pool.raw() + taker_fee + maker_fee);
         self.total += taker_fee + maker_fee;
         self.dirty_insurance = true;
