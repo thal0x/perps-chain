@@ -254,7 +254,14 @@ run_ac3() {
   log "sim load --mode bench --rate $rate --duration $dur across 4 APIs"
   "$BIN/sim" load --targets "$targets" --rate "$rate" --duration "$dur" --mode bench \
       --keys "$net/accounts.json" --genesis "$net/genesis.json" --sign-threads 2 \
-      --out "$TMP/ac3_load.json" >/dev/null 2>"$TMP/ac3_load.stderr" || log "sim load exited non-zero"
+      --out "$TMP/ac3_load.json" >/dev/null 2>"$TMP/ac3_load.stderr" &
+  local load_pid=$! pids=""
+  for i in 0 1 2 3; do pids="$pids $(cat "$net/node$i/hlnode.pid")"; done
+  # per-thread CPU (node threads + load generator) over the measurement window
+  sleep $((warm + 5))
+  python3 acceptance/thread_cpu.py "$((win - 10))" "$TMP/ac3_threads.json" $pids $load_pid >"$TMP/ac3_threads.txt" 2>&1 || true
+  wait "$load_pid" || log "sim load exited non-zero"
+  cat "$TMP/ac3_threads.txt"
   sleep 3
   scripts/localnet.sh status || true
   scripts/localnet.sh stop >/dev/null

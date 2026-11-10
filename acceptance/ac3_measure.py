@@ -77,12 +77,16 @@ try:
 except Exception as e:  # noqa
     load = {"error": str(e)}
     problems.append("load report missing")
+try:
+    thread_cpu = json.load(open(load_json.replace("ac3_load.json", "ac3_threads.json")))
+except Exception:  # noqa
+    thread_cpu = None
 win_ok = res["window_s"] >= (120 if mode == "full" else 20)
 ok = (not problems and win_ok and res["actions_per_s"] >= min_rate and res["min_10s_window"] >= min_rate * 9 // 10
       and res["median_block_ms"] is not None and res["median_block_ms"] < 1000)
 res.update({
     "ac": "ac3", "mode": mode, "pass": ok, "threshold_actions_per_s": min_rate,
-    "problems": problems, "load": load,
+    "problems": problems, "load": load, "thread_cpu": thread_cpu,
     "source_fingerprint": fp, "git_head": head, "git_dirty": dirty == "true",
     "time_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "summary": (f"{res['actions_per_s']} order actions/s over {res['window_s']}s (min 10s window {res['min_10s_window']}), "
