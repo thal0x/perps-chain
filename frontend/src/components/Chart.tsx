@@ -40,7 +40,13 @@ export function Chart({ candles, rev, interval, onInterval }: Props) {
       wickUpColor: "#26c6a1",
       wickDownColor: "#ef5f6c",
     });
-    vs.current = c.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" }, color: "#2a3a4a" });
+    vs.current = c.addHistogramSeries({
+      priceScaleId: "vol",
+      priceFormat: { type: "volume" },
+      color: "#2a3a4a",
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
     c.priceScale("vol").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     chart.current = c;
     return () => {
@@ -66,7 +72,15 @@ export function Chart({ candles, rev, interval, onInterval }: Props) {
     if (rev !== lastRev.current || data.length <= 1) {
       cs.current.setData(data);
       vs.current.setData(vol);
-      if (rev !== lastRev.current) chart.current?.timeScale().fitContent();
+      if (rev !== lastRev.current) {
+        const ts = chart.current?.timeScale();
+        // Few bars: keep a normal bar width instead of stretching them across the pane.
+        if (data.length > 80) ts?.fitContent();
+        else {
+          ts?.applyOptions({ barSpacing: 8 });
+          ts?.scrollToRealTime();
+        }
+      }
       lastRev.current = rev;
     } else {
       cs.current.update(data[data.length - 1]);

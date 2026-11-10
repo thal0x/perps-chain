@@ -113,33 +113,44 @@ export interface LiveBook {
   source: "ws" | "http" | null;
 }
 
-/** l2Book: HTTP snapshot, then WS; falls back to HTTP polling when WS is silent. */
+/**
+ * l2Book: HTTP snapshot first, then WS pushes (the node pushes on change).
+ * Falls back to HTTP polling while the socket is down.
+ */
 export function useBook(c: Clients, coin: string | null): LiveBook {
   const [st, setSt] = useState<LiveBook>({ book: null, source: null });
-  const lastWs = useRef(0);
+  const gotWs = useRef(false);
   useEffect(() => {
     setSt({ book: null, source: null });
-    lastWs.current = 0;
+    gotWs.current = false;
   }, [coin]);
 
   usePoll(
     coin
       ? async () => {
-          if (Date.now() - lastWs.current < 4000) return;
+          const wsUp = c.ws.socket.readyState === 1;
+          if (wsUp && gotWs.current) return;
           const b = (await c.info.l2Book({ coin })) as unknown as Book | null;
-          if (b && Date.now() - lastWs.current >= 4000) setSt({ book: b, source: "http" });
+          if (b && !(c.ws.socket.readyState === 1 && gotWs.current)) setSt({ book: b, source: "http" });
         }
       : null,
     2000,
     [coin, c],
   );
+  useEffect(() => {
+    // Socket dropped: let the poller take over until WS delivers again.
+    const id = setInterval(() => {
+      if (c.ws.socket.readyState !== 1) gotWs.current = false;
+    }, 1000);
+    return () => clearInterval(id);
+  }, [c]);
 
   useSub(
     coin ? c.subs : null,
     coin
       ? (subs) =>
           subs.l2Book({ coin }, (d) => {
-            lastWs.current = Date.now();
+            gotWs.current = true;
             setSt({ book: d as unknown as Book, source: "ws" });
           })
       : null,

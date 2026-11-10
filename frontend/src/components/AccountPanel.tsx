@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { AccountData } from "../lib/account";
 import type { Signer } from "../lib/hl";
 import type { Market, MarketCtx, OpenOrder } from "../lib/types";
-import { dateTime, num, pct, px, slippagePx, usd } from "../lib/format";
+import { dateTime, num, pct, px, sigPx, slippagePx, usd } from "../lib/format";
 import { describeStatuses, useAction } from "../lib/actions";
 
 type Tab = "positions" | "orders" | "fills" | "history" | "balances";
@@ -122,7 +122,7 @@ export function AccountPanel({ acct, markets, ctxs, mids, signer, onSelect }: Pr
                   <td className={`mono ${num(p.unrealizedPnl) >= 0 ? "pos" : "neg"}`}>
                     {usd(p.unrealizedPnl)} ({pct(p.returnOnEquity, 2)})
                   </td>
-                  <td className="mono">{px(p.liquidationPx)}</td>
+                  <td className="mono">{sigPx(p.liquidationPx)}</td>
                   <td className="mono">{usd(p.marginUsed)}</td>
                   <td className="mono">{usd(p.cumFunding?.sinceOpen)}</td>
                   <td>

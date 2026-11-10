@@ -203,10 +203,12 @@ export function OrderForm(p: Props) {
         </div>
       )}
       <div className="row gap">
+        {m?.kind === "perp" && (
         <label className="check">
           <input type="checkbox" checked={reduceOnly} onChange={(e) => setReduceOnly(e.target.checked)} data-testid="reduce-only" />
           Reduce only
         </label>
+        )}
         {m?.kind === "perp" && (
           <label className="check">
             <input type="checkbox" checked={tpsl} onChange={(e) => setTpsl(e.target.checked)} data-testid="tpsl" />

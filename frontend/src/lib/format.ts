@@ -23,6 +23,13 @@ export function px(s: string | null | undefined): string {
   return f && f !== "0" ? `${int}.${f}` : int;
 }
 
+/** Computed prices (e.g. liquidation px) to 5 significant figures. */
+export function sigPx(s: string | null | undefined): string {
+  const n = num(s);
+  if (!Number.isFinite(n)) return "–";
+  return Number(n.toPrecision(5)).toLocaleString("en-US", { maximumFractionDigits: 8 });
+}
+
 export function usd(s: string | number | null | undefined): string {
   const n = num(s);
   if (!Number.isFinite(n)) return "–";

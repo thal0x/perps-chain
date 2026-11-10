@@ -88,6 +88,9 @@ async function main() {
   const shot = async (name) => {
     if (!SHOTS) return;
     mkdirSync(resolve(root, "docs"), { recursive: true });
+    for (const b of await page.locator(".toast button").all()) await b.click().catch(() => {});
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(300);
     await page.screenshot({ path: resolve(root, "docs", name) });
     log(`screenshot docs/${name}`);
   };
