@@ -13,11 +13,11 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 | hlwire | crates/hlwire | running (wave 1) |
 | api | crates/api | running |
 | consensus | crates/consensus | running |
-| netmempool | crates/net, crates/mempool | running |
-| bookoracle | crates/book, crates/oracle | running |
-| clearinghouse | crates/clearinghouse | running |
+| netmempool | crates/net, crates/mempool | MERGED (32 tests) |
+| bookoracle | crates/book, crates/oracle | MERGED (58 tests) |
+| clearinghouse | crates/clearinghouse | MERGED; fill 0.6–2.6 µs (target 1 µs) |
 | state | crates/state | running |
-| bridge | bridge/, crates/relayer | running |
+| bridge | bridge/, crates/relayer | MERGED (41 forge + 26 rust); e2e script pending node |
 | (unassigned) | crates/node, crates/sim, crates/chaos | wave 2 after state+hlwire land |
 
 ## Currently failing
