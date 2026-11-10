@@ -1860,7 +1860,27 @@ dependencies = [
 name = "sim"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "axum",
+ "blake3",
+ "borsh",
+ "clap",
+ "crossbeam-channel",
+ "hex",
+ "hlwire",
  "interfaces",
+ "oracle",
+ "proptest",
+ "rand 0.8.8",
+ "rand_chacha 0.3.1",
+ "rayon",
+ "relayer",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "state",
+ "tokio",
+ "zstd",
 ]
 
 [[package]]
