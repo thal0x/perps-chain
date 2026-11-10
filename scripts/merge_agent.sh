@@ -9,7 +9,12 @@ br="agent/$name"
 [ "$(git rev-parse --abbrev-ref HEAD)" = "main" ] || { echo "not on main"; exit 1; }
 git diff --quiet && git diff --cached --quiet || { echo "main has uncommitted changes"; exit 1; }
 if ! git merge --no-ff --no-commit "$br"; then
-  echo "merge conflict; aborting"; git merge --abort; exit 1
+  others=$(git diff --name-only --diff-filter=U | grep -v '^Cargo.lock$' || true)
+  if [ -n "$others" ]; then
+    echo "merge conflict in: $others; aborting"; git merge --abort; exit 1
+  fi
+  # Cargo.lock only: take main's and let cargo re-resolve the new deps.
+  git checkout --ours Cargo.lock && cargo metadata --format-version 1 >/dev/null && git add Cargo.lock
 fi
 # Never let an agent branch modify lead-owned paths.
 owned=$(git diff --cached --name-only | grep -E '^(crates/interfaces/|Cargo.toml$|ARCHITECTURE.md|DECISIONS.md|TEST_PLAN.md|MILESTONES.md|PROGRESS.md|scripts/status.sh)' || true)
