@@ -169,7 +169,7 @@ impl Clearinghouse {
             .filter(|i| **i != 0)
             .map(|i| &self.accts[*i as usize])
             .collect();
-        cand.sort_by(|a, b| a.address.cmp(&b.address));
+        cand.sort_by_key(|a| a.address);
         cand.dedup_by(|a, b| a.address == b.address);
         let mut out = Vec::new();
         for st in cand {
@@ -181,7 +181,7 @@ impl Clearinghouse {
     /// Exact O(all accounts) scan (reference implementation for tests).
     pub fn liquidation_targets_full_scan(&self) -> Vec<LiquidationTarget> {
         let mut v: Vec<&AccountState> = self.accts[1..].iter().collect();
-        v.sort_by(|a, b| a.address.cmp(&b.address));
+        v.sort_by_key(|a| a.address);
         v.into_iter().flat_map(|st| self.targets_for(st)).collect()
     }
 
@@ -246,6 +246,7 @@ impl Clearinghouse {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn fill_event(
         &self,
         asset: AssetId,
@@ -313,7 +314,7 @@ impl Clearinghouse {
         for (a, s) in &pos {
             ins_cash -= self.value(*a, *s);
             match ins_pos.iter_mut().find(|x| x.0 == *a) {
-                Some(x) => x.1 = x.1 + *s,
+                Some(x) => x.1 += *s,
                 None => ins_pos.push((*a, *s)),
             }
         }
