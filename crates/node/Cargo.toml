@@ -18,6 +18,7 @@ mempool = { workspace = true }
 state = { workspace = true }
 sim = { workspace = true }
 blake3 = { workspace = true }
+rayon = { workspace = true }
 hlwire = { workspace = true }
 oracle = { workspace = true }
 api = { workspace = true }
