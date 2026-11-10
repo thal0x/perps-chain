@@ -5,3 +5,7 @@ edition.workspace = true
 
 [dependencies]
 interfaces = { workspace = true }
+borsh = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
