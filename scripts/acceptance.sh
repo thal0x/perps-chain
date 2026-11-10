@@ -87,8 +87,15 @@ free_port_base() {  # free_port_base START SPAN -> first base with SPAN free por
 
 ac2_params() {
   if [ "$MODE" = full ]; then GEN_ACTIONS=50000000; GEN_DAYS=7; else GEN_ACTIONS=200000; GEN_DAYS=1; fi
+  # dry runs (e.g. `AC2_ACTIONS=5000000 AC2_DAYS=7 scripts/acceptance.sh ac2 --smoke`);
+  # a full run with fewer actions than the threshold fails evidence.py anyway.
+  GEN_ACTIONS="${AC2_ACTIONS:-$GEN_ACTIONS}"; GEN_DAYS="${AC2_DAYS:-$GEN_DAYS}"
   GEN_ACCOUNTS="${GEN_ACCOUNTS:-1000}"
 }
+
+# phase NAME START_EPOCH: record wall time of a phase (+ disk/RSS peaks) in phases.tsv
+phase() { echo -e "$1\t$(( $(date +%s) - $2 ))\t${3:-}" >>"$AC2_DIR/phases.tsv"; log "phase $1: $(( $(date +%s) - $2 ))s ${3:-}"; }
+disk_mb() { du -sm "$AC2_DIR" 2>/dev/null | cut -f1; }
 
 # gen_log: `sim gen` into $AC2_DIR; reused when params + source fingerprint match.
 gen_log() {
@@ -99,8 +106,9 @@ gen_log() {
     return 0
   fi
   rm -rf "$AC2_DIR"; mkdir -p "$AC2_DIR"
+  local t0; t0=$(date +%s)
   log "sim gen --seed 42 --actions $GEN_ACTIONS --sim-days $GEN_DAYS --block-ms 6000 (accounts $GEN_ACCOUNTS)"
-  if ! "$BIN/sim" gen --seed 42 --actions "$GEN_ACTIONS" --sim-days "$GEN_DAYS" --block-ms 6000 --validators 4 \
+  if ! python3 acceptance/maxrss.py "$AC2_DIR/gen.rss" "$BIN/sim" gen --seed 42 --actions "$GEN_ACTIONS" --sim-days "$GEN_DAYS" --block-ms 6000 --validators 4 \
       --accounts "$GEN_ACCOUNTS" --threads 2 --genesis-dir "$AC2_DIR" --roots "$AC2_DIR/gen_roots.txt" \
       -o "$AC2_DIR/log.zst" >"$AC2_DIR/gen_summary.json" 2>"$AC2_DIR/gen.stderr"; then
     tail -5 "$AC2_DIR/gen.stderr" >&2; die "sim gen failed"
@@ -108,6 +116,7 @@ gen_log() {
   gzip -f "$AC2_DIR/gen_roots.txt"
   tail -c 2000 "$AC2_DIR/gen.stderr" >"$AC2_DIR/gen.stderr.tail"; rm -f "$AC2_DIR/gen.stderr"
   echo "$key" >"$AC2_DIR/gen.key"
+  phase gen "$t0" "log_mb=$(( $(stat -c %s "$AC2_DIR/log.zst") / 1048576 )) peak_rss_mb=$(cat "$AC2_DIR/gen.rss")"
   log "log $(du -h "$AC2_DIR/log.zst" | cut -f1): $(python3 -c 'import json,sys;f=json.load(open(sys.argv[1]))["footer"];print(f["blocks"],"blocks",f["actions"],"actions")' "$AC2_DIR/gen_summary.json")"
 }
 
@@ -120,6 +129,7 @@ replay_kill() {
 }
 replay_run() {
   local label="$1" rdir="$AC2_DIR/net_$1" api i h now t0 last_h=-1 last_change done_n next_log
+  local peak_disk=0 d rss_kb=(0 0 0 0) r
   rm -rf "$rdir"; mkdir -p "$rdir"
   python3 "$TOOLS" homes "$AC2_DIR" "$rdir" || die "homes"
   local p2ps=() ports=()
@@ -145,6 +155,10 @@ replay_run() {
         replay_kill; die "replay $label: node$i exited"
       fi
     done
+    d=$(disk_mb); [ "${d:-0}" -gt "$peak_disk" ] && peak_disk=$d
+    for i in 0 1 2 3; do
+      r=$(awk '/VmHWM/ {print $2}' "/proc/${REPLAY_PIDS[$i]}/status" 2>/dev/null); [ -n "$r" ] && rss_kb[$i]=$r
+    done
     [ "$done_n" = 4 ] && break
     h=$(for i in 0 1 2 3; do x=$(tail -n1 "$rdir/node$i/roots.log" 2>/dev/null | cut -d' ' -f1); echo "${x:-0}"; done | sort -n | head -1)
     h=${h:-0}
@@ -152,8 +166,11 @@ replay_run() {
     if [ $((now - last_change)) -gt "$REPLAY_STALL_S" ]; then replay_kill; die "replay $label: no progress for ${REPLAY_STALL_S}s at height $h"; fi
     if [ "$now" -ge "$next_log" ]; then log "replay $label: height >= $h after $((now - t0))s"; next_log=$((now + 300)); fi
   done
+  for i in 0 1 2 3; do
+    r=$(awk '/VmHWM/ {print $2}' "/proc/${REPLAY_PIDS[$i]}/status" 2>/dev/null); [ -n "$r" ] && rss_kb[$i]=$r
+  done
   replay_kill
-  log "replay $label done in $(( $(date +%s) - t0 ))s"
+  phase "replay_$label" "$t0" "peak_disk_mb=$peak_disk peak_rss_mb=$((rss_kb[0] / 1024)),$((rss_kb[1] / 1024)),$((rss_kb[2] / 1024)),$((rss_kb[3] / 1024))"
   for i in 0 1 2 3; do
     gzip -c "$rdir/node$i/roots.log" >"$AC2_DIR/roots_${label}_node$i.txt.gz"
     cp "$rdir/node$i/replay.json" "$AC2_DIR/replay_${label}_node$i.json"
@@ -165,11 +182,12 @@ replay_run() {
 offline_replay() {
   if [ -f "$AC2_DIR/offline_summary.json" ] && [ -f "$AC2_DIR/offline_roots.txt.gz" ]; then log "reusing offline sim replay"; return 0; fi
   log "offline: sim replay --check-invariants every"
-  local rc=0
-  "$BIN/sim" replay "$AC2_DIR/log.zst" --check-invariants every --roots "$AC2_DIR/offline_roots.txt" --threads 2 \
+  local rc=0 t0; t0=$(date +%s)
+  python3 acceptance/maxrss.py "$AC2_DIR/offline.rss" "$BIN/sim" replay "$AC2_DIR/log.zst" --check-invariants every --roots "$AC2_DIR/offline_roots.txt" --threads 2 \
      >"$AC2_DIR/offline_summary.json.tmp" 2>"$AC2_DIR/offline.stderr" || rc=$?
   if [ "$rc" != 0 ] && [ "$rc" != 2 ]; then tail -5 "$AC2_DIR/offline.stderr" >&2; die "sim replay failed ($rc)"; fi
   mv "$AC2_DIR/offline_summary.json.tmp" "$AC2_DIR/offline_summary.json"
+  phase offline "$t0" "peak_rss_mb=$(cat "$AC2_DIR/offline.rss") peak_disk_mb=$(disk_mb)"
   rm -f "$AC2_DIR/offline.stderr"
   gzip -f "$AC2_DIR/offline_roots.txt"
 }

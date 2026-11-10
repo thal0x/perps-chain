@@ -41,6 +41,18 @@ def roots(p):
     return m
 
 
+def phases(d):
+    p = os.path.join(d, "phases.tsv")
+    if not os.path.exists(p):
+        return []
+    out = []
+    for line in open(p):
+        f = line.rstrip("\n").split("\t")
+        if len(f) >= 2:
+            out.append({"phase": f[0], "seconds": int(f[1]), "info": f[2] if len(f) > 2 else ""})
+    return out
+
+
 def ac2(d, out, fp, dirty, head, mode, days):
     gen = json.load(open(os.path.join(d, "gen_summary.json")))
     off = json.load(open(os.path.join(d, "offline_summary.json")))
@@ -80,6 +92,7 @@ def ac2(d, out, fp, dirty, head, mode, days):
                         for k, v in reps.items()},
         "offline": {x: off[x] for x in ("blocks", "invariant_checks", "order_actions", "wall_ms")} | {"violations": len(off["violations"])},
         "gen": {"wall_ms": gen["wall_ms"], "log_bytes": os.path.getsize(os.path.join(d, "log.zst")) if os.path.exists(os.path.join(d, "log.zst")) else None},
+        "phases": phases(d),
         "source_fingerprint": fp, "git_head": head, "git_dirty": dirty == "true", "time_utc": now(),
         "summary": summary,
     }
