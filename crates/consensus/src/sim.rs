@@ -743,7 +743,7 @@ impl Sim {
     }
 
     pub fn committed_height(&self, i: usize) -> Height {
-        self.nodes[i].core.as_ref().map(|c| interfaces::ConsensusCore::committed_height(c)).unwrap_or(0)
+        self.nodes[i].core.as_ref().map(interfaces::ConsensusCore::committed_height).unwrap_or(0)
     }
 
     pub fn honest_up(&self) -> Vec<usize> {
