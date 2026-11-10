@@ -36,8 +36,10 @@ pub trait Application: Send {
     /// txs) => same outcome and root on every machine.
     fn execute_block(&mut self, ctx: &BlockContext, txs: &[Tx]) -> BlockOutcome;
     /// Cheap admission check for the mempool (signature, decode, nonce
-    /// window, known signer). Must not mutate state.
-    fn check_tx(&self, tx: &Tx) -> Result<(), AdmissionError>;
+    /// window, known signer). Must not mutate state. Returns the recovered
+    /// signer (user txs: the signing key's address, before agent resolution;
+    /// validator txs: the validator) so the mempool can rate-limit per signer.
+    fn check_tx(&self, tx: &Tx) -> Result<Address, AdmissionError>;
     fn snapshot(&self) -> Snapshot;
     /// Replace state with a snapshot; returns the recomputed root, which the
     /// caller must compare against a certified `exec_root`.
