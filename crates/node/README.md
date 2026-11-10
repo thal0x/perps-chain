@@ -84,6 +84,8 @@ scripts/localnet.sh dev | seed | status | stop
   backoff carried over from a partition exceed AC1's 10 s resume bound).
 * `snapshot_interval` is also passed to `CoreConfig::snapshot_interval` (D29: exec claims never
   skip a snapshot height, so every snapshot root is certified).
+* `retain_heights` / `segment_bytes` (config.toml): FileStore retention (default 10000
+  heights) and segment size (default 256 MiB); tests use tiny values to force snapshot sync.
 * `fsync_commits` (config.toml): default true; replay mode default false.
 * `tests/exec_bench.rs` (ignored): per-stage single-core cost of bench traffic
   (`cargo test --release -p node --test exec_bench -- --ignored --nocapture`).
@@ -121,5 +123,8 @@ cargo test -p node     # unit + tests/net.rs + tests/replay.rs (real processes, 
   order rests and shows in `openOrders` on all nodes; kill -9 node3, more blocks + an
   order, restart, catches up, sees both orders; `roots.log`/`commits.log` agree across
   nodes; no divergence; contiguous roots.log after restart.
+* `far_lagging_node_recovers_via_snapshot_sync` (D29): snapshots every 5, retention 20,
+  4 KiB segments; node3 is down 80 heights, restarts, must log `installed state snapshot`,
+  catch up, and match node0's roots after the snapshot; no divergence anywhere.
 * `single_validator_m2`: one validator, order + clearinghouseState, snapshot every 5
   heights, SIGTERM => exit 0, restart from snapshot keeps the order, kill -9 restart.
