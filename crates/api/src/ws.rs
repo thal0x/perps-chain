@@ -619,3 +619,30 @@ fn handle_text(s: &Arc<Shared>, conn: &Arc<Conn>, my_subs: &mut HashMap<SubKey, 
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slow_consumer_is_killed_when_queue_full() {
+        let (tx, _rx) = mpsc::channel(2);
+        let c = Conn { id: 1, tx, dead: AtomicBool::new(false), cancel: CancellationToken::new() };
+        assert!(c.send_str("a".into()));
+        assert!(c.send_str("b".into()));
+        assert!(!c.is_dead());
+        assert!(!c.send_str("c".into())); // queue full -> dropped
+        assert!(c.is_dead());
+        assert!(c.cancel.is_cancelled());
+        assert!(!c.send_str("d".into()));
+    }
+
+    #[test]
+    fn closed_receiver_kills_conn() {
+        let (tx, rx) = mpsc::channel(2);
+        drop(rx);
+        let c = Conn { id: 1, tx, dead: AtomicBool::new(false), cancel: CancellationToken::new() };
+        assert!(!c.send_str("a".into()));
+        assert!(c.is_dead());
+    }
+}
