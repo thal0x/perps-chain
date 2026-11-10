@@ -7,6 +7,7 @@ driver makes that happen once, from the same account, through the SDK:
   1. market_open: buy 0.01 ETH (IoC, fills against the seeded MM ladder)
   2. market_close ETH
   3. usd_class_transfer 1 USDC perp->spot, then spot->perp (ledger updates)
+  4. market_open: buy 20 PURR on PURR/USDC (spot trade push for `trades` PURR/USDC, D25)
 It prints every response and exits non-zero if any call errors.
 
 usage: python ws_activity.py <config.json> <base_url>
@@ -41,6 +42,7 @@ check("market_open", ex.market_open("ETH", True, 0.01, None, 0.01))
 check("market_close", ex.market_close("ETH"))
 check("usd_class_transfer_to_spot", ex.usd_class_transfer(1, False))
 check("usd_class_transfer_to_perp", ex.usd_class_transfer(1, True))
+check("spot_market_open", ex.market_open("PURR/USDC", True, 20, None, 0.01))
 if bad:
     print("ws_activity: failed calls:", bad, flush=True)
     sys.exit(1)
