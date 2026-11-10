@@ -192,6 +192,9 @@ await record("modify_by_oid", USER_KEY, true, () =>
   c.modify({ oid: 77, order: { a: 0, b: true, p: "31000", s: "0.03", r: false, t: { limit: { tif: "Gtc" } } } }));
 await record("modify_by_cloid_allow", USER_KEY, true, () =>
   c.modify({ oid: "0x00000000000000000000000000000005", order: { a: 0, b: false, p: "31000", s: "0.03", r: false, t: { limit: { tif: "Alo" } }, c: "0x00000000000000000000000000000006" }, a: true }));
+await record("modify_by_big_cloid", USER_KEY, true, () =>
+  // a full 128-bit cloid is not a safe integer, so it stays a string
+  c.modify({ oid: "0xd4c3b2a1f0e9d8c7b6a5948372615049", order: { a: 0, b: true, p: "31000", s: "0.03", r: false, t: { limit: { tif: "Gtc" } } } }));
 await record("batch_modify", USER_KEY, true, () =>
   c.batchModify({
     modifies: [
