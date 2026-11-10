@@ -80,6 +80,14 @@ const transport = new HttpTransport({ apiUrl: "http://127.0.0.1:3001", isTestnet
 const ws = new WebSocketTransport({ url: "ws://127.0.0.1:3001/ws", isTestnet: true });
 ```
 
+## Trading UI
+
+A web trading front end for the localnet lives in [`frontend/`](frontend/README.md):
+```bash
+cd frontend && npm install && npm run dev
+```
+then open http://localhost:5173 and pick a funded account from `run/localnet/accounts.json`.
+
 ## Run the simulator
 
 ```bash
