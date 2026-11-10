@@ -1,0 +1,8 @@
+[
+  {
+    "script": "basic_leverage_adjustment",
+    "call": "Exchange.update_isolated_margin",
+    "error_text": "No isolated position to update margin.",
+    "justification": "D23. The example sets ETH to 21x cross, then 21x isolated, then adds $1 isolated margin 'to the ETH position'. It runs on a flat ETH account (run order in run_python.sh), and with no ETH position there is nothing to add margin to, so real HL rejects updateIsolatedMargin as well. With an open ETH position instead, real HL rejects the cross->isolated switch; no starting state makes every call succeed on HL. The chain is not special-cased."
+  }
+]

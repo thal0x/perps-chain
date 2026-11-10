@@ -1,0 +1,548 @@
+{
+ "ac": "ac5",
+ "mode": "full",
+ "pass": false,
+ "python_passed": 14,
+ "python_failed": 1,
+ "ts_passed": 4,
+ "ts_failed": 2,
+ "source_fingerprint": "e2c476e958d7:db263aa35d91:e37eff47bf16:b8f9c6b40cdf",
+ "git_head": "b9a9c9eb453e7e8a0d904d73ad22ee4f4078e5c9",
+ "git_dirty": false,
+ "time_utc": "2026-11-10T15:34:30Z",
+ "summary": "python 14/15, ts 4/6; failing: py:basic_ws, ts:02_trading, ts:05_market_order",
+ "pins": {
+  "python_sdk": "hyperliquid-python-sdk",
+  "python_sdk_commit": "2fdb18f9517675ea03695a0962bd19eece9c83f0",
+  "ts_sdk": "@nktkas/hyperliquid",
+  "ts_sdk_version": "0.33.3",
+  "viem_version": "2.57.8",
+  "ts_snippet_source_commit": "db80d598f6e4672edc090fe69994ecec97ebc980"
+ },
+ "python": {
+  "sdk": "hyperliquid-python-sdk",
+  "sdk_commit": "2fdb18f9517675ea03695a0962bd19eece9c83f0",
+  "url": "http://127.0.0.1:3001",
+  "url_replacements": 17,
+  "diff_check": "ok",
+  "passed": 14,
+  "failed": 1,
+  "order": [
+   "basic_order",
+   "basic_order_with_cloid",
+   "basic_order_modify",
+   "cancel_open_orders",
+   "basic_leverage_adjustment",
+   "basic_market_order",
+   "basic_tpsl",
+   "basic_schedule_cancel",
+   "basic_agent",
+   "basic_transfer",
+   "basic_spot_transfer",
+   "basic_spot_to_perp",
+   "basic_withdraw",
+   "basic_adding",
+   "basic_ws"
+  ],
+  "scripts": [
+   {
+    "script": "basic_order",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 1.2,
+    "exchange_calls": 2,
+    "info_calls": 8,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_order_with_cloid",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 1.1,
+    "exchange_calls": 2,
+    "info_calls": 8,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_order_modify",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 1.7,
+    "exchange_calls": 3,
+    "info_calls": 7,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "cancel_open_orders",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 0.7,
+    "exchange_calls": 1,
+    "info_calls": 7,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_leverage_adjustment",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 1.6,
+    "exchange_calls": 3,
+    "info_calls": 8,
+    "errors": [
+     {
+      "call": "Exchange.update_isolated_margin",
+      "error_text": "No isolated position to update margin.",
+      "request": {
+       "action": {
+        "type": "updateIsolatedMargin",
+        "asset": 1,
+        "isBuy": true,
+        "ntli": 1000000
+       },
+       "nonce": 1794324711308,
+       "signature": {
+        "r": "0xc133efbfde4a52c02abfbfdb3b430341f08e6d9462665ba624f415342330c874",
+        "s": "0x44e6391a3f510b240be1143cea2d6fe05a06340bd6a9547315f0d4966da4647f",
+        "v": 28
+       },
+       "vaultAddress": null,
+       "expiresAfter": null
+      },
+      "response": {
+       "status": "err",
+       "response": "No isolated position to update margin."
+      },
+      "allowlisted": true
+     }
+    ],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_market_order",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 3.2,
+    "exchange_calls": 2,
+    "info_calls": 9,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_tpsl",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 2.7,
+    "exchange_calls": 6,
+    "info_calls": 6,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_schedule_cancel",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 11.3,
+    "exchange_calls": 2,
+    "info_calls": 8,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_agent",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 2.8,
+    "exchange_calls": 6,
+    "info_calls": 10,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_transfer",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 0.8,
+    "exchange_calls": 1,
+    "info_calls": 6,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_spot_transfer",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 0.7,
+    "exchange_calls": 1,
+    "info_calls": 6,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_spot_to_perp",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 1.1,
+    "exchange_calls": 2,
+    "info_calls": 6,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_withdraw",
+    "pass": true,
+    "rc": 0,
+    "elapsed_s": 0.9,
+    "exchange_calls": 1,
+    "info_calls": 6,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": []
+   },
+   {
+    "script": "basic_adding",
+    "pass": true,
+    "rc": 143,
+    "elapsed_s": 41.3,
+    "exchange_calls": 2,
+    "info_calls": 14,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": [],
+    "ws": {
+     "subscriptions": [
+      "l2Book:eth",
+      "userEvents"
+     ],
+     "messages": {
+      "l2Book:eth": 5,
+      "userEvents": 2
+     },
+     "missing": [],
+     "undelivered_messages": {}
+    },
+    "alive_at_stop": true,
+    "fixture": {
+     "name": "ws_activity.py",
+     "rc": 0
+    }
+   },
+   {
+    "script": "basic_ws",
+    "pass": false,
+    "rc": 143,
+    "elapsed_s": 41.5,
+    "exchange_calls": 0,
+    "info_calls": 6,
+    "errors": [],
+    "unexpected_errors": [],
+    "reasons": [
+     "no message on subscribed channel(s): trades:purr/usdc"
+    ],
+    "ws": {
+     "subscriptions": [
+      "activeAssetCtx:@1",
+      "activeAssetCtx:btc",
+      "activeAssetData:btc,0x4b88977da0f07d0454746eff401bf4f733c2e482",
+      "allMids",
+      "bbo:eth",
+      "candle:eth,1m",
+      "l2Book:eth",
+      "orderUpdates",
+      "trades:purr/usdc",
+      "userEvents",
+      "userFills:0x4b88977da0f07d0454746eff401bf4f733c2e482",
+      "userFundings:0x4b88977da0f07d0454746eff401bf4f733c2e482",
+      "userNonFundingLedgerUpdates:0x4b88977da0f07d0454746eff401bf4f733c2e482",
+      "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482"
+     ],
+     "messages": {
+      "activeAssetCtx:@1": 1,
+      "activeAssetCtx:btc": 201,
+      "activeAssetData:btc,0x4b88977da0f07d0454746eff401bf4f733c2e482": 201,
+      "allMids": 201,
+      "bbo:eth": 3,
+      "candle:eth,1m": 3,
+      "l2Book:eth": 3,
+      "orderUpdates": 2,
+      "trades:purr/usdc": 0,
+      "userEvents": 2,
+      "userFills:0x4b88977da0f07d0454746eff401bf4f733c2e482": 3,
+      "userFundings:0x4b88977da0f07d0454746eff401bf4f733c2e482": 1,
+      "userNonFundingLedgerUpdates:0x4b88977da0f07d0454746eff401bf4f733c2e482": 3,
+      "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482": 201
+     },
+     "missing": [
+      "trades:purr/usdc"
+     ],
+     "undelivered_messages": {}
+    },
+    "alive_at_stop": true,
+    "fixture": {
+     "name": "ws_activity.py",
+     "rc": 0
+    }
+   }
+  ]
+ },
+ "ts": {
+  "sdk": "@nktkas/hyperliquid",
+  "sdk_version": "0.33.3",
+  "viem_version": "2.57.8",
+  "snippet_source_commit": "db80d598f6e4672edc090fe69994ecec97ebc980",
+  "verbatim_check": {
+   "ok": true,
+   "regions": [
+    {
+     "file": "01_read_data.ts",
+     "source": "README.md \"Read data\"",
+     "verbatim": true,
+     "substitutions": 2
+    },
+    {
+     "file": "02_trading.ts",
+     "source": "README.md \"Trading\"",
+     "verbatim": true,
+     "substitutions": 3
+    },
+    {
+     "file": "03a_order.ts",
+     "source": "client.ts ExchangeClient.order",
+     "verbatim": true,
+     "substitutions": 3
+    },
+    {
+     "file": "03b_modify.ts",
+     "source": "client.ts ExchangeClient.modify",
+     "verbatim": true,
+     "substitutions": 4
+    },
+    {
+     "file": "03c_cancel.ts",
+     "source": "client.ts ExchangeClient.cancel",
+     "verbatim": true,
+     "substitutions": 4
+    },
+    {
+     "file": "04_usd_send.ts",
+     "source": "client.ts ExchangeClient.usdSend",
+     "verbatim": true,
+     "substitutions": 4
+    },
+    {
+     "file": "05_market_order.ts",
+     "source": "docs/guides/market-orders.md",
+     "verbatim": true,
+     "substitutions": 2
+    },
+    {
+     "file": "06a_realtime.ts",
+     "source": "README.md \"Real-time updates\"",
+     "verbatim": true,
+     "substitutions": 2
+    },
+    {
+     "file": "06b_user_fills.ts",
+     "source": "client.ts SubscriptionClient.userFills",
+     "verbatim": true,
+     "substitutions": 2
+    },
+    {
+     "file": "06c_order_updates.ts",
+     "source": "client.ts SubscriptionClient.orderUpdates",
+     "verbatim": true,
+     "substitutions": 2
+    }
+   ]
+  },
+  "transport_changes": {
+   "HttpTransport": "{ apiUrl: \"http://127.0.0.1:3001\", isTestnet: true }",
+   "WebSocketTransport": "{ url: \"ws://127.0.0.1:3001/ws\", isTestnet: true }"
+  },
+  "passed": 4,
+  "failed": 2,
+  "scripts": [
+   {
+    "script": "01_read_data",
+    "rc": 0,
+    "elapsed_s": 0.4,
+    "pass": true,
+    "reasons": [],
+    "exchange_calls": 0,
+    "info_calls": 3,
+    "calls": [
+     {
+      "call": "InfoClient.allMids",
+      "ok": true
+     },
+     {
+      "call": "InfoClient.openOrders",
+      "ok": true
+     },
+     {
+      "call": "InfoClient.l2Book",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "script": "02_trading",
+    "rc": 1,
+    "elapsed_s": 1.5,
+    "pass": false,
+    "reasons": [
+     "ExchangeClient.withdraw3 failed: ApiRequestError: Withdrawal amount must be greater than the withdrawal fee.",
+     "exit code 1"
+    ],
+    "exchange_calls": 3,
+    "info_calls": 0,
+    "calls": [
+     {
+      "call": "ExchangeClient.order",
+      "ok": true
+     },
+     {
+      "call": "ExchangeClient.updateLeverage",
+      "ok": true
+     },
+     {
+      "call": "ExchangeClient.withdraw3",
+      "ok": false,
+      "error": "ApiRequestError: Withdrawal amount must be greater than the withdrawal fee."
+     }
+    ],
+    "log_tail": [
+     "    at async file:///home/user/.cache/hlbft-acc-ts/run/02_trading.ts:38:1 {",
+     "  response: {",
+     "    status: 'err',",
+     "    response: 'Withdrawal amount must be greater than the withdrawal fee.'",
+     "  }",
+     "}",
+     "",
+     "Node.js v22.23.4"
+    ]
+   },
+   {
+    "script": "03_order_modify_cancel",
+    "rc": 0,
+    "elapsed_s": 1.6,
+    "pass": true,
+    "reasons": [],
+    "exchange_calls": 3,
+    "info_calls": 2,
+    "calls": [
+     {
+      "call": "ExchangeClient.order",
+      "ok": true
+     },
+     {
+      "call": "ExchangeClient.modify",
+      "ok": true
+     },
+     {
+      "call": "InfoClient.openOrders",
+      "ok": true
+     },
+     {
+      "call": "ExchangeClient.cancel",
+      "ok": true
+     },
+     {
+      "call": "InfoClient.openOrders",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "script": "04_usd_send",
+    "rc": 0,
+    "elapsed_s": 0.7,
+    "pass": true,
+    "reasons": [],
+    "exchange_calls": 1,
+    "info_calls": 0,
+    "calls": [
+     {
+      "call": "ExchangeClient.usdSend",
+      "ok": true
+     }
+    ]
+   },
+   {
+    "script": "05_market_order",
+    "rc": 1,
+    "elapsed_s": 0.5,
+    "pass": false,
+    "reasons": [
+     "exit code 1"
+    ],
+    "exchange_calls": 0,
+    "info_calls": 0,
+    "calls": [],
+    "log_tail": [
+     "      }",
+     "    },",
+     "    [Symbol(headers)]: Headers {}",
+     "  },",
+     "  request: { type: 'outcomeMeta' }",
+     "}",
+     "",
+     "Node.js v22.23.4"
+    ]
+   },
+   {
+    "script": "06_subscriptions",
+    "rc": 0,
+    "elapsed_s": 40.3,
+    "pass": true,
+    "reasons": [],
+    "exchange_calls": 0,
+    "info_calls": 0,
+    "subscriptions": {
+     "allMids {}": 201,
+     "openOrders {\"user\":\"0x4b88977da0f07d0454746eff401bf4f733c2e482\"}": 4,
+     "l2Book {\"coin\":\"ETH\"}": 1,
+     "userFills {\"user\":\"0x4b88977da0f07d0454746eff401bf4f733c2e482\"}": 1,
+     "orderUpdates {\"user\":\"0x4b88977da0f07d0454746eff401bf4f733c2e482\"}": 3
+    },
+    "calls": [
+     {
+      "call": "SubscriptionClient.allMids",
+      "ok": true
+     },
+     {
+      "call": "SubscriptionClient.openOrders",
+      "ok": true
+     },
+     {
+      "call": "SubscriptionClient.l2Book",
+      "ok": true
+     },
+     {
+      "call": "SubscriptionClient.userFills",
+      "ok": true
+     },
+     {
+      "call": "SubscriptionClient.orderUpdates",
+      "ok": true
+     }
+    ]
+   }
+  ]
+ }
+}
