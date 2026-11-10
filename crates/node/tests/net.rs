@@ -273,6 +273,16 @@ fn four_validators_orders_roots_and_crash_recovery() {
 #[test]
 fn single_validator_m2() {
     let mut net = Net::new("single", 1, &[]);
+    // exercise the snapshot path: snapshot every 5 heights (restart restores it)
+    net.kill9(0);
+    let cfgp = net.home(0).join("config.toml");
+    let c = std::fs::read_to_string(&cfgp).unwrap();
+    std::fs::write(&cfgp, format!("snapshot_interval = 5\n{c}")).unwrap();
+    let _ = std::fs::remove_dir_all(net.home(0).join("data"));
+    for f in ["roots.log", "commits.log", "node.log"] {
+        let _ = std::fs::remove_file(net.home(0).join(f));
+    }
+    net.start(0);
     net.wait_height(&[0], 3, Duration::from_secs(60));
     let st = net.status(0).unwrap();
     assert_eq!(st.validator.unwrap(), {
@@ -293,6 +303,15 @@ fn single_validator_m2() {
     net.start(0);
     net.wait_height(&[0], before + 2, Duration::from_secs(60));
     assert!(open_oids(&net, 0, &w.address()).contains(&oid), "order lost across restart");
+    let log = std::fs::read_to_string(net.home(0).join("node.log")).unwrap();
+    assert!(!log.contains("STATE DIVERGENCE"));
+    assert!(log.contains("restored from snapshot"), "restart did not use a snapshot");
+
+    // kill -9 and restart again (snapshot + re-executed blocks verified against roots.log)
+    let before = net.status(0).unwrap().executed_height;
+    net.kill9(0);
+    net.start(0);
+    net.wait_height(&[0], before + 2, Duration::from_secs(60));
     let log = std::fs::read_to_string(net.home(0).join("node.log")).unwrap();
     assert!(!log.contains("STATE DIVERGENCE"));
 }
