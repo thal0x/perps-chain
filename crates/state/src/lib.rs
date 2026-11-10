@@ -15,7 +15,7 @@ pub mod views;
 
 pub use chain::Chain;
 pub use config::*;
-pub use engines::Engines;
+pub use engines::{Engines, HlEngines};
 pub use sigcache::SigCache;
 
 /// Chain with fake signatures over the real book/oracle and the fake
@@ -23,3 +23,7 @@ pub use sigcache::SigCache;
 pub type FakeChain = Chain<testkit::BookEngines, testkit::FakeVerifier>;
 /// Chain entirely over the simple fakes.
 pub type AllFakeChain = Chain<testkit::FakeEngines, testkit::FakeVerifier>;
+/// Production engines with a pluggable verifier (`hlwire::HlVerifier` in the node).
+pub type HlChainWith<V> = Chain<HlEngines, V>;
+/// Real engines with fake signatures (tests, simulations without ECDSA).
+pub type TestChain = Chain<HlEngines, testkit::FakeVerifier>;

@@ -10,7 +10,7 @@
 mod common;
 use common::*;
 use interfaces::*;
-use state::{ChainConfig, FakeChain, InvariantMode};
+use state::{ChainConfig, TestChain, InvariantMode};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -44,7 +44,7 @@ fn execution_throughput() {
     bal.extend((1..=TAKERS).map(|i| (addr(10_000 + i), usd("10000000"))));
     let g = test_genesis(4, &bal);
     let cfg = ChainConfig { invariants: InvariantMode::Never, ..ChainConfig::default() };
-    let mut chain = FakeChain::new(g, Arc::new(FakeVerifier), cfg);
+    let mut chain = TestChain::new(g, Arc::new(FakeVerifier), cfg);
     let pool = rayon::ThreadPoolBuilder::new().num_threads(1).build().unwrap();
     let mut time = GENESIS_TIME;
     let mut nonce = GENESIS_TIME;

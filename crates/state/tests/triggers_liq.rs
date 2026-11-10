@@ -131,6 +131,7 @@ fn liquidation_through_book() {
     let mut h = setup();
     let b = addr(BOB);
     quote(&mut h, "59900", "60000", "1");
+    h.send(b, Action::UpdateLeverage { asset: 0, is_cross: true, leverage: 50 }).unwrap();
     let st = h.order1(b, limit(0, true, "60000", "0.5", Tif::Ioc));
     assert!(matches!(st, OrderStatusResp::Filled { .. }), "{st:?}");
     // a resting order of Bob is canceled on liquidation
@@ -156,7 +157,9 @@ fn liquidation_backstop_when_book_empty() {
     let mut h = setup();
     let (b, mm) = (addr(BOB), addr(MM));
     quote(&mut h, "59900", "60000", "1");
-    h.order1(b, limit(0, true, "60000", "0.5", Tif::Ioc));
+    h.send(b, Action::UpdateLeverage { asset: 0, is_cross: true, leverage: 50 }).unwrap();
+    let st = h.order1(b, limit(0, true, "60000", "0.5", Tif::Ioc));
+    assert!(matches!(st, OrderStatusResp::Filled { .. }), "{st:?}");
     let open: Vec<(AssetId, Oid)> = h.chain.q().open_orders(&mm).iter().map(|o| (o.asset, o.oid)).collect();
     h.send(mm, Action::Cancel { cancels: open }).unwrap();
     let ins = h.chain.clearinghouse().insurance_fund();

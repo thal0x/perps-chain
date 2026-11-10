@@ -1620,6 +1620,7 @@ dependencies = [
  "blake3",
  "book",
  "borsh",
+ "clearinghouse",
  "hex",
  "interfaces",
  "oracle",

@@ -7,7 +7,7 @@ use interfaces::*;
 use proptest::prelude::*;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use state::{ChainConfig, FakeChain};
+use state::{ChainConfig, TestChain};
 use std::sync::Arc;
 
 const USERS: u64 = 12;
@@ -80,7 +80,7 @@ impl Gen {
             cloid: if self.rng.gen_bool(0.1) { Some(self.rng.gen()) } else { None },
         }
     }
-    pub fn block(&mut self, chain: &FakeChain) -> (BlockContext, Vec<Tx>) {
+    pub fn block(&mut self, chain: &TestChain) -> (BlockContext, Vec<Tx>) {
         self.time += self.rng.gen_range(200..1500);
         self.height += 1;
         let mut txs = vec![];
@@ -215,12 +215,12 @@ impl Gen {
     }
 }
 
-fn new_chain() -> FakeChain {
-    FakeChain::new(genesis(), Arc::new(FakeVerifier), ChainConfig::strict())
+fn new_chain() -> TestChain {
+    TestChain::new(genesis(), Arc::new(FakeVerifier), ChainConfig::strict())
 }
 
 /// Generate `n` blocks (feeding back from a live chain) and return them with roots.
-fn generate(seed: u64, n: usize) -> (Vec<(BlockContext, Vec<Tx>)>, Vec<Hash32>, FakeChain) {
+fn generate(seed: u64, n: usize) -> (Vec<(BlockContext, Vec<Tx>)>, Vec<Hash32>, TestChain) {
     let mut c = new_chain();
     let mut g = Gen::new(seed);
     let mut blocks = vec![];
@@ -333,4 +333,16 @@ proptest! {
             prop_assert!(c.invariant_violations().is_empty());
         }
     }
+}
+
+#[test]
+fn restored_entity_set_equals_live() {
+    let (blocks, _roots, _) = generate(42, 150);
+    let mut c3 = new_chain();
+    for (ctx, txs) in &blocks {
+        c3.execute_block(ctx, txs);
+    }
+    let mut c4 = new_chain();
+    c4.restore(&c3.snapshot()).unwrap();
+    assert_eq!(c3.entity_hashes(), c4.entity_hashes());
 }

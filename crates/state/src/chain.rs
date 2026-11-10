@@ -87,15 +87,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         let books = genesis.markets.iter().map(E::new_book).collect();
         let trigs = genesis.markets.iter().map(E::new_triggers).collect();
         let oracle = E::new_oracle(&genesis);
-        let mut genesis_total = genesis.params.insurance_fund;
-        for (_, b) in &genesis.balances {
-            genesis_total += *b;
-        }
-        for (_, tok, b) in &genesis.spot_balances {
-            if *tok == 0 {
-                genesis_total += *b;
-            }
-        }
+        let genesis_total = E::genesis_total(&genesis);
         let core = Core {
             height: 0,
             time: genesis.genesis_time_ms,
@@ -181,6 +173,13 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     pub fn sig_cache(&self) -> Arc<SigCache> {
         self.cache.clone()
     }
+    /// All committed (key, hash) entries: (state-owned, clearinghouse-owned).
+    pub fn entity_hashes(&self) -> (Vec<(StateKey, Hash32)>, Vec<(StateKey, Hash32)>) {
+        (
+            self.own_hashes.iter().map(|(k, v)| (*k, *v)).collect(),
+            self.ch_hashes.iter().map(|(k, v)| (*k, *v)).collect(),
+        )
+    }
     pub fn bridge_state(&self) -> &BridgeState {
         &self.core.bridge
     }
@@ -207,6 +206,13 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             return Err(InvariantViolation { height: h, what: "pending withdrawals exceed total withdrawn".into() });
         }
         Ok(())
+    }
+
+    fn on_violation(&mut self, v: InvariantViolation) {
+        if self.cfg.panic_on_invariant_violation {
+            panic!("{v}");
+        }
+        self.violations.push(v);
     }
 
     // ------------------------------------------------------------ recovery
@@ -295,22 +301,24 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         self.update_prices(now);
         self.activate_triggers(now);
         self.run_liquidations(now);
-        for (a, d) in self.dirty_books.iter().enumerate() {
-            if *d {
-                self.events.push(Event::BookChanged { asset: a as AssetId });
-            }
-        }
         let run_inv = match self.cfg.invariants {
             InvariantMode::Never => false,
             InvariantMode::EveryBlock => true,
             InvariantMode::EveryN(n) => n > 0 && ctx.height.is_multiple_of(n),
         };
         if run_inv {
+            if let Err(v) = E::post_liquidation_check(&self.ch, ctx.height) {
+                self.on_violation(v);
+            }
+        }
+        for (a, d) in self.dirty_books.iter().enumerate() {
+            if *d {
+                self.events.push(Event::BookChanged { asset: a as AssetId });
+            }
+        }
+        if run_inv {
             if let Err(v) = self.check_invariants() {
-                if self.cfg.panic_on_invariant_violation {
-                    panic!("{v}");
-                }
-                self.violations.push(v);
+                self.on_violation(v);
             }
         }
         let root = self.commit();
@@ -473,10 +481,10 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                 if *amount <= fee {
                     return Err(err_msg::WITHDRAW_TOO_SMALL.into());
                 }
-                self.ch.withdraw(user, *amount).map_err(|e| e.0)?;
-                // The full amount leaves the clearinghouse; the fee is kept by
-                // the bridge contract (destination receives amount - fee).
-                self.core.flows.withdrawals += *amount;
+                // Destination receives amount - fee (D18); what leaves the
+                // system is engine-defined (real clearinghouse keeps the fee).
+                let leaving = E::withdraw(&mut self.ch, user, *amount, fee).map_err(|e| e.0)?;
+                self.core.flows.withdrawals += leaving;
                 let id = self.core.bridge.next_withdrawal_id;
                 self.core.bridge.next_withdrawal_id += 1;
                 self.core.bridge.pending_withdrawals.insert(
@@ -1192,7 +1200,13 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                 self.place_resting(o, Some(info));
             }
             let ev = self.ch.backstop_and_adl(t.user, now);
-            self.events.extend(ev);
+            for mut e in ev {
+                if let Event::Fill(f) = &mut e {
+                    f.tid = self.core.next_tid;
+                    self.core.next_tid += 1;
+                }
+                self.events.push(e);
+            }
         }
     }
 
@@ -1210,7 +1224,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
 
     /// Re-hash dirty entities and compute the root for `core.height`.
     fn commit(&mut self) -> Hash32 {
-        for (k, h) in self.ch.take_dirty() {
+        for (k, h) in E::take_dirty(&mut self.ch) {
             self.ch_hashes.insert(k, h);
         }
         let c = &self.core;
@@ -1309,7 +1323,8 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         if d.books.len() != n || d.trigs.len() != n || d.core.oracle_px.len() != n {
             return Err("snapshot market count mismatch".into());
         }
-        let ch = E::decode_clearinghouse(&self.genesis, &d.ch)?;
+        let mut ch = E::decode_clearinghouse(&self.genesis, &d.ch)?;
+        let ch_entities = E::all_entity_hashes(&mut ch);
         let mut books = Vec::with_capacity(n);
         let mut trigs = Vec::with_capacity(n);
         for (i, spec) in self.genesis.markets.iter().enumerate() {
@@ -1329,7 +1344,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         self.books = books;
         self.trigs = trigs;
         self.oracle = oracle;
-        self.ch_hashes.clear();
+        self.ch_hashes = ch_entities.into_iter().collect();
         self.own_hashes.clear();
         self.dirty_books = vec![true; n];
         self.bridge_dirty = true;

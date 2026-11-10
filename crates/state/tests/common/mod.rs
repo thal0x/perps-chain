@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 use interfaces::*;
 pub use state::testkit::*;
-use state::{ChainConfig, FakeChain};
+use state::{ChainConfig, TestChain};
 use std::sync::Arc;
 
 pub struct H {
-    pub chain: FakeChain,
+    pub chain: TestChain,
     pub time: u64,
     pub nonce: u64,
     pub outcomes: Vec<BlockOutcome>,
@@ -24,7 +24,7 @@ impl H {
         Self::from_genesis(test_genesis(n, &b))
     }
     pub fn from_genesis(g: Genesis) -> Self {
-        let chain = FakeChain::new(g, Arc::new(FakeVerifier), ChainConfig::strict());
+        let chain = TestChain::new(g, Arc::new(FakeVerifier), ChainConfig::strict());
         Self { chain, time: GENESIS_TIME, nonce: GENESIS_TIME, outcomes: vec![] }
     }
     pub fn next_nonce(&mut self) -> u64 {
@@ -120,7 +120,7 @@ use interfaces::Application;
 pub trait QueryExt {
     fn q(&self) -> &dyn StateQuery;
 }
-impl QueryExt for FakeChain {
+impl QueryExt for TestChain {
     fn q(&self) -> &dyn StateQuery {
         self.query()
     }
