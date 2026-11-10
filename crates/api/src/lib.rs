@@ -16,6 +16,7 @@ pub mod indexer;
 pub mod info;
 pub mod render;
 pub mod shared;
+pub mod testkit;
 pub mod wire;
 pub mod ws;
 

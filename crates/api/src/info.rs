@@ -248,7 +248,15 @@ pub fn handle(s: &Shared, req: &Value) -> Result<Value, InfoError> {
             json!([])
         }
         "subAccounts" => Value::Null,
-        "userRole" => json!({"role": "user"}),
+        "userRole" => {
+            let user = user_field(req)?;
+            let principal = s.with_state(|q| q.principal_of(&user));
+            if principal != user {
+                json!({"role": "agent", "data": {"user": fmt::addr(&principal)}})
+            } else {
+                json!({"role": "user"})
+            }
+        }
         "pendingWithdrawals" => {
             let v = s.with_state(|q| q.pending_withdrawals());
             Value::Array(v.iter().map(pending_withdrawal).collect())
