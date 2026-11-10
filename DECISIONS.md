@@ -82,3 +82,8 @@ basic_spot_transfer sends PURR.
 **D16 [book]** `StopTaker` always cancels the taker remainder (doc fix, no
 type change), and a partial `Fill` continues matching with the same maker
 re-offered. Duplicate cloids per user must be rejected by the state crate.
+
+**D17 (rev 3) [interfaces]** `Application::check_tx` returns the recovered
+signer `Result<Address, AdmissionError>` (mempool request) so per-signer rate
+limiting doesn't recover the signature twice. Node wires it via
+`Pool::insert_prechecked` / `signer_of`.
