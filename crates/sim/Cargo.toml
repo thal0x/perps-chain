@@ -3,5 +3,33 @@ name = "sim"
 version.workspace = true
 edition.workspace = true
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "sim"
+path = "src/main.rs"
+
 [dependencies]
 interfaces = { workspace = true }
+hlwire = { workspace = true }
+oracle = { workspace = true }
+relayer = { workspace = true }
+state = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+borsh = { workspace = true }
+blake3 = { workspace = true }
+hex = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+rayon = { workspace = true }
+zstd = { workspace = true }
+crossbeam-channel = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+clap = { workspace = true }
+
+[dev-dependencies]
+proptest = { workspace = true }
