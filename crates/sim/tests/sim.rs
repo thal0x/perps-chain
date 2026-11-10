@@ -153,7 +153,7 @@ fn log_rejects_truncation_and_gaps() {
         w.append(&rec(1)).unwrap();
         drop(w);
     }
-    let res: Result<Vec<_>, _> = LogReader::new(&buf2[..]).map(|r| r.collect()).unwrap_or_else(|e| Err(e));
+    let res: Result<Vec<_>, _> = LogReader::new(&buf2[..]).map(|r| r.collect()).unwrap_or_else(Err);
     assert!(res.is_err());
 }
 

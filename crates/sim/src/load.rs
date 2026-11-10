@@ -378,6 +378,6 @@ async fn send_all(a: &LoadArgs, rx: crossbeam_channel::Receiver<Item>) -> anyhow
         submitted_actions_per_s: g(&c.oa_sub) as f64 / send_secs.max(1e-9),
         latency_ms: percentiles(l),
         late_sends: g(&c.late),
-        sample_errors: sample_errors,
+        sample_errors,
     })
 }

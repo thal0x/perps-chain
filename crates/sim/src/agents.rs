@@ -100,7 +100,7 @@ pub fn assign_kinds(n: usize) -> Vec<AgentKind> {
     counts[kind_ix(AgentKind::Taker)] += n - total;
     let mut out = Vec::with_capacity(n);
     for k in ALL_KINDS {
-        out.extend(std::iter::repeat(k).take(counts[kind_ix(k)]));
+        out.extend(std::iter::repeat_n(k, counts[kind_ix(k)]));
     }
     out
 }
@@ -1079,7 +1079,7 @@ impl Population {
         let spec = self.markets[asset as usize].clone();
         let fair = self.fair[asset as usize];
         let eq = self.equity_usd(i, world).max(0);
-        let usd = heavy_tail_usd(&mut self.accts[i].rng, 1_000 * USD_SCALE, (eq * 2).max(2_000 * USD_SCALE).min(500_000 * USD_SCALE));
+        let usd = heavy_tail_usd(&mut self.accts[i].rng, 1_000 * USD_SCALE, (eq * 2).clamp(2_000 * USD_SCALE, 500_000 * USD_SCALE));
         let sweep = self.ioc(i, asset, push_buy, usd, 300, false);
         let rest_px = px_offset_bps(&spec, fair, if push_buy { 100 } else { -100 }, push_buy);
         let rest = Self::limit(asset, push_buy, rest_px, order_sz(&spec, usd / 4, rest_px), Tif::Gtc, false, None);
