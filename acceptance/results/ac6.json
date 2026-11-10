@@ -19,10 +19,10 @@
    "failed": 0
   }
  },
- "source_fingerprint": "8cca0b788895:db263aa35d91:6a118c8621b7:af3525ddaf6f",
- "git_head": "bfa7c3006b514f403793a9c8ed9a4f938643c92c",
+ "source_fingerprint": "3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f",
+ "git_head": "3d3b8a47b7a49599f4fef0dfcea8f1639121f5a4",
  "git_dirty": false,
- "time_utc": "2026-11-10T18:24:25Z",
+ "time_utc": "2026-11-10T19:16:57Z",
  "summary": "e2e ok; anvil delta 499 USDC; forge 41 passed / 0 failed",
  "bridge": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
  "usdc": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
@@ -34,38 +34,38 @@
  ],
  "user": "0x4B88977DA0F07D0454746eFF401bf4f733C2E482",
  "l1_account_value_before_deposit": "1000000.0",
- "approve_tx": "0xa7052a78d8e9e9218ea8f53653f05654267805eaea2f4b0c6027bc1b8470e287",
- "deposit_tx": "0xe81f536e78c09e2bd9498e0c62308928c4e32c2174445baee7f70e86cdb095d0",
- "deposit_block": 13,
+ "approve_tx": "0xb279aff42d383f7c2734125ff69fd55449d3825e86b6e06c3ed48cd9787140f5",
+ "deposit_tx": "0x8846ccc231ecae06b468eee64756b6932bb582b027b26cf6499461ec2659baa1",
+ "deposit_block": 11,
  "l1_account_value_after_deposit": "1001000.0",
  "l1_deposit_credit": "1000.0",
  "deposit_credit_s": 3,
- "trade_fill_hash": "0xe8ca7e9c0a90197a39e719efc79a35f2098ade420f1747599de831bcf86e7d43",
+ "trade_fill_hash": "0x96756477dc65807d098747f8f0d7880681bd252d63a6851a0311c7e0ea0262a2",
  "pending_withdrawal": [
   {
    "id": 1,
    "user": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
    "destination": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
    "amount": "499",
-   "created_at": 1794335055358,
+   "created_at": 1794338210374,
    "signatures": []
   }
  ],
  "anvil_usdc_before_withdraw_raw": "0",
  "anvil_usdc_after_withdraw_raw": "499000000",
  "anvil_usdc_delta": "499",
- "withdraw_tx": "0x3b08bc6160d64baac4cb2f6734f774a77cb3bda01c6706ade7691ce240213f69",
+ "withdraw_tx": "0x5cbfb260e343f144424ab38c3f8c65101e9768b532129bf639b1de2d3f117cda",
  "relay_wait_s": 2,
  "relayer_events": [
   {
    "event": "withdrawSubmitted",
    "id": 1,
-   "txHash": "0x3b08bc6160d64baac4cb2f6734f774a77cb3bda01c6706ade7691ce240213f69"
+   "txHash": "0x5cbfb260e343f144424ab38c3f8c65101e9768b532129bf639b1de2d3f117cda"
   }
  ],
  "withdraw_receipt": {
   "status": "0x1",
-  "block": 19,
+  "block": 17,
   "gasUsed": 114538
  },
  "bridge_used_withdrawal": "true",
@@ -87,7 +87,7 @@
    "details": {
     "bridge": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
     "chainId": 31337,
-    "deployBlock": 1,
+    "deployBlock": 0,
     "epoch": 1,
     "minDeposit": 5000000,
     "powers": [
@@ -137,8 +137,8 @@
    "step": "fund_user",
    "ok": true,
    "details": {
-    "eth_tx": "0xa3a685d89e53b732f9e3ea30ba76eae0ee4ac09b18b218a4dbbab877a1951341",
-    "mint_tx": "0xd7b1cde440362b77d53639d8d37508930e64d17555082d6d728beb4ce213757b",
+    "eth_tx": "0x09759843493d6054c517a4ad2797a40f138d3007db3c95d753e896343bfb1b2a",
+    "mint_tx": "0xed6fc45b72b9a501cdda140714d8524705b72f09c10d60a0e247a70e2546b20c",
     "usdc_raw": "1000000000"
    }
   },
@@ -146,9 +146,9 @@
    "step": "approve_deposit",
    "ok": true,
    "details": {
-    "approve_tx": "0xa7052a78d8e9e9218ea8f53653f05654267805eaea2f4b0c6027bc1b8470e287",
-    "deposit_tx": "0xe81f536e78c09e2bd9498e0c62308928c4e32c2174445baee7f70e86cdb095d0",
-    "block": 13,
+    "approve_tx": "0xb279aff42d383f7c2734125ff69fd55449d3825e86b6e06c3ed48cd9787140f5",
+    "deposit_tx": "0x8846ccc231ecae06b468eee64756b6932bb582b027b26cf6499461ec2659baa1",
+    "block": 11,
     "bridge_usdc_raw": "1000000000"
    }
   },
@@ -183,7 +183,7 @@
       }
      }
     },
-    "fill_hash": "0xe8ca7e9c0a90197a39e719efc79a35f2098ade420f1747599de831bcf86e7d43",
+    "fill_hash": "0x96756477dc65807d098747f8f0d7880681bd252d63a6851a0311c7e0ea0262a2",
     "best_ask": {
      "px": "3001.5",
      "sz": "6.6667",
@@ -207,7 +207,7 @@
       "user": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
       "destination": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
       "amount": "499",
-      "created_at": 1794335055358,
+      "created_at": 1794338210374,
       "signatures": []
      }
     ],
@@ -224,7 +224,7 @@
      "user": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
      "destination": "0x4b88977da0f07d0454746eff401bf4f733c2e482",
      "amount": "499",
-     "created_at": 1794335055358,
+     "created_at": 1794338210374,
      "signatures": []
     }
    ]
@@ -233,7 +233,7 @@
    "step": "relayer_submitted",
    "ok": true,
    "details": {
-    "tx": "0x3b08bc6160d64baac4cb2f6734f774a77cb3bda01c6706ade7691ce240213f69",
+    "tx": "0x5cbfb260e343f144424ab38c3f8c65101e9768b532129bf639b1de2d3f117cda",
     "waited_s": 2
    }
   },

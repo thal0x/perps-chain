@@ -6,10 +6,10 @@
  "python_failed": 0,
  "ts_passed": 6,
  "ts_failed": 0,
- "source_fingerprint": "8cca0b788895:db263aa35d91:6a118c8621b7:af3525ddaf6f",
- "git_head": "c55d137184bdd17f97f811945392f98c77c388e4",
+ "source_fingerprint": "3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f",
+ "git_head": "827417433628b0de3afe8e5adcacec087c103143",
  "git_dirty": false,
- "time_utc": "2026-11-10T18:23:57Z",
+ "time_utc": "2026-11-10T19:16:34Z",
  "summary": "python 15/15, ts 6/6",
  "pins": {
   "python_sdk": "hyperliquid-python-sdk",
@@ -49,7 +49,7 @@
     "script": "basic_order",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 1.2,
+    "elapsed_s": 1.1,
     "exchange_calls": 2,
     "info_calls": 8,
     "errors": [],
@@ -60,7 +60,7 @@
     "script": "basic_order_with_cloid",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 1.2,
+    "elapsed_s": 1.3,
     "exchange_calls": 2,
     "info_calls": 8,
     "errors": [],
@@ -93,7 +93,7 @@
     "script": "basic_leverage_adjustment",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 1.6,
+    "elapsed_s": 1.5,
     "exchange_calls": 3,
     "info_calls": 8,
     "errors": [
@@ -107,11 +107,11 @@
         "isBuy": true,
         "ntli": 1000000
        },
-       "nonce": 1794334875663,
+       "nonce": 1794338033813,
        "signature": {
-        "r": "0xbb26c1d95a912a65456c52fef3845f1883b15fd7f603700b2fe22051848240b4",
-        "s": "0x6e89591d47ff791dbfaa529da78df76aa17e64645908dd896462178ace0482cc",
-        "v": 28
+        "r": "0x7b33ec2fb9a1abfb7b7478034313c28d78aacea3fc571364424fadf8c9693e0f",
+        "s": "0x716620e9c86bf6b8f414b92b7474756ea300ba1ec855500dc165fc61ea93e99a",
+        "v": 27
        },
        "vaultAddress": null,
        "expiresAfter": null
@@ -130,7 +130,7 @@
     "script": "basic_market_order",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 3.2,
+    "elapsed_s": 3.1,
     "exchange_calls": 2,
     "info_calls": 9,
     "errors": [],
@@ -185,7 +185,7 @@
     "script": "basic_spot_transfer",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 0.9,
+    "elapsed_s": 0.7,
     "exchange_calls": 1,
     "info_calls": 6,
     "errors": [],
@@ -207,7 +207,7 @@
     "script": "basic_withdraw",
     "pass": true,
     "rc": 0,
-    "elapsed_s": 0.7,
+    "elapsed_s": 0.9,
     "exchange_calls": 1,
     "info_calls": 6,
     "errors": [],
@@ -246,7 +246,7 @@
     "script": "basic_ws",
     "pass": true,
     "rc": 143,
-    "elapsed_s": 41.0,
+    "elapsed_s": 41.1,
     "exchange_calls": 0,
     "info_calls": 6,
     "errors": [],
@@ -270,10 +270,10 @@
       "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482"
      ],
      "messages": {
-      "activeAssetCtx:@1": 199,
-      "activeAssetCtx:btc": 199,
-      "activeAssetData:btc,0x4b88977da0f07d0454746eff401bf4f733c2e482": 199,
-      "allMids": 199,
+      "activeAssetCtx:@1": 200,
+      "activeAssetCtx:btc": 200,
+      "activeAssetData:btc,0x4b88977da0f07d0454746eff401bf4f733c2e482": 200,
+      "allMids": 200,
       "bbo:eth": 3,
       "candle:eth,1m": 3,
       "l2Book:eth": 3,
@@ -283,7 +283,7 @@
       "userFills:0x4b88977da0f07d0454746eff401bf4f733c2e482": 4,
       "userFundings:0x4b88977da0f07d0454746eff401bf4f733c2e482": 1,
       "userNonFundingLedgerUpdates:0x4b88977da0f07d0454746eff401bf4f733c2e482": 3,
-      "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482": 199
+      "webData2:0x4b88977da0f07d0454746eff401bf4f733c2e482": 200
      },
      "missing": [],
      "undelivered_messages": {}
@@ -399,7 +399,7 @@
    {
     "script": "02_trading",
     "rc": 0,
-    "elapsed_s": 1.6,
+    "elapsed_s": 1.4,
     "pass": true,
     "reasons": [],
     "exchange_calls": 3,
@@ -428,7 +428,7 @@
    {
     "script": "03_order_modify_cancel",
     "rc": 0,
-    "elapsed_s": 1.6,
+    "elapsed_s": 1.4,
     "pass": true,
     "reasons": [],
     "exchange_calls": 3,
@@ -474,7 +474,7 @@
    {
     "script": "05_market_order",
     "rc": 0,
-    "elapsed_s": 0.7,
+    "elapsed_s": 0.5,
     "pass": true,
     "reasons": [],
     "exchange_calls": 1,
