@@ -37,4 +37,4 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 - 4 cores, 15 GB RAM, ~31 GB disk.
 
 ## Blockers
-- GitHub push to thal0x/perps-chain: session credential lacks access (Claude GitHub App not installed on repo?). User asked to fix at claude.ai/connect-github; retry add_repo(access=push) when told.
+- (resolved) Remote `origin` = github.com/thal0x/perps-chain; push `main` after every merge/milestone.
