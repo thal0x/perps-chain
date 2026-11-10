@@ -121,3 +121,27 @@ fn bench_hlwire() {
         assert!(ok_rec, "recover too slow: {rec} us");
     }
 }
+
+/// Fixed-work loop for instruction counting under callgrind, which is
+/// immune to machine load:
+///   valgrind --tool=callgrind <bench bin> --ignored --exact decode_only_loop
+#[test]
+#[ignore]
+fn decode_only_loop() {
+    let body = vector("bulk_orders_50");
+    let tx = parse_exchange_request(&body).unwrap();
+    for _ in 0..1000 {
+        black_box(decode_action(black_box(&tx.action_bytes)).unwrap());
+    }
+}
+
+#[test]
+#[ignore]
+fn exchange_body_loop() {
+    let body = vector("bulk_orders_50");
+    let txt = serde_json::to_string(&body).unwrap();
+    for _ in 0..1000 {
+        let v: Value = serde_json::from_str(black_box(&txt)).unwrap();
+        black_box(parse_exchange_request(&v).unwrap());
+    }
+}

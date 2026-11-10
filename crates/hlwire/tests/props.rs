@@ -183,6 +183,49 @@ proptest! {
     }
 
     #[test]
+    fn fast_decoder_matches_generic(a in arb_action(), idx in any::<usize>(), byte in any::<u8>(), cut in any::<usize>()) {
+        let b = json_to_msgpack(&action_to_json(&a)).unwrap();
+        let same = |b: &[u8]| -> Result<(), TestCaseError> {
+            let f = decode_action(b);
+            let g = decode_action_generic(b);
+            match (&f, &g) {
+                (Ok(x), Ok(y)) => prop_assert_eq!(x, y),
+                (Err(_), Err(_)) => {}
+                _ => prop_assert!(false, "fast={:?} generic={:?} bytes={}", f, g, hex::encode(b)),
+            }
+            Ok(())
+        };
+        same(&b)?;
+        let mut m = b.clone();
+        let i = idx % m.len();
+        m[i] = byte;
+        same(&m)?;
+        let mut m2 = b.clone();
+        m2[i] ^= 1 << (byte % 8);
+        same(&m2)?;
+        same(&b[..cut % (b.len() + 1)])?;
+        let mut ext = b.clone();
+        ext.push(byte);
+        same(&ext)?;
+    }
+
+    #[test]
+    fn fast_decoder_matches_generic_json(v in arb_json(), t in prop_oneof![Just("order"), Just("cancel"), Just("cancelByCloid"), Just("modify"), Just("batchModify")],
+                                        k in prop_oneof![Just("orders"), Just("cancels"), Just("modifies"), Just("oid"), Just("order"), Just("grouping")],
+                                        first in any::<bool>()) {
+        // Random shapes under hot keys, with "type" first or last.
+        let mut m = serde_json::Map::new();
+        if first { m.insert("type".into(), Value::from(t)); }
+        m.insert(k.into(), v);
+        if !first { m.insert("type".into(), Value::from(t)); }
+        let b = json_to_msgpack(&Value::Object(m)).unwrap();
+        let f = decode_action(&b);
+        let g = decode_action_generic(&b);
+        prop_assert_eq!(f.is_ok(), g.is_ok(), "fast={:?} generic={:?}", f, g);
+        if let (Ok(x), Ok(y)) = (f, g) { prop_assert_eq!(x, y); }
+    }
+
+    #[test]
     fn decoder_never_panics(bytes in prop::collection::vec(any::<u8>(), 0..200)) {
         let _ = decode_action(&bytes);
         let _ = msgpack_to_json(&bytes);

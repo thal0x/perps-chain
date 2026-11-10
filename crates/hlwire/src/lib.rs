@@ -16,6 +16,7 @@
 mod build;
 mod crypto;
 mod decode;
+mod fast;
 mod msgpack;
 mod sign;
 
