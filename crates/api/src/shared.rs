@@ -179,6 +179,17 @@ impl Shared {
         self.hub.publish(self, b, &delta);
     }
 
+    /// "Server time" for responses: the latest executed block time (falls
+    /// back to the wall clock before the first block).
+    pub fn now(&self) -> u64 {
+        let t = self.with_state(|q| q.block_time());
+        if t == 0 {
+            crate::fmt::now_ms()
+        } else {
+            t
+        }
+    }
+
     /// Run `f` against the latest executed state.
     pub fn with_state<R>(&self, f: impl FnOnce(&dyn StateQuery) -> R) -> R {
         let mut f = Some(f);

@@ -245,7 +245,7 @@ fn coin_asset(s: &Shared, coin: &str) -> Option<AssetId> {
 /// Messages to send to subscribers of `k` after block `b`.
 fn update_msgs(s: &Shared, k: &SubKey, _b: &BlockOutcome, d: &BlockDelta, cache: &mut PushCache) -> Vec<String> {
     let coins = &s.coins;
-    let now = fmt::now_ms();
+    let now = s.now();
     let mut out = Vec::new();
     match k {
         SubKey::AllMids { dex } => {
@@ -403,7 +403,7 @@ fn open_orders_data(s: &Shared, user: &Address, dex: &str) -> Value {
 /// Initial messages sent right after a successful subscribe.
 pub fn snapshot_msgs(s: &Shared, k: &SubKey) -> Vec<String> {
     let coins = &s.coins;
-    let now = fmt::now_ms();
+    let now = s.now();
     let mut out = Vec::new();
     match k {
         SubKey::AllMids { dex } => out.push(all_mids_msg(info::all_mids(s), dex)),
