@@ -24,6 +24,12 @@ pub struct NodeConfig {
     pub log_level: Option<String>,
     /// Snapshot interval in heights (default 1000).
     pub snapshot_interval: Option<u64>,
+    /// FileStore retention: committed blocks kept this many heights below the
+    /// tip (default 10000; keep it well above `snapshot_interval`).
+    pub retain_heights: Option<u64>,
+    /// FileStore log segment size in bytes (default 256 MiB; retention deletes
+    /// whole segments, so tests use tiny segments).
+    pub segment_bytes: Option<u64>,
     /// fsync the block + committed logs on every commit (default true; replay
     /// mode defaults to false: a replay is re-run from the log, not recovered).
     /// The consensus safety state is always fsynced before a vote leaves.
@@ -164,6 +170,8 @@ pub struct Resolved {
     pub replay_log: Option<PathBuf>,
     pub log_level: String,
     pub snapshot_interval: u64,
+    pub retain_heights: u64,
+    pub segment_bytes: Option<u64>,
     pub fsync_commits: bool,
     pub exec_threads: usize,
     pub max_timeout_ms: u64,
@@ -209,6 +217,8 @@ impl Resolved {
             replay_log,
             log_level: a.log_level.clone().or(cfg.log_level.clone()).unwrap_or_else(|| "info".into()),
             snapshot_interval: cfg.snapshot_interval.unwrap_or(1000).max(1),
+            retain_heights: cfg.retain_heights.unwrap_or(10_000),
+            segment_bytes: cfg.segment_bytes,
             fsync_commits,
             exec_threads: cfg.exec_threads.unwrap_or(1).max(1),
             max_timeout_ms: a.max_timeout_ms.or(cfg.max_timeout_ms).unwrap_or(DEFAULT_MAX_TIMEOUT_MS),

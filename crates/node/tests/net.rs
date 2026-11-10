@@ -518,3 +518,51 @@ fn single_validator_m2() {
     let log = std::fs::read_to_string(net.home(0).join("node.log")).unwrap();
     assert!(!log.contains("STATE DIVERGENCE"));
 }
+
+/// D29: a validator down long enough that every peer pruned the blocks it
+/// needs (retention 20 heights, 4 KiB segments, snapshots every 5) recovers by snapshot sync
+/// (certified snapshot root), then follows the chain with matching roots.
+#[test]
+fn far_lagging_node_recovers_via_snapshot_sync() {
+    let mut net = Net::new("snapsync", 4, &[]);
+    // small retention + snapshot period on every node, from genesis on
+    for i in 0..4 {
+        net.kill9(i);
+        let cfgp = net.home(i).join("config.toml");
+        let c = std::fs::read_to_string(&cfgp).unwrap();
+        std::fs::write(&cfgp, format!("snapshot_interval = 5\nretain_heights = 20\nsegment_bytes = 4096\n{c}")).unwrap();
+        let _ = std::fs::remove_dir_all(net.home(i).join("data"));
+        for f in ["roots.log", "commits.log", "node.log"] {
+            let _ = std::fs::remove_file(net.home(i).join(f));
+        }
+    }
+    for i in 0..4 {
+        net.start(i);
+    }
+    net.wait_height(&[0, 1, 2, 3], 6, Duration::from_secs(60));
+    net.kill9(3);
+    let down_at = net.max_height();
+    // far beyond retention: peers keep only ~20 heights (whole segments are pruned,
+    // so go well past it)
+    net.wait_height(&[0, 1, 2], down_at + 80, Duration::from_secs(120));
+    net.start(3);
+    let h = net.max_height() + 5;
+    net.wait_height(&[0, 1, 2, 3], h, Duration::from_secs(120));
+    let log3 = std::fs::read_to_string(net.home(3).join("node.log")).unwrap();
+    assert!(log3.contains("installed state snapshot"), "node3 did not install a snapshot:\n{}", &log3[log3.len().saturating_sub(3000)..]);
+    // roots agree on every height logged by more than one node, and node3 has roots above its snapshot
+    let common = assert_logs_agree(&net, "roots.log");
+    assert!(common as u64 >= h, "roots compared up to {common}");
+    assert_logs_agree(&net, "commits.log");
+    for i in 0..4 {
+        let log = std::fs::read_to_string(net.home(i).join("node.log")).unwrap();
+        assert!(!log.contains("STATE DIVERGENCE"), "node{i} logged a divergence");
+    }
+    let r3 = read_log(&net.home(3).join("roots.log"));
+    let r0 = read_log(&net.home(0).join("roots.log"));
+    let after: Vec<_> = r3.keys().filter(|k| **k > down_at + 20).copied().collect();
+    assert!(!after.is_empty(), "node3 executed nothing after recovering");
+    for k in after {
+        assert_eq!(r3.get(&k), r0.get(&k), "root at {k}");
+    }
+}

@@ -584,7 +584,15 @@ impl Node {
         // ---- state (restored from the latest snapshot if any)
         let data = cfg.home.join("data");
         std::fs::create_dir_all(&data)?;
-        let store = FileStore::open_with(&data, FileStoreConfig { fsync_commits: cfg.fsync_commits, ..FileStoreConfig::default() }).context("open FileStore")?;
+        let store = FileStore::open_with(&data, {
+            let d = FileStoreConfig::default();
+            FileStoreConfig {
+                fsync_commits: cfg.fsync_commits,
+                retain_heights: cfg.retain_heights,
+                segment_bytes: cfg.segment_bytes.unwrap_or(d.segment_bytes),
+                ..d
+            }
+        }).context("open FileStore")?;
         // Replay mode runs the `sim replay` checks itself (ReplayCheck, every block by
         // default); the chain's internal checks would duplicate the work.
         let ccfg = ChainConfig {
@@ -697,6 +705,9 @@ impl Node {
         let mut core_cfg = CoreConfig::new(genesis.chain_id, genesis.genesis_time_ms, genesis.validators.clone(), me);
         core_cfg.min_block_interval_ms = cfg.min_block_ms;
         core_cfg.max_timeout_ms = cfg.max_timeout_ms.max(core_cfg.base_timeout_ms);
+        // exec claims never jump over a snapshot height, so every snapshot root is
+        // certified by a header (snapshot sync for far-lagging nodes, D29)
+        core_cfg.snapshot_interval = cfg.snapshot_interval;
         core_cfg.max_block_txs = genesis.params.max_block_txs as usize;
         core_cfg.max_block_bytes = genesis.params.max_block_bytes as usize;
         let sk = secp256k1::SecretKey::from_byte_array(&wallet.secret_bytes()).map_err(|e| anyhow!("{e}"))?;
