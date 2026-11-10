@@ -12,7 +12,7 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 |---|---|---|
 | hlwire | crates/hlwire | MERGED (35 tests, 94 SDK golden vectors) |
 | api | crates/api | running |
-| consensus | crates/consensus | running |
+| consensus | crates/consensus | MERGED (44 tests; 600-seed sweep ok, worst resume 6.2 s) |
 | netmempool | crates/net, crates/mempool | MERGED (32 tests) |
 | bookoracle | crates/book, crates/oracle | MERGED (58 tests) |
 | clearinghouse | crates/clearinghouse | MERGED; fill 0.6–2.6 µs (target 1 µs) |
@@ -21,16 +21,21 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 | sim | crates/sim | running (wave 2) |
 | node | crates/node, scripts/localnet.sh | running (wave 2) |
 | chaos | crates/chaos | running (wave 2) |
-| clearinghouse (follow-up) | insurance StateKey fix | running |
+| clearinghouse (follow-up) | insurance StateKey fix | MERGED |
 
 ## Currently failing
 - All component crates are stubs (0 tests) — expected until M1.
 - No acceptance evidence yet.
 
 ## Next three actions
-1. Wait for wave-1 agents; review + merge each branch (build + tests green).
-2. Merge component branches as they land; keep workspace green.
-3. Build `node` wiring + localnet scripts (M2).
+1. Merge api, sim, node, chaos as they land; then M1 status + commit.
+2. M2/M3: single node + 4/7-validator localnet with SDK smoke (node agent).
+3. Write scripts/acceptance.sh runners (ac1..ac6) wiring chaos/sim/sdk/bridge e2e.
+
+## Known risks
+- Throughput with one validator down ~2.5 blocks/s (no leader reputation).
+- Clearinghouse fill cost 1.6–2.6 µs at 100k accounts.
+- Insurance fund can go negative in a corner case (D19).
 
 ## Environment notes
 - Foundry: `~/.local/bin/{forge,anvil,cast}` symlinked from `/opt/foundry/node_modules/@foundry-rs/*-linux-amd64/bin` (npm install). Re-create if container is fresh: `cd /opt/foundry && npm i @foundry-rs/forge @foundry-rs/anvil @foundry-rs/cast`.
