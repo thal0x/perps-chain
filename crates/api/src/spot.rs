@@ -107,5 +107,11 @@ pub fn mids(s: &Shared) -> Vec<(String, Px)> {
         .iter()
         .filter_map(|p| coins.tradable_spot_asset(p.index).map(|a| (p.name.clone(), a)))
         .collect();
-    s.with_state(|q| tradable.into_iter().map(|(n, a)| (n, q.mid(a).unwrap_or_else(|| q.market_ctx(a).mark_px))).collect())
+    s.with_state(|q| {
+        tradable
+            .into_iter()
+            .map(|(n, a)| (n, q.mid(a).unwrap_or_else(|| q.market_ctx(a).mark_px)))
+            .filter(|(_, p)| p.0 > 0)
+            .collect()
+    })
 }
