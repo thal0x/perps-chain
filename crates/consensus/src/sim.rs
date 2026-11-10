@@ -459,6 +459,7 @@ impl Sim {
         let replay = self.replay.clone();
         let n = &mut self.nodes[i];
         let Some(core) = n.core.as_mut() else { return };
+        let _span = tracing::debug_span!("node", i, t = now - SIM_GENESIS_TIME).entered();
         let mut env = Env {
             now,
             me: n.addr,

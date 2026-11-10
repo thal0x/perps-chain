@@ -689,8 +689,12 @@ impl Core {
         let signature = env.sign(&crypto::vote_digest(&data, kind));
         let vote = Vote { data, voter: self.cfg.me, signature };
         self.stats.votes += 1;
-        let next = self.leader(h.view + 1);
-        self.send_to(next, ConsensusMsg::Vote(vote));
+        // n <= 7: votes are broadcast so every validator can form the QC
+        // (a crashed next leader then costs one view timeout, not two, and
+        // the certified block survives through the timeout's high QC).
+        self.broadcast(ConsensusMsg::Vote(vote.clone()));
+        let me = self.cfg.me;
+        self.on_vote(me, vote, env);
     }
 
     fn on_vote(&mut self, from: Address, vote: Vote, env: &mut dyn ConsensusEnv) {
@@ -702,7 +706,7 @@ impl Core {
             return;
         }
         let v = vote.data.view;
-        if v == 0 || self.leader(v + 1) != self.cfg.me || v + 1 < self.view {
+        if v == 0 || v + 1 < self.view || v > self.view + MAX_FUTURE_TIMEOUT_VIEWS {
             return;
         }
         if let Some(agg) = self.votes.get(&v) {
@@ -738,8 +742,8 @@ impl Core {
             debug!(view = v, height = vote.data.height, "formed QC");
             self.qc_of.insert(qc.data.block_id, qc.clone());
             self.process_qc(&qc, env);
-            if !self.blocks.contains_key(&qc.data.block_id) {
-                let peer = if from == self.cfg.me { self.leader(v) } else { from };
+            if !self.blocks.contains_key(&qc.data.block_id) && self.leader(v + 1) == self.cfg.me {
+                let peer = self.leader(v);
                 self.fetch(qc.data.block_id, peer);
             }
         }
