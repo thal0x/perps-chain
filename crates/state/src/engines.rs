@@ -57,6 +57,10 @@ pub trait Engines: 'static {
     fn all_entity_hashes(ch: &mut Self::Ch) -> Vec<(StateKey, Hash32)> {
         ch.take_dirty()
     }
+    /// Spot balance of `user` in `token` (default: via `account_view`).
+    fn spot_balance(ch: &Self::Ch, user: &Address, token: u32) -> Usd {
+        ch.account_view(user).spot_balances.iter().find(|(t, _)| *t == token).map(|(_, a)| *a).unwrap_or(Usd::ZERO)
+    }
     /// Extra check after each liquidation pass (invariant mode only).
     fn post_liquidation_check(_ch: &Self::Ch, _height: Height) -> Result<(), InvariantViolation> {
         Ok(())
@@ -103,6 +107,9 @@ impl Engines for HlEngines {
         let mut v = ch.all_entity_hashes();
         v.extend(ch.take_dirty());
         v
+    }
+    fn spot_balance(ch: &Self::Ch, user: &Address, token: u32) -> Usd {
+        ch.spot_balance(user, token)
     }
     fn post_liquidation_check(ch: &Self::Ch, height: Height) -> Result<(), InvariantViolation> {
         let bad = ch.negative_equity_accounts();

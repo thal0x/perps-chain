@@ -10,6 +10,7 @@ mod hook;
 pub mod meta;
 mod query;
 pub mod sigcache;
+pub mod spot;
 pub mod testkit;
 pub mod views;
 
@@ -17,6 +18,7 @@ pub use chain::Chain;
 pub use config::*;
 pub use engines::{Engines, HlEngines};
 pub use sigcache::SigCache;
+pub use spot::{SpotHold, SpotPairSpec, SPOT_ASSET, SPOT_FEE_ACCOUNT};
 
 /// Chain with fake signatures over the real book/oracle and the fake
 /// clearinghouse (used by the tests).

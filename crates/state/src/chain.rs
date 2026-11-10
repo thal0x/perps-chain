@@ -6,6 +6,7 @@ use crate::errors as err_msg;
 use crate::hook::Hook;
 use crate::meta::*;
 use crate::sigcache::{Recovered, SigCache};
+use crate::spot::*;
 use crate::views::*;
 use borsh::{BorshDeserialize, BorshSerialize};
 use interfaces::*;
@@ -30,6 +31,8 @@ pub struct Chain<E: Engines, V: TxVerifier> {
     pub(crate) books: Vec<E::Book>,
     pub(crate) trigs: Vec<E::Trig>,
     pub(crate) oracle: E::Oracle,
+    /// Spot pair 0 (PURR/USDC, asset 10000), if genesis has tokens 0 and 1.
+    pub(crate) spot: Option<SpotMarket<E::Book>>,
     // ---- commitment ----
     pub(crate) ch_hashes: BTreeMap<StateKey, Hash32>,
     pub(crate) own_hashes: BTreeMap<StateKey, Hash32>,
@@ -49,6 +52,8 @@ struct SnapshotData {
     ch: Vec<u8>,
     books: Vec<Vec<u8>>,
     trigs: Vec<Vec<u8>>,
+    /// Spot book encoding + holds / last price (None if spot is disabled).
+    spot: Option<(Vec<u8>, SpotCore)>,
 }
 
 fn is_user_signed(a: &Action) -> bool {
@@ -71,6 +76,10 @@ fn embedded_nonce(a: &Action) -> Option<u64> {
     }
 }
 
+/// clearinghouse `ERR_SPOT` / `ERR_TRANSFER` texts (held spot balance is not free).
+const SPOT_SEND_INSUFFICIENT: &str = "Insufficient balance for token transfer";
+const CLASS_TRANSFER_INSUFFICIENT: &str = "Insufficient balance for transfer";
+
 fn median3(a: Px, b: Px, c: Px) -> Px {
     let mut v = [a, b, c];
     v.sort();
@@ -87,6 +96,12 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         let books = genesis.markets.iter().map(E::new_book).collect();
         let trigs = genesis.markets.iter().map(E::new_triggers).collect();
         let oracle = E::new_oracle(&genesis);
+        let spot = SpotPairSpec::from_genesis(&genesis).map(|pair| SpotMarket {
+            book: E::new_book(&pair.market_spec()),
+            pair,
+            core: SpotCore::default(),
+            dirty: true,
+        });
         let genesis_total = E::genesis_total(&genesis);
         let core = Core {
             height: 0,
@@ -115,6 +130,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             books,
             trigs,
             oracle,
+            spot,
             ch_hashes: BTreeMap::new(),
             own_hashes: BTreeMap::new(),
             dirty_users: BTreeSet::new(),
@@ -183,6 +199,38 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     pub fn bridge_state(&self) -> &BridgeState {
         &self.core.bridge
     }
+    /// The spot pair (PURR/USDC, asset 10000), if spot is enabled.
+    pub fn spot_pair(&self) -> Option<&SpotPairSpec> {
+        self.spot.as_ref().map(|s| &s.pair)
+    }
+    /// The spot order book.
+    pub fn spot_book(&self) -> Option<&E::Book> {
+        self.spot.as_ref().map(|s| &s.book)
+    }
+    /// Amounts held by `user`'s resting spot orders.
+    pub fn spot_hold(&self, user: &Address) -> SpotHold {
+        self.spot.as_ref().map(|s| s.hold(user)).unwrap_or_default()
+    }
+    /// Spot balance minus hold.
+    pub fn spot_free(&self, user: &Address, token: u32) -> Usd {
+        let bal = E::spot_balance(&self.ch, user, token);
+        let h = self.spot_hold(user);
+        match &self.spot {
+            Some(s) if token == s.pair.quote => bal - h.quote,
+            Some(s) if token == s.pair.base => bal - h.base,
+            _ => bal,
+        }
+    }
+    pub fn spot_last_px(&self) -> Option<Px> {
+        self.spot.as_ref().and_then(|s| s.core.last_px)
+    }
+    #[inline]
+    pub(crate) fn is_spot(&self, asset: AssetId) -> bool {
+        asset == SPOT_ASSET && self.spot.is_some()
+    }
+    fn spot_hold_rate(&self) -> Rate {
+        hold_fee_rate(&self.genesis.params)
+    }
 
     /// Run all invariant checks now.
     pub fn check_invariants(&self) -> Result<(), InvariantViolation> {
@@ -192,6 +240,24 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             if let (Some(bid), Some(ask)) = (b.best_bid(), b.best_ask()) {
                 if bid >= ask {
                     return Err(InvariantViolation { height: h, what: format!("book {i} crossed: {bid} >= {ask}") });
+                }
+            }
+        }
+        if let Some(s) = &self.spot {
+            if let (Some(bid), Some(ask)) = (s.book.best_bid(), s.book.best_ask()) {
+                if bid >= ask {
+                    return Err(InvariantViolation { height: h, what: format!("spot book crossed: {bid} >= {ask}") });
+                }
+            }
+            s.check(self.spot_hold_rate()).map_err(|what| InvariantViolation { height: h, what })?;
+            for (u, hold) in &s.core.holds {
+                let q = E::spot_balance(&self.ch, u, s.pair.quote);
+                let b = E::spot_balance(&self.ch, u, s.pair.base);
+                if q < hold.quote || b < hold.base {
+                    return Err(InvariantViolation {
+                        height: h,
+                        what: format!("spot hold of {u} exceeds balance: hold {hold:?}, quote {q}, base {b}"),
+                    });
                 }
             }
         }
@@ -315,6 +381,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             if *d {
                 self.events.push(Event::BookChanged { asset: a as AssetId });
             }
+        }
+        if self.spot.as_ref().is_some_and(|s| s.dirty) {
+            self.events.push(Event::BookChanged { asset: SPOT_ASSET });
         }
         if run_inv {
             if let Err(v) = self.check_invariants() {
@@ -457,6 +526,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                     return Err(err_msg::INVALID_AMOUNT.into());
                 }
                 let idx = self.parse_spot_token(token).ok_or(err_msg::INVALID_TOKEN)?;
+                if self.spot_free(&user, idx) < *amount {
+                    return Err(SPOT_SEND_INSUFFICIENT.into());
+                }
                 self.ch.spot_send(user, *destination, idx, *amount).map_err(|e| e.0)?;
                 let delta = LedgerDelta::SpotTransfer {
                     token: token.clone(),
@@ -471,6 +543,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             Action::UsdClassTransfer { amount, to_perp, .. } => {
                 if amount.0 <= 0 {
                     return Err(err_msg::INVALID_AMOUNT.into());
+                }
+                if *to_perp && self.spot.is_some() && self.spot_free(&user, 0) < *amount {
+                    return Err(CLASS_TRANSFER_INSUFFICIENT.into());
                 }
                 self.ch.class_transfer(user, *amount, *to_perp).map_err(|e| e.0)?;
                 self.ledger(user, LedgerDelta::AccountClassTransfer { usdc: *amount, to_perp: *to_perp });
@@ -680,6 +755,12 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     /// Place one order request (limit or trigger). Trigger orders are stored
     /// and reported as `Resting` (HL behaviour for standalone triggers).
     fn place_request(&mut self, user: Address, req: &OrderRequest, parent: Option<Oid>, position_tpsl: bool) -> OrderStatusResp {
+        if self.is_spot(req.asset) {
+            if parent.is_some() || position_tpsl {
+                return OrderStatusResp::Error(err_msg::SPOT_TRIGGER_UNSUPPORTED.into());
+            }
+            return self.place_spot_request(user, req);
+        }
         if let Err(e) = self.validate_static(req, position_tpsl) {
             return OrderStatusResp::Error(e);
         }
@@ -749,8 +830,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         let out = &p.out;
         let now = self.core.time;
         if out.alo_rejected {
-            let b = self.books[o.asset as usize].best_bid().map(|x| x.to_wire()).unwrap_or_else(|| "None".into());
-            let a = self.books[o.asset as usize].best_ask().map(|x| x.to_wire()).unwrap_or_else(|| "None".into());
+            let (bid, ask) = self.bbo(o.asset);
+            let b = bid.map(|x| x.to_wire()).unwrap_or_else(|| "None".into());
+            let a = ask.map(|x| x.to_wire()).unwrap_or_else(|| "None".into());
             return OrderStatusResp::Error(err_msg::post_only_crossed(&b, &a));
         }
         if out.resting_sz.0 > 0 {
@@ -770,6 +852,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                 oid: o.oid,
                 cloid: o.cloid,
             };
+        }
+        if p.margin_stopped && self.is_spot(o.asset) {
+            return OrderStatusResp::Error(err_msg::spot_insufficient(o.asset));
         }
         if p.margin_stopped {
             return OrderStatusResp::Error(err_msg::INSUFFICIENT_MARGIN.into());
@@ -861,6 +946,14 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     }
 
     fn cancel_by_oid(&mut self, user: Address, asset: AssetId, oid: Oid) -> SimpleStatus {
+        if self.is_spot(asset) {
+            let mine = self.spot.as_ref().is_some_and(|s| s.book.get(oid).is_some_and(|o| o.user == user));
+            if mine {
+                self.cancel_spot(oid, OrderLifecycle::Canceled);
+                return SimpleStatus::Success;
+            }
+            return SimpleStatus::Error(err_msg::CANCEL_MISSING.into());
+        }
         if self.spec(asset).is_none() {
             return SimpleStatus::Error(err_msg::CANCEL_MISSING.into());
         }
@@ -878,6 +971,9 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
 
     /// True if `user` has an open (resting or trigger) order with `cloid`.
     fn has_cloid(&self, user: &Address, cloid: &Cloid) -> bool {
+        if self.spot.as_ref().is_some_and(|s| s.book.get_by_cloid(user, cloid).is_some()) {
+            return true;
+        }
         (0..self.books.len()).any(|a| {
             self.books[a].get_by_cloid(user, cloid).is_some()
                 || self.find_trigger_by_cloid(user, a as AssetId, cloid).is_some()
@@ -889,6 +985,14 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
     }
 
     fn cancel_by_cloid(&mut self, user: Address, asset: AssetId, cloid: &Cloid) -> SimpleStatus {
+        if self.is_spot(asset) {
+            let oid = self.spot.as_ref().and_then(|s| s.book.get_by_cloid(&user, cloid)).map(|o| o.oid);
+            if let Some(oid) = oid {
+                self.cancel_spot(oid, OrderLifecycle::Canceled);
+                return SimpleStatus::Success;
+            }
+            return SimpleStatus::Error(err_msg::CANCEL_MISSING.into());
+        }
         if self.spec(asset).is_none() {
             return SimpleStatus::Error(err_msg::CANCEL_MISSING.into());
         }
@@ -903,8 +1007,16 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         SimpleStatus::Error(err_msg::CANCEL_MISSING.into())
     }
 
-    /// Cancel every order of `user` (optionally only in `only_asset`).
-    fn cancel_all_of(&mut self, user: Address, only_asset: Option<AssetId>, why: OrderLifecycle) {
+    /// Cancel every perp order of `user` (optionally only in `only_asset`),
+    /// and its spot orders if `include_spot`.
+    fn cancel_all_of(&mut self, user: Address, only_asset: Option<AssetId>, include_spot: bool, why: OrderLifecycle) {
+        if include_spot {
+            let oids: Vec<Oid> =
+                self.spot.as_ref().map(|s| s.book.user_orders(&user).iter().map(|o| o.oid).collect()).unwrap_or_default();
+            for oid in oids {
+                self.cancel_spot(oid, why);
+            }
+        }
         for a in 0..self.books.len() as AssetId {
             if only_asset.is_some_and(|x| x != a) {
                 continue;
@@ -927,13 +1039,179 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             }
             self.core.scheduled.remove(&(t, user));
             self.meta_mut(user).scheduled_cancel = None;
-            self.cancel_all_of(user, None, OrderLifecycle::ScheduledCancel);
+            self.cancel_all_of(user, None, true, OrderLifecycle::ScheduledCancel);
         }
+    }
+
+    // ---------------------------------------------------------------- spot
+
+    pub(crate) fn bbo(&self, asset: AssetId) -> (Option<Px>, Option<Px>) {
+        if self.is_spot(asset) {
+            let b = &self.spot.as_ref().expect("spot").book;
+            return (b.best_bid(), b.best_ask());
+        }
+        match self.books.get(asset as usize) {
+            Some(b) => (b.best_bid(), b.best_ask()),
+            None => (None, None),
+        }
+    }
+
+    /// Static spot order checks (HL spot tick/lot, $10 minimum, no
+    /// reduce-only, limit orders only).
+    fn validate_spot_static(&self, req: &OrderRequest) -> Result<(), String> {
+        let pair = &self.spot.as_ref().expect("spot").pair;
+        if matches!(req.kind, OrderKind::Trigger { .. }) {
+            return Err(err_msg::SPOT_TRIGGER_UNSUPPORTED.into());
+        }
+        if !pair.is_valid_px(req.limit_px) {
+            return Err(err_msg::INVALID_PRICE.into());
+        }
+        if !pair.is_valid_sz(req.sz) {
+            return Err(err_msg::INVALID_SIZE.into());
+        }
+        // Spot has no position to reduce (HL rejects reduce-only spot orders).
+        if req.reduce_only {
+            return Err(err_msg::REDUCE_ONLY_INCREASE.into());
+        }
+        if notional(req.limit_px, req.sz, Rounding::Floor).0 < 10 * USD_SCALE as i64 {
+            return Err(err_msg::MIN_VALUE.into());
+        }
+        Ok(())
+    }
+
+    /// Free balance must cover the whole order's hold (`released` = hold
+    /// that a modify frees first).
+    fn check_spot_funds(&self, user: &Address, req: &OrderRequest, released: SpotHold) -> Result<(), String> {
+        let sp = self.spot.as_ref().expect("spot");
+        let side = Side::from_is_buy(req.is_buy);
+        let need = order_hold(&sp.pair, side, req.limit_px, req.sz, self.spot_hold_rate());
+        let fq = self.spot_free(user, sp.pair.quote) + released.quote;
+        let fb = self.spot_free(user, sp.pair.base) + released.base;
+        if fq < need.quote || fb < need.base {
+            return Err(err_msg::spot_insufficient(req.asset));
+        }
+        Ok(())
+    }
+
+    fn place_spot_request(&mut self, user: Address, req: &OrderRequest) -> OrderStatusResp {
+        if let Err(e) = self.validate_spot_static(req) {
+            return OrderStatusResp::Error(e);
+        }
+        if let Some(c) = &req.cloid {
+            if self.has_cloid(&user, c) {
+                return OrderStatusResp::Error(err_msg::DUPLICATE_CLOID.into());
+            }
+        }
+        if let Err(e) = self.check_spot_funds(&user, req, SpotHold::default()) {
+            return OrderStatusResp::Error(e);
+        }
+        let OrderKind::Limit { tif } = req.kind else { unreachable!("validated") };
+        let oid = self.alloc_oid();
+        let o = RestingOrder {
+            oid,
+            user,
+            asset: req.asset,
+            side: Side::from_is_buy(req.is_buy),
+            limit_px: req.limit_px,
+            sz: req.sz,
+            orig_sz: req.sz,
+            reduce_only: false,
+            cloid: req.cloid,
+            timestamp: self.core.time,
+            tif,
+        };
+        let p = self.place_spot(o.clone());
+        self.taker_status(&o, &p)
+    }
+
+    /// Match a spot order through the spot book; rests the remainder with
+    /// its hold.
+    fn place_spot(&mut self, o: RestingOrder) -> Placed {
+        let hold_rate = self.spot_hold_rate();
+        let params = &self.genesis.params;
+        let sp = self.spot.as_mut().expect("spot");
+        let mut hook = SpotHook {
+            ch: &mut self.ch,
+            bal: E::spot_balance,
+            events: &mut self.events,
+            next_tid: &mut self.core.next_tid,
+            pair: &sp.pair,
+            holds: &mut sp.core.holds,
+            last_px: &mut sp.core.last_px,
+            taker_fee: params.taker_fee,
+            maker_fee: params.maker_fee,
+            hold_rate,
+            time: self.core.time,
+            tx_hash: self.cur_tx,
+            taker_cloid: o.cloid,
+            taker_px: o.limit_px,
+            taker_remaining: o.sz,
+            taker_may_rest: o.tif != Tif::Ioc,
+            taker_stopped: false,
+        };
+        let (user, side, px) = (o.user, o.side, o.limit_px);
+        let out = sp.book.place(o, &mut hook);
+        let stopped = hook.taker_stopped;
+        if out.resting_sz.0 > 0 {
+            let h = order_hold(&sp.pair, side, px, out.resting_sz, hold_rate);
+            sp.add_hold(user, h);
+        }
+        sp.dirty = true;
+        let now = self.core.time;
+        // Holds of canceled makers were released by the hook.
+        for (m, why) in &out.canceled_makers {
+            self.events.push(Event::OrderUpdate { user: m.user, order: resting_view(m), status: *why, time: now });
+        }
+        Placed { out, margin_stopped: stopped, reduce_stopped: false }
+    }
+
+    fn cancel_spot(&mut self, oid: Oid, why: OrderLifecycle) -> Option<RestingOrder> {
+        let rate = self.spot_hold_rate();
+        let sp = self.spot.as_mut()?;
+        let o = sp.book.cancel(oid)?;
+        let h = order_hold(&sp.pair, o.side, o.limit_px, o.sz, rate);
+        sp.release_hold(o.user, h);
+        sp.dirty = true;
+        let now = self.core.time;
+        self.events.push(Event::OrderUpdate { user: o.user, order: resting_view(&o), status: why, time: now });
+        Some(o)
+    }
+
+    fn modify_spot(&mut self, user: Address, target: OidOrCloid, req: &OrderRequest) -> OrderStatusResp {
+        let rate = self.spot_hold_rate();
+        let sp = self.spot.as_ref().expect("spot");
+        let found = match target {
+            OidOrCloid::Oid(oid) => sp.book.get(oid).filter(|o| o.user == user),
+            OidOrCloid::Cloid(c) => sp.book.get_by_cloid(&user, &c),
+        };
+        let Some(old) = found else { return OrderStatusResp::Error(err_msg::MODIFY_MISSING.into()) };
+        let (old_oid, old_cloid) = (old.oid, old.cloid);
+        let released = order_hold(&sp.pair, old.side, old.limit_px, old.sz, rate);
+        if let Err(e) = self.validate_spot_static(req) {
+            return OrderStatusResp::Error(e);
+        }
+        if let Err(e) = self.check_spot_funds(&user, req, released) {
+            return OrderStatusResp::Error(e);
+        }
+        if let Some(c) = &req.cloid {
+            if Some(*c) != old_cloid && self.has_cloid(&user, c) {
+                return OrderStatusResp::Error(err_msg::DUPLICATE_CLOID.into());
+            }
+        }
+        self.cancel_spot(old_oid, OrderLifecycle::Canceled);
+        let mut req = req.clone();
+        if req.cloid.is_none() {
+            req.cloid = old_cloid;
+        }
+        self.place_spot_request(user, &req)
     }
 
     // -------------------------------------------------------------- modify
 
     fn modify(&mut self, user: Address, target: OidOrCloid, req: &OrderRequest) -> OrderStatusResp {
+        if self.is_spot(req.asset) {
+            return self.modify_spot(user, target, req);
+        }
         if self.spec(req.asset).is_none() {
             return OrderStatusResp::Error(err_msg::MODIFY_MISSING.into());
         }
@@ -1157,7 +1435,8 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         }
         let slip = self.genesis.params.liquidation_slippage;
         for t in targets {
-            self.cancel_all_of(t.user, t.isolated_asset, OrderLifecycle::LiquidatedCanceled);
+            // Spot orders are not perp collateral: liquidation leaves them alone.
+            self.cancel_all_of(t.user, t.isolated_asset, false, OrderLifecycle::LiquidatedCanceled);
             let v = self.ch.account_view(&t.user);
             self.ledger(
                 t.user,
@@ -1261,6 +1540,15 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
                 self.dirty_books[a] = false;
             }
         }
+        if let Some(sp) = self.spot.as_mut().filter(|s| s.dirty) {
+            let mut h = blake3::Hasher::new();
+            let b = sp.book.encode();
+            h.update(&(b.len() as u64).to_le_bytes());
+            h.update(&b);
+            h.update(&borsh::to_vec(&sp.core).expect("encode spot core"));
+            self.own_hashes.insert(StateKey::Book(sp.pair.asset), Hash32(*h.finalize().as_bytes()));
+            sp.dirty = false;
+        }
         self.compute_root()
     }
 
@@ -1310,6 +1598,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             ch: self.ch.encode(),
             books: self.books.iter().map(|b| b.encode()).collect(),
             trigs: self.trigs.iter().map(|t| t.encode()).collect(),
+            spot: self.spot.as_ref().map(|s| (s.book.encode(), s.core.clone())),
         };
         let raw = borsh::to_vec(&data).expect("encode");
         let data = zstd::encode_all(raw.as_slice(), 3).expect("zstd");
@@ -1331,6 +1620,16 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             books.push(E::decode_book(spec, &d.books[i])?);
             trigs.push(E::decode_triggers(spec, &d.trigs[i])?);
         }
+        let spot = match (SpotPairSpec::from_genesis(&self.genesis), d.spot) {
+            (None, None) => None,
+            (Some(pair), Some((bytes, core))) => {
+                let book = E::decode_book(&pair.market_spec(), &bytes)?;
+                let m = SpotMarket { pair, book, core, dirty: true };
+                m.check(hold_fee_rate(&self.genesis.params)).map_err(|e| format!("snapshot spot state: {e}"))?;
+                Some(m)
+            }
+            _ => return Err("snapshot spot market mismatch".into()),
+        };
         let mut oracle = E::new_oracle(&self.genesis);
         for ((asset, v), (px, t)) in &d.core.oracle_subs {
             let stake = self.genesis.validators.stake_of(v);
@@ -1343,6 +1642,7 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         self.ch = ch;
         self.books = books;
         self.trigs = trigs;
+        self.spot = spot;
         self.oracle = oracle;
         self.ch_hashes = ch_entities.into_iter().collect();
         self.own_hashes.clear();
