@@ -1,0 +1,2168 @@
+[
+ {
+  "name": "order_limit_gtc",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"30000.5\", \"s\": \"0.02\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000001, \"signature\": {\"r\": \"0xadee37aa0a1f8370e3b7f498e580de1e6de1523742c60f52f1ba2fcb0e5c5f5b\", \"s\": \"0x292e17a087da72a3b5d1ccd25bd0a10ba3f8bde2bc1de0c043d6547a4101f7af\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "30000.5",
+      "s": "0.02",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000001,
+   "signature": {
+    "r": "0xadee37aa0a1f8370e3b7f498e580de1e6de1523742c60f52f1ba2fcb0e5c5f5b",
+    "s": "0x292e17a087da72a3b5d1ccd25bd0a10ba3f8bde2bc1de0c043d6547a4101f7af",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16100a162c3a170a733303030302e35a173a4302e3032a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x13663a7bf1cc01bb7709a13b12bc35a6654d9c82c5b526932ffbe4fd4bfc587a",
+  "digest": "0xa3350925738e6ac0509aa66acae9e1b328a571dd11922e83615f4144c1639cc9"
+ },
+ {
+  "name": "usd_send",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"destination\": \"0x5e9ee1089755c3435139848e47e6635505d5a13a\", \"amount\": \"12.5\", \"time\": 1700000000002, \"type\": \"usdSend\", \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000002, \"signature\": {\"r\": \"0x9942a2bd4d0b7fb32663fb10d3000b1d5f3295961c24261363e84142c5bb6f56\", \"s\": \"0x7f837fd9b534baf5777e8cc235e8b1c7de947786c166f8448331bc06ae340ddd\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "destination": "0x5e9ee1089755c3435139848e47e6635505d5a13a",
+    "amount": "12.5",
+    "time": 1700000000002,
+    "type": "usdSend",
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000002,
+   "signature": {
+    "r": "0x9942a2bd4d0b7fb32663fb10d3000b1d5f3295961c24261363e84142c5bb6f56",
+    "s": "0x7f837fd9b534baf5777e8cc235e8b1c7de947786c166f8448331bc06ae340ddd",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86ab64657374696e6174696f6ed92a307835653965653130383937353563333433353133393834386534376536363335353035643561313361a6616d6f756e74a431322e35a474696d65cf0000018bcfe56802a474797065a775736453656e64b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:UsdSend",
+  "digest": "0x0f2e9fb62228b74cb45c1dca4d56611c81d557001688058052c27ffe2dc924e7"
+ },
+ {
+  "name": "order_limit_gtc_mainnet",
+  "sdk": "python",
+  "is_mainnet": true,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"30000.5\", \"s\": \"0.02\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000003, \"signature\": {\"r\": \"0x5948a131598d3a24e65e64a48695215a0d78ebb8eea95a9493028276bdf4a7c8\", \"s\": \"0x25a4d4c1bdea2c02669ac46f1be59934a91219793ad1d8d3036dadee8300be0a\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "30000.5",
+      "s": "0.02",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000003,
+   "signature": {
+    "r": "0x5948a131598d3a24e65e64a48695215a0d78ebb8eea95a9493028276bdf4a7c8",
+    "s": "0x25a4d4c1bdea2c02669ac46f1be59934a91219793ad1d8d3036dadee8300be0a",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16100a162c3a170a733303030302e35a173a4302e3032a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x38e4e2a66e923a7eba2e3bbf2deca2f6320c9fc688965052af9f0a757171863a",
+  "digest": "0x4b9c58e13366dfc8443dd999840377fcfd3598860a91937af539949d21dc7f09"
+ },
+ {
+  "name": "usd_send_mainnet",
+  "sdk": "python",
+  "is_mainnet": true,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"destination\": \"0x5e9ee1089755c3435139848e47e6635505d5a13a\", \"amount\": \"12.5\", \"time\": 1700000000004, \"type\": \"usdSend\", \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Mainnet\"}, \"nonce\": 1700000000004, \"signature\": {\"r\": \"0xc17668c445134b27a39d315319454d75d44e245835f0c4a02cbcf5b96184e0b\", \"s\": \"0x2566fbb46ee0da7ab1abc466f5b8c6c34296d79b60b9832063ecbe21e819fe26\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "destination": "0x5e9ee1089755c3435139848e47e6635505d5a13a",
+    "amount": "12.5",
+    "time": 1700000000004,
+    "type": "usdSend",
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Mainnet"
+   },
+   "nonce": 1700000000004,
+   "signature": {
+    "r": "0xc17668c445134b27a39d315319454d75d44e245835f0c4a02cbcf5b96184e0b",
+    "s": "0x2566fbb46ee0da7ab1abc466f5b8c6c34296d79b60b9832063ecbe21e819fe26",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86ab64657374696e6174696f6ed92a307835653965653130383937353563333433353133393834386534376536363335353035643561313361a6616d6f756e74a431322e35a474696d65cf0000018bcfe56804a474797065a775736453656e64b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea74d61696e6e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:UsdSend",
+  "digest": "0xad7de710f205181fb6b32449dc838f22a64ccf995aff7195872cfdc892942fbf"
+ },
+ {
+  "name": "order_limit_ioc_reduce",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 1, \"b\": false, \"p\": \"1100\", \"s\": \"1.2345\", \"r\": true, \"t\": {\"limit\": {\"tif\": \"Ioc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000005, \"signature\": {\"r\": \"0xa828e87de1779480afbc4c46cf01be22dec49fecce301d0a646a843396435c76\", \"s\": \"0x72589d523f4bd99cc0f7574e380ce693c7a1a78ace5b5b04e65ed2ff5743aab4\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 1,
+      "b": false,
+      "p": "1100",
+      "s": "1.2345",
+      "r": true,
+      "t": {
+       "limit": {
+        "tif": "Ioc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000005,
+   "signature": {
+    "r": "0xa828e87de1779480afbc4c46cf01be22dec49fecce301d0a646a843396435c76",
+    "s": "0x72589d523f4bd99cc0f7574e380ce693c7a1a78ace5b5b04e65ed2ff5743aab4",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16101a162c2a170a431313030a173a6312e32333435a172c3a17481a56c696d697481a3746966a3496f63a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x69b070639d4d097b8c4bf5563e9b6c43f1a57b0d088776cee4d091dd4176f43b",
+  "digest": "0x2cb782fd5b91b8e1fa660bb13b02a83a5dd40b81af2fc8a1ac83a440d931ecee"
+ },
+ {
+  "name": "order_limit_alo_cloid",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 2, \"b\": true, \"p\": \"0.0001234\", \"s\": \"3\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000001\"}], \"grouping\": \"na\"}, \"nonce\": 1700000000006, \"signature\": {\"r\": \"0xdbe275d944f342f765146de5333faaced6cee94a571c45d1ec0ddbdfeb398205\", \"s\": \"0x6a4ede3aa4b82f28d0b035c2a2f2e9f5128615c973e1acb794ebf5f9515ae32c\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 2,
+      "b": true,
+      "p": "0.0001234",
+      "s": "3",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000001"
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000006,
+   "signature": {
+    "r": "0xdbe275d944f342f765146de5333faaced6cee94a571c45d1ec0ddbdfeb398205",
+    "s": "0x6a4ede3aa4b82f28d0b035c2a2f2e9f5128615c973e1acb794ebf5f9515ae32c",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739187a16102a162c3a170a9302e30303031323334a173a133a172c2a17481a56c696d697481a3746966a3416c6fa163d92230783030303030303030303030303030303030303030303030303030303030303031a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0xaa629f73b2e3dc96ee31d26f5f54f42282f8382f94a23c5f0978150a19133105",
+  "digest": "0x7dc9960360f769d501b28c7a38d79275d54cb4d5cf45e157807223cab46fdad2"
+ },
+ {
+  "name": "order_cloid_upper",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"65000\", \"s\": \"0.001\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}, \"c\": \"0x00000000000000000000000000ABCDEF\"}], \"grouping\": \"na\"}, \"nonce\": 1700000000007, \"signature\": {\"r\": \"0xd89ab2bcfc18d9e7aef26651ae85d1a5c052335110b37b03ab127a9dc70d2985\", \"s\": \"0x6e610f69ac6432807697b20df38c46751b60ad89960da9fac1905081a9ad5e00\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "65000",
+      "s": "0.001",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      },
+      "c": "0x00000000000000000000000000ABCDEF"
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000007,
+   "signature": {
+    "r": "0xd89ab2bcfc18d9e7aef26651ae85d1a5c052335110b37b03ab127a9dc70d2985",
+    "s": "0x6e610f69ac6432807697b20df38c46751b60ad89960da9fac1905081a9ad5e00",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739187a16100a162c3a170a53635303030a173a5302e303031a172c2a17481a56c696d697481a3746966a3477463a163d92230783030303030303030303030303030303030303030303030303030414243444546a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x04a300328087d446ebe8c77f7755064fb7d67d890bdf400352eca7c7c6ca2358",
+  "digest": "0xf3f4474f3a78700fb0fce8e74df8e1636b5dc3671f0da41e08f73c76f949707c"
+ },
+ {
+  "name": "order_trigger_sl_market",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": false, \"p\": \"29000\", \"s\": \"0.5\", \"r\": true, \"t\": {\"trigger\": {\"isMarket\": true, \"triggerPx\": \"29500\", \"tpsl\": \"sl\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000008, \"signature\": {\"r\": \"0x72b2214d6fd6e7cde0c7e66bf0b60d96487c9f132fe96c73639070f0d7824a4f\", \"s\": \"0xcfa94a6f22097242fc2066b69e374a084365c4abbdec08c5c46b18fc7939a34\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": false,
+      "p": "29000",
+      "s": "0.5",
+      "r": true,
+      "t": {
+       "trigger": {
+        "isMarket": true,
+        "triggerPx": "29500",
+        "tpsl": "sl"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000008,
+   "signature": {
+    "r": "0x72b2214d6fd6e7cde0c7e66bf0b60d96487c9f132fe96c73639070f0d7824a4f",
+    "s": "0xcfa94a6f22097242fc2066b69e374a084365c4abbdec08c5c46b18fc7939a34",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16100a162c2a170a53239303030a173a3302e35a172c3a17481a77472696767657283a869734d61726b6574c3a9747269676765725078a53239353030a47470736ca2736ca867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x0905c26b4800f68e96c4d0bed6352d1418f4717e3d5939ad008320130ba8991e",
+  "digest": "0xf336eb90f352ad23c50484f43c3aee573dc6f5f8c49e5a38abb9a5d3035c054f"
+ },
+ {
+  "name": "order_trigger_tp_limit",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 1, \"b\": true, \"p\": \"1999.9\", \"s\": \"2\", \"r\": false, \"t\": {\"trigger\": {\"isMarket\": false, \"triggerPx\": \"2000\", \"tpsl\": \"tp\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000009, \"signature\": {\"r\": \"0xa37f4ff3f6f3d8dcb2fe4dc5b7d901f39b307aec9541861bb375dbc1b7751901\", \"s\": \"0x221570c8284fa4a3d5039a3c1cc35f5d15f0fd705386fd4437ee010fe5593854\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 1,
+      "b": true,
+      "p": "1999.9",
+      "s": "2",
+      "r": false,
+      "t": {
+       "trigger": {
+        "isMarket": false,
+        "triggerPx": "2000",
+        "tpsl": "tp"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000009,
+   "signature": {
+    "r": "0xa37f4ff3f6f3d8dcb2fe4dc5b7d901f39b307aec9541861bb375dbc1b7751901",
+    "s": "0x221570c8284fa4a3d5039a3c1cc35f5d15f0fd705386fd4437ee010fe5593854",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16101a162c3a170a6313939392e39a173a132a172c2a17481a77472696767657283a869734d61726b6574c2a9747269676765725078a432303030a47470736ca27470a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x02aa3cf2183679b3410dc440f13212a0f189464e6120733181c754aa7359e941",
+  "digest": "0x301c4a1405b62d2306e9762c116d75a51909b80497694640cf202b8a3f6d808f"
+ },
+ {
+  "name": "order_builder",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"40000\", \"s\": \"0.01\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}], \"grouping\": \"na\", \"builder\": {\"b\": \"0x8c967e73e7b15087c42a10d344cff4c96d877f1d\", \"f\": 10}}, \"nonce\": 1700000000010, \"signature\": {\"r\": \"0x9046b79e0df18e12bb167a0817e2344cb54a9afe6e0d98cb1f5f103797252a0d\", \"s\": \"0x3fc9ea46fb64e07e7ee2f95d2771f5937261b8089fd8ad09b5e8437b8e28aa66\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "40000",
+      "s": "0.01",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     }
+    ],
+    "grouping": "na",
+    "builder": {
+     "b": "0x8c967e73e7b15087c42a10d344cff4c96d877f1d",
+     "f": 10
+    }
+   },
+   "nonce": 1700000000010,
+   "signature": {
+    "r": "0x9046b79e0df18e12bb167a0817e2344cb54a9afe6e0d98cb1f5f103797252a0d",
+    "s": "0x3fc9ea46fb64e07e7ee2f95d2771f5937261b8089fd8ad09b5e8437b8e28aa66",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "84a474797065a56f72646572a66f72646572739186a16100a162c3a170a53430303030a173a4302e3031a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61a76275696c64657282a162d92a307838633936376537336537623135303837633432613130643334346366663463393664383737663164a1660a",
+  "kind": "l1",
+  "action_hash": "0x9f34dad522d5d0dd29d56a94e1eb4d005c1fca149e10b7ca3f5e01e359e47642",
+  "digest": "0xfabd9f91157ed7131cadaa461692499823bf74ff5aff32e1088ec82c45f299bb"
+ },
+ {
+  "name": "bulk_orders_normal_tpsl",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"50000\", \"s\": \"0.1\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}, {\"a\": 0, \"b\": false, \"p\": \"60000\", \"s\": \"0.1\", \"r\": true, \"t\": {\"trigger\": {\"isMarket\": true, \"triggerPx\": \"60000\", \"tpsl\": \"tp\"}}}, {\"a\": 0, \"b\": false, \"p\": \"45000\", \"s\": \"0.1\", \"r\": true, \"t\": {\"trigger\": {\"isMarket\": true, \"triggerPx\": \"45000\", \"tpsl\": \"sl\"}}}], \"grouping\": \"normalTpsl\"}, \"nonce\": 1700000000011, \"signature\": {\"r\": \"0x378593a8bee18ba424d9da95b88f03eea213e4ab4b97ba095f5f9dc6d6c97826\", \"s\": \"0x236ba4e9303f9c045117b826e0adec67d8139facb1badb6bd971038588066458\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "50000",
+      "s": "0.1",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "60000",
+      "s": "0.1",
+      "r": true,
+      "t": {
+       "trigger": {
+        "isMarket": true,
+        "triggerPx": "60000",
+        "tpsl": "tp"
+       }
+      }
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "45000",
+      "s": "0.1",
+      "r": true,
+      "t": {
+       "trigger": {
+        "isMarket": true,
+        "triggerPx": "45000",
+        "tpsl": "sl"
+       }
+      }
+     }
+    ],
+    "grouping": "normalTpsl"
+   },
+   "nonce": 1700000000011,
+   "signature": {
+    "r": "0x378593a8bee18ba424d9da95b88f03eea213e4ab4b97ba095f5f9dc6d6c97826",
+    "s": "0x236ba4e9303f9c045117b826e0adec67d8139facb1badb6bd971038588066458",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739386a16100a162c3a170a53530303030a173a3302e31a172c2a17481a56c696d697481a3746966a347746386a16100a162c2a170a53630303030a173a3302e31a172c3a17481a77472696767657283a869734d61726b6574c3a9747269676765725078a53630303030a47470736ca2747086a16100a162c2a170a53435303030a173a3302e31a172c3a17481a77472696767657283a869734d61726b6574c3a9747269676765725078a53435303030a47470736ca2736ca867726f7570696e67aa6e6f726d616c5470736c",
+  "kind": "l1",
+  "action_hash": "0xc594a19f5af812964ede9ea661fc43d2a3805b10f4f057f94af5f680a9d3c2b6",
+  "digest": "0xc5f5af769eac5607ac8312511c4c68872e028aa51a82f984edb5d204581b174c"
+ },
+ {
+  "name": "bulk_orders_position_tpsl",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 1, \"b\": false, \"p\": \"4000\", \"s\": \"0\", \"r\": true, \"t\": {\"trigger\": {\"isMarket\": true, \"triggerPx\": \"4000\", \"tpsl\": \"tp\"}}}], \"grouping\": \"positionTpsl\"}, \"nonce\": 1700000000012, \"signature\": {\"r\": \"0xdbd39a04370bc78a96420a8734c7607d546b27bc5e3b65d7fb4217ab53dd4716\", \"s\": \"0x6f48977d7ba390f0fa1d213aedf9fa2e31c4c8f92869b48435ed84caf11fa8ca\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 1,
+      "b": false,
+      "p": "4000",
+      "s": "0",
+      "r": true,
+      "t": {
+       "trigger": {
+        "isMarket": true,
+        "triggerPx": "4000",
+        "tpsl": "tp"
+       }
+      }
+     }
+    ],
+    "grouping": "positionTpsl"
+   },
+   "nonce": 1700000000012,
+   "signature": {
+    "r": "0xdbd39a04370bc78a96420a8734c7607d546b27bc5e3b65d7fb4217ab53dd4716",
+    "s": "0x6f48977d7ba390f0fa1d213aedf9fa2e31c4c8f92869b48435ed84caf11fa8ca",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16101a162c2a170a434303030a173a130a172c3a17481a77472696767657283a869734d61726b6574c3a9747269676765725078a434303030a47470736ca27470a867726f7570696e67ac706f736974696f6e5470736c",
+  "kind": "l1",
+  "action_hash": "0x759ead1cf83be4814f4bdbe7ce3212e69b3559d856d44c65154e0b119308b446",
+  "digest": "0xf6279f44f09c8485bdf46728caf8540e225f77709ed827855e28d96fedbe06c3"
+ },
+ {
+  "name": "bulk_orders_50",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"30000\", \"s\": \"0.001\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003e8\"}, {\"a\": 0, \"b\": false, \"p\": \"30001\", \"s\": \"0.002\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003e9\"}, {\"a\": 0, \"b\": true, \"p\": \"30002\", \"s\": \"0.003\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003ea\"}, {\"a\": 0, \"b\": false, \"p\": \"30003\", \"s\": \"0.004\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003eb\"}, {\"a\": 0, \"b\": true, \"p\": \"30004\", \"s\": \"0.005\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003ec\"}, {\"a\": 0, \"b\": false, \"p\": \"30005\", \"s\": \"0.006\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003ed\"}, {\"a\": 0, \"b\": true, \"p\": \"30006\", \"s\": \"0.007\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003ee\"}, {\"a\": 0, \"b\": false, \"p\": \"30007\", \"s\": \"0.008\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003ef\"}, {\"a\": 0, \"b\": true, \"p\": \"30008\", \"s\": \"0.009\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f0\"}, {\"a\": 0, \"b\": false, \"p\": \"30009\", \"s\": \"0.01\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f1\"}, {\"a\": 0, \"b\": true, \"p\": \"30010\", \"s\": \"0.011\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f2\"}, {\"a\": 0, \"b\": false, \"p\": \"30011\", \"s\": \"0.012\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f3\"}, {\"a\": 0, \"b\": true, \"p\": \"30012\", \"s\": \"0.013\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f4\"}, {\"a\": 0, \"b\": false, \"p\": \"30013\", \"s\": \"0.014\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f5\"}, {\"a\": 0, \"b\": true, \"p\": \"30014\", \"s\": \"0.015\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f6\"}, {\"a\": 0, \"b\": false, \"p\": \"30015\", \"s\": \"0.016\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f7\"}, {\"a\": 0, \"b\": true, \"p\": \"30016\", \"s\": \"0.017\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f8\"}, {\"a\": 0, \"b\": false, \"p\": \"30017\", \"s\": \"0.018\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003f9\"}, {\"a\": 0, \"b\": true, \"p\": \"30018\", \"s\": \"0.019\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003fa\"}, {\"a\": 0, \"b\": false, \"p\": \"30019\", \"s\": \"0.02\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003fb\"}, {\"a\": 0, \"b\": true, \"p\": \"30020\", \"s\": \"0.021\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003fc\"}, {\"a\": 0, \"b\": false, \"p\": \"30021\", \"s\": \"0.022\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003fd\"}, {\"a\": 0, \"b\": true, \"p\": \"30022\", \"s\": \"0.023\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003fe\"}, {\"a\": 0, \"b\": false, \"p\": \"30023\", \"s\": \"0.024\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x000000000000000000000000000003ff\"}, {\"a\": 0, \"b\": true, \"p\": \"30024\", \"s\": \"0.025\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000400\"}, {\"a\": 0, \"b\": false, \"p\": \"30025\", \"s\": \"0.026\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000401\"}, {\"a\": 0, \"b\": true, \"p\": \"30026\", \"s\": \"0.027\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000402\"}, {\"a\": 0, \"b\": false, \"p\": \"30027\", \"s\": \"0.028\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000403\"}, {\"a\": 0, \"b\": true, \"p\": \"30028\", \"s\": \"0.029\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000404\"}, {\"a\": 0, \"b\": false, \"p\": \"30029\", \"s\": \"0.03\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000405\"}, {\"a\": 0, \"b\": true, \"p\": \"30030\", \"s\": \"0.031\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000406\"}, {\"a\": 0, \"b\": false, \"p\": \"30031\", \"s\": \"0.032\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000407\"}, {\"a\": 0, \"b\": true, \"p\": \"30032\", \"s\": \"0.033\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000408\"}, {\"a\": 0, \"b\": false, \"p\": \"30033\", \"s\": \"0.034\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000409\"}, {\"a\": 0, \"b\": true, \"p\": \"30034\", \"s\": \"0.035\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x0000000000000000000000000000040a\"}, {\"a\": 0, \"b\": false, \"p\": \"30035\", \"s\": \"0.036\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x0000000000000000000000000000040b\"}, {\"a\": 0, \"b\": true, \"p\": \"30036\", \"s\": \"0.037\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x0000000000000000000000000000040c\"}, {\"a\": 0, \"b\": false, \"p\": \"30037\", \"s\": \"0.038\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x0000000000000000000000000000040d\"}, {\"a\": 0, \"b\": true, \"p\": \"30038\", \"s\": \"0.039\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x0000000000000000000000000000040e\"}, {\"a\": 0, \"b\": false, \"p\": \"30039\", \"s\": \"0.04\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x0000000000000000000000000000040f\"}, {\"a\": 0, \"b\": true, \"p\": \"30040\", \"s\": \"0.041\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000410\"}, {\"a\": 0, \"b\": false, \"p\": \"30041\", \"s\": \"0.042\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000411\"}, {\"a\": 0, \"b\": true, \"p\": \"30042\", \"s\": \"0.043\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000412\"}, {\"a\": 0, \"b\": false, \"p\": \"30043\", \"s\": \"0.044\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000413\"}, {\"a\": 0, \"b\": true, \"p\": \"30044\", \"s\": \"0.045\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000414\"}, {\"a\": 0, \"b\": false, \"p\": \"30045\", \"s\": \"0.046\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000415\"}, {\"a\": 0, \"b\": true, \"p\": \"30046\", \"s\": \"0.047\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000416\"}, {\"a\": 0, \"b\": false, \"p\": \"30047\", \"s\": \"0.048\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000417\"}, {\"a\": 0, \"b\": true, \"p\": \"30048\", \"s\": \"0.049\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000418\"}, {\"a\": 0, \"b\": false, \"p\": \"30049\", \"s\": \"0.05\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000419\"}], \"grouping\": \"na\"}, \"nonce\": 1700000000013, \"signature\": {\"r\": \"0xe1f3d0093a9ecb4625b81e6cda39e2599d1f5fdbb4eb06173c614cbb7d8a7c7f\", \"s\": \"0x4178ad56045ee6ea12593779c6d1c8b2d8a75948a49359dea89c92246f66c9ef\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "30000",
+      "s": "0.001",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003e8"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30001",
+      "s": "0.002",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003e9"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30002",
+      "s": "0.003",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003ea"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30003",
+      "s": "0.004",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003eb"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30004",
+      "s": "0.005",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003ec"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30005",
+      "s": "0.006",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003ed"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30006",
+      "s": "0.007",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003ee"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30007",
+      "s": "0.008",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003ef"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30008",
+      "s": "0.009",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f0"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30009",
+      "s": "0.01",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f1"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30010",
+      "s": "0.011",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f2"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30011",
+      "s": "0.012",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f3"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30012",
+      "s": "0.013",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f4"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30013",
+      "s": "0.014",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f5"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30014",
+      "s": "0.015",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f6"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30015",
+      "s": "0.016",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f7"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30016",
+      "s": "0.017",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f8"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30017",
+      "s": "0.018",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003f9"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30018",
+      "s": "0.019",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003fa"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30019",
+      "s": "0.02",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003fb"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30020",
+      "s": "0.021",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003fc"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30021",
+      "s": "0.022",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003fd"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30022",
+      "s": "0.023",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003fe"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30023",
+      "s": "0.024",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x000000000000000000000000000003ff"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30024",
+      "s": "0.025",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000400"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30025",
+      "s": "0.026",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000401"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30026",
+      "s": "0.027",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000402"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30027",
+      "s": "0.028",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000403"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30028",
+      "s": "0.029",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000404"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30029",
+      "s": "0.03",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000405"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30030",
+      "s": "0.031",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000406"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30031",
+      "s": "0.032",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000407"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30032",
+      "s": "0.033",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000408"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30033",
+      "s": "0.034",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000409"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30034",
+      "s": "0.035",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x0000000000000000000000000000040a"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30035",
+      "s": "0.036",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x0000000000000000000000000000040b"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30036",
+      "s": "0.037",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x0000000000000000000000000000040c"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30037",
+      "s": "0.038",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x0000000000000000000000000000040d"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30038",
+      "s": "0.039",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x0000000000000000000000000000040e"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30039",
+      "s": "0.04",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x0000000000000000000000000000040f"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30040",
+      "s": "0.041",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000410"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30041",
+      "s": "0.042",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000411"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30042",
+      "s": "0.043",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000412"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30043",
+      "s": "0.044",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000413"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30044",
+      "s": "0.045",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000414"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30045",
+      "s": "0.046",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000415"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30046",
+      "s": "0.047",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000416"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30047",
+      "s": "0.048",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000417"
+     },
+     {
+      "a": 0,
+      "b": true,
+      "p": "30048",
+      "s": "0.049",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000418"
+     },
+     {
+      "a": 0,
+      "b": false,
+      "p": "30049",
+      "s": "0.05",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Alo"
+       }
+      },
+      "c": "0x00000000000000000000000000000419"
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000013,
+   "signature": {
+    "r": "0xe1f3d0093a9ecb4625b81e6cda39e2599d1f5fdbb4eb06173c614cbb7d8a7c7f",
+    "s": "0x4178ad56045ee6ea12593779c6d1c8b2d8a75948a49359dea89c92246f66c9ef",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f7264657273dc003287a16100a162c3a170a53330303030a173a5302e303031a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033653887a16100a162c2a170a53330303031a173a5302e303032a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033653987a16100a162c3a170a53330303032a173a5302e303033a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033656187a16100a162c2a170a53330303033a173a5302e303034a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033656287a16100a162c3a170a53330303034a173a5302e303035a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033656387a16100a162c2a170a53330303035a173a5302e303036a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033656487a16100a162c3a170a53330303036a173a5302e303037a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033656587a16100a162c2a170a53330303037a173a5302e303038a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033656687a16100a162c3a170a53330303038a173a5302e303039a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663087a16100a162c2a170a53330303039a173a4302e3031a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663187a16100a162c3a170a53330303130a173a5302e303131a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663287a16100a162c2a170a53330303131a173a5302e303132a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663387a16100a162c3a170a53330303132a173a5302e303133a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663487a16100a162c2a170a53330303133a173a5302e303134a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663587a16100a162c3a170a53330303134a173a5302e303135a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663687a16100a162c2a170a53330303135a173a5302e303136a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663787a16100a162c3a170a53330303136a173a5302e303137a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663887a16100a162c2a170a53330303137a173a5302e303138a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033663987a16100a162c3a170a53330303138a173a5302e303139a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033666187a16100a162c2a170a53330303139a173a4302e3032a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033666287a16100a162c3a170a53330303230a173a5302e303231a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033666387a16100a162c2a170a53330303231a173a5302e303232a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033666487a16100a162c3a170a53330303232a173a5302e303233a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033666587a16100a162c2a170a53330303233a173a5302e303234a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303033666687a16100a162c3a170a53330303234a173a5302e303235a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303087a16100a162c2a170a53330303235a173a5302e303236a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303187a16100a162c3a170a53330303236a173a5302e303237a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303287a16100a162c2a170a53330303237a173a5302e303238a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303387a16100a162c3a170a53330303238a173a5302e303239a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303487a16100a162c2a170a53330303239a173a4302e3033a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303587a16100a162c3a170a53330303330a173a5302e303331a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303687a16100a162c2a170a53330303331a173a5302e303332a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303787a16100a162c3a170a53330303332a173a5302e303333a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303887a16100a162c2a170a53330303333a173a5302e303334a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034303987a16100a162c3a170a53330303334a173a5302e303335a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034306187a16100a162c2a170a53330303335a173a5302e303336a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034306287a16100a162c3a170a53330303336a173a5302e303337a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034306387a16100a162c2a170a53330303337a173a5302e303338a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034306487a16100a162c3a170a53330303338a173a5302e303339a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034306587a16100a162c2a170a53330303339a173a4302e3034a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034306687a16100a162c3a170a53330303430a173a5302e303431a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313087a16100a162c2a170a53330303431a173a5302e303432a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313187a16100a162c3a170a53330303432a173a5302e303433a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313287a16100a162c2a170a53330303433a173a5302e303434a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313387a16100a162c3a170a53330303434a173a5302e303435a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313487a16100a162c2a170a53330303435a173a5302e303436a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313587a16100a162c3a170a53330303436a173a5302e303437a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313687a16100a162c2a170a53330303437a173a5302e303438a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313787a16100a162c3a170a53330303438a173a5302e303439a172c2a17481a56c696d697481a3746966a3416c6fa163d9223078303030303030303030303030303030303030303030303030303030303034313887a16100a162c2a170a53330303439a173a4302e3035a172c2a17481a56c696d697481a3746966a3416c6fa163d92230783030303030303030303030303030303030303030303030303030303030343139a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x0388d98ad9a289187ea7004a3e0e7768ab93c44831c043d81bfb0415c2ed7ac6",
+  "digest": "0x7456734a3c348b3a7d45c4d76ac3f4a9afed7d67d05ac3548f973efdea2a9344"
+ },
+ {
+  "name": "cancel",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"cancel\", \"cancels\": [{\"a\": 0, \"o\": 123456789}]}, \"nonce\": 1700000000014, \"signature\": {\"r\": \"0xbc12bb14b2766966dbe9ff73343ce406aac3916f894f698def9d5183bb764c26\", \"s\": \"0x45af64364faee95b99a65a923c0c429e2c2bf24f6faf8d1639508e628488bd41\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "cancel",
+    "cancels": [
+     {
+      "a": 0,
+      "o": 123456789
+     }
+    ]
+   },
+   "nonce": 1700000000014,
+   "signature": {
+    "r": "0xbc12bb14b2766966dbe9ff73343ce406aac3916f894f698def9d5183bb764c26",
+    "s": "0x45af64364faee95b99a65a923c0c429e2c2bf24f6faf8d1639508e628488bd41",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065a663616e63656ca763616e63656c739182a16100a16fce075bcd15",
+  "kind": "l1",
+  "action_hash": "0xe49c952b5e3b2608e669ff4a6603fe52b193e7b8347d3bb5ba1b55cd0b3991fb",
+  "digest": "0x88b5e731dcca5a7d20d9f2433b7d9336a376f81c1a3b51850e1460856ac3ad2a"
+ },
+ {
+  "name": "bulk_cancel",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"cancel\", \"cancels\": [{\"a\": 0, \"o\": 1}, {\"a\": 2, \"o\": 1099511627783}]}, \"nonce\": 1700000000015, \"signature\": {\"r\": \"0x867f4af74e24b9873adc74715591218ae6c0815b2115ea8823923825d74a6ca8\", \"s\": \"0x208ae0479e50e441f4299a7be0f75b39b661cd8f5c9eef0bfc3eb30cec114757\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "cancel",
+    "cancels": [
+     {
+      "a": 0,
+      "o": 1
+     },
+     {
+      "a": 2,
+      "o": 1099511627783
+     }
+    ]
+   },
+   "nonce": 1700000000015,
+   "signature": {
+    "r": "0x867f4af74e24b9873adc74715591218ae6c0815b2115ea8823923825d74a6ca8",
+    "s": "0x208ae0479e50e441f4299a7be0f75b39b661cd8f5c9eef0bfc3eb30cec114757",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065a663616e63656ca763616e63656c739282a16100a16f0182a16102a16fcf0000010000000007",
+  "kind": "l1",
+  "action_hash": "0x00517bfd7760ea2534efa9712dde8601f46605a5abac8c1e90834434dc9869a8",
+  "digest": "0x5842da6448a3e22ad926e70ad921e55b05c97412875c294828ca32547ce75c68"
+ },
+ {
+  "name": "cancel_by_cloid",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"cancelByCloid\", \"cancels\": [{\"asset\": 1, \"cloid\": \"0x000000000000000000000000deadbeef\"}]}, \"nonce\": 1700000000016, \"signature\": {\"r\": \"0xbfb671905f604caf220ab41b2070e5785aeb1f42867abef3644af4200362dba3\", \"s\": \"0xbb3694db982f3afc18f201845ec48d592c91743abc6e1f827d965445d82b280\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "cancelByCloid",
+    "cancels": [
+     {
+      "asset": 1,
+      "cloid": "0x000000000000000000000000deadbeef"
+     }
+    ]
+   },
+   "nonce": 1700000000016,
+   "signature": {
+    "r": "0xbfb671905f604caf220ab41b2070e5785aeb1f42867abef3644af4200362dba3",
+    "s": "0xbb3694db982f3afc18f201845ec48d592c91743abc6e1f827d965445d82b280",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065ad63616e63656c4279436c6f6964a763616e63656c739182a5617373657401a5636c6f6964d92230783030303030303030303030303030303030303030303030306465616462656566",
+  "kind": "l1",
+  "action_hash": "0x7565b41388fb9d2e09922577c52ded0c398627fe24262a2e9888147d37f0a718",
+  "digest": "0xa6e349bcdcf5a8177ef95caf9c19ed0f0bbb3dd1758119638d51a4c0ad4af78e"
+ },
+ {
+  "name": "modify_by_oid",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"batchModify\", \"modifies\": [{\"oid\": 77, \"order\": {\"a\": 0, \"b\": true, \"p\": \"31000\", \"s\": \"0.03\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}}]}, \"nonce\": 1700000000017, \"signature\": {\"r\": \"0xc22c4d54e45daaa689106dc1fe042e23d6dd6438aec29b196b38284ae8d8e963\", \"s\": \"0x31cc57ccb09b08ff6d6048a0d3efc6ff4312520c98e35b8eceb7df2f65e185b\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "batchModify",
+    "modifies": [
+     {
+      "oid": 77,
+      "order": {
+       "a": 0,
+       "b": true,
+       "p": "31000",
+       "s": "0.03",
+       "r": false,
+       "t": {
+        "limit": {
+         "tif": "Gtc"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "nonce": 1700000000017,
+   "signature": {
+    "r": "0xc22c4d54e45daaa689106dc1fe042e23d6dd6438aec29b196b38284ae8d8e963",
+    "s": "0x31cc57ccb09b08ff6d6048a0d3efc6ff4312520c98e35b8eceb7df2f65e185b",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065ab62617463684d6f64696679a86d6f6469666965739182a36f69644da56f7264657286a16100a162c3a170a53331303030a173a4302e3033a172c2a17481a56c696d697481a3746966a3477463",
+  "kind": "l1",
+  "action_hash": "0xd6f747bdb1941b5acc72dc9013b2fa09ed47cc157a684e702a2cc36c82459a46",
+  "digest": "0x82b9622e8ba8479d99902e6f782ceb04f448a024414fb9522b47b2fa2b0409a7"
+ },
+ {
+  "name": "modify_by_cloid",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"batchModify\", \"modifies\": [{\"oid\": \"0x00000000000000000000000000000005\", \"order\": {\"a\": 0, \"b\": false, \"p\": \"31000\", \"s\": \"0.03\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Alo\"}}, \"c\": \"0x00000000000000000000000000000006\"}}]}, \"nonce\": 1700000000018, \"signature\": {\"r\": \"0x1186456ec6798b08c3d0edfec34da47dfacdb4c82344c366a2c4617de75c8c92\", \"s\": \"0x14566202d06a26ae3e0403d66c9673689dc6e0ae37963cb9759ec142a2f71eb4\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "batchModify",
+    "modifies": [
+     {
+      "oid": "0x00000000000000000000000000000005",
+      "order": {
+       "a": 0,
+       "b": false,
+       "p": "31000",
+       "s": "0.03",
+       "r": false,
+       "t": {
+        "limit": {
+         "tif": "Alo"
+        }
+       },
+       "c": "0x00000000000000000000000000000006"
+      }
+     }
+    ]
+   },
+   "nonce": 1700000000018,
+   "signature": {
+    "r": "0x1186456ec6798b08c3d0edfec34da47dfacdb4c82344c366a2c4617de75c8c92",
+    "s": "0x14566202d06a26ae3e0403d66c9673689dc6e0ae37963cb9759ec142a2f71eb4",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065ab62617463684d6f64696679a86d6f6469666965739182a36f6964d92230783030303030303030303030303030303030303030303030303030303030303035a56f7264657287a16100a162c2a170a53331303030a173a4302e3033a172c2a17481a56c696d697481a3746966a3416c6fa163d92230783030303030303030303030303030303030303030303030303030303030303036",
+  "kind": "l1",
+  "action_hash": "0x4ac3142a6c10c12f21c86fab03a2ed276fc5b5629abc060baa1d9fe6cf31ab98",
+  "digest": "0x28f0c8f25e3e30ac5b4fb84537986dba81add9a94e52c1062f229c94f3945f8b"
+ },
+ {
+  "name": "batch_modify",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"batchModify\", \"modifies\": [{\"oid\": 1, \"order\": {\"a\": 0, \"b\": true, \"p\": \"10\", \"s\": \"1\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}}, {\"oid\": \"0x00000000000000000000000000000002\", \"order\": {\"a\": 1, \"b\": false, \"p\": \"3000.25\", \"s\": \"0.5\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}, \"c\": \"0x00000000000000000000000000000002\"}}]}, \"nonce\": 1700000000019, \"signature\": {\"r\": \"0x89deecbb9b97fddf3525f62ee42cebac4df71a2fb5c7bf115d821baa65f685ee\", \"s\": \"0x65c1b99da83d3063867c17a4954a5a8667b01183ed4291be4d0c3a00fbd75400\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "batchModify",
+    "modifies": [
+     {
+      "oid": 1,
+      "order": {
+       "a": 0,
+       "b": true,
+       "p": "10",
+       "s": "1",
+       "r": false,
+       "t": {
+        "limit": {
+         "tif": "Gtc"
+        }
+       }
+      }
+     },
+     {
+      "oid": "0x00000000000000000000000000000002",
+      "order": {
+       "a": 1,
+       "b": false,
+       "p": "3000.25",
+       "s": "0.5",
+       "r": false,
+       "t": {
+        "limit": {
+         "tif": "Gtc"
+        }
+       },
+       "c": "0x00000000000000000000000000000002"
+      }
+     }
+    ]
+   },
+   "nonce": 1700000000019,
+   "signature": {
+    "r": "0x89deecbb9b97fddf3525f62ee42cebac4df71a2fb5c7bf115d821baa65f685ee",
+    "s": "0x65c1b99da83d3063867c17a4954a5a8667b01183ed4291be4d0c3a00fbd75400",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065ab62617463684d6f64696679a86d6f6469666965739282a36f696401a56f7264657286a16100a162c3a170a23130a173a131a172c2a17481a56c696d697481a3746966a347746382a36f6964d92230783030303030303030303030303030303030303030303030303030303030303032a56f7264657287a16101a162c2a170a7333030302e3235a173a3302e35a172c2a17481a56c696d697481a3746966a3477463a163d92230783030303030303030303030303030303030303030303030303030303030303032",
+  "kind": "l1",
+  "action_hash": "0x982d810e51e2e94a5cababef88254811324412db936894d044702c3c4892ee2f",
+  "digest": "0x6be48590e50d3a1baada3d3de176dff9c638ff4ae71cf7a07b5098c147c28028"
+ },
+ {
+  "name": "schedule_cancel_time",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"scheduleCancel\", \"time\": 1700000100000}, \"nonce\": 1700000000020, \"signature\": {\"r\": \"0xe16cbffb9ab4f5a64c5e9205fb9854fe8e8ed9adbafbe4565bf2637cc1400709\", \"s\": \"0x53e6a7c657a6f2dcc7f171270f08bf96d2822d8cd960e7c31b05f691f1a365ea\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "scheduleCancel",
+    "time": 1700000100000
+   },
+   "nonce": 1700000000020,
+   "signature": {
+    "r": "0xe16cbffb9ab4f5a64c5e9205fb9854fe8e8ed9adbafbe4565bf2637cc1400709",
+    "s": "0x53e6a7c657a6f2dcc7f171270f08bf96d2822d8cd960e7c31b05f691f1a365ea",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065ae7363686564756c6543616e63656ca474696d65cf0000018bcfe6eea0",
+  "kind": "l1",
+  "action_hash": "0x648f2532574268288ef4c514dff91a0adc29d92f2dcab53f5d2db14fa2c912c2",
+  "digest": "0x96c56e47baa5d0e584ff639e95626012ca18e1c1b978b33820dcbd99b3438d6b"
+ },
+ {
+  "name": "schedule_cancel_none",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"scheduleCancel\"}, \"nonce\": 1700000000021, \"signature\": {\"r\": \"0xd4a4fb7bbf5407c67409f537d7c1110720b0b004708bbdab2167780b08b3bb02\", \"s\": \"0x35698f4de789a186a8f2e81aa2a23f7017345e3d5164cf780ffbb8db4021d609\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "scheduleCancel"
+   },
+   "nonce": 1700000000021,
+   "signature": {
+    "r": "0xd4a4fb7bbf5407c67409f537d7c1110720b0b004708bbdab2167780b08b3bb02",
+    "s": "0x35698f4de789a186a8f2e81aa2a23f7017345e3d5164cf780ffbb8db4021d609",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "81a474797065ae7363686564756c6543616e63656c",
+  "kind": "l1",
+  "action_hash": "0xc938c808613941187a29493fe27422e917810e56b3c16563e78bc135cdc39710",
+  "digest": "0x6d7f9fdd041a56cf979540388b30e4677439fe595f5ec829e572e01dd2acf473"
+ },
+ {
+  "name": "update_leverage_cross",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"updateLeverage\", \"asset\": 0, \"isCross\": true, \"leverage\": 20}, \"nonce\": 1700000000022, \"signature\": {\"r\": \"0xbd1c1e344bbe6616867420f4dcf62487607876a1ba506a18e441c5f7fb2dec83\", \"s\": \"0x38bfc87f3d3c37e4439f9591f28dcc6e37076d1c80494f85893e43456c302007\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "updateLeverage",
+    "asset": 0,
+    "isCross": true,
+    "leverage": 20
+   },
+   "nonce": 1700000000022,
+   "signature": {
+    "r": "0xbd1c1e344bbe6616867420f4dcf62487607876a1ba506a18e441c5f7fb2dec83",
+    "s": "0x38bfc87f3d3c37e4439f9591f28dcc6e37076d1c80494f85893e43456c302007",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "84a474797065ae7570646174654c65766572616765a5617373657400a7697343726f7373c3a86c6576657261676514",
+  "kind": "l1",
+  "action_hash": "0x6502228587e6b5cacdb30486c75af2e8cea36236e6993ea9b83aeef8aa3551a4",
+  "digest": "0x9c4a31a6b2885f121e69d793300b209084627f5ad274adcdab6b9403ce9f8747"
+ },
+ {
+  "name": "update_leverage_isolated",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"updateLeverage\", \"asset\": 2, \"isCross\": false, \"leverage\": 3}, \"nonce\": 1700000000023, \"signature\": {\"r\": \"0x461c740ceda8486771fc0fec160994fe4ccb95b8acc57e83a66013e088e7cad\", \"s\": \"0x7f8731ac183263096020d3ffc7fdce562d7543316d01f9f852943b8f5bdc5353\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "updateLeverage",
+    "asset": 2,
+    "isCross": false,
+    "leverage": 3
+   },
+   "nonce": 1700000000023,
+   "signature": {
+    "r": "0x461c740ceda8486771fc0fec160994fe4ccb95b8acc57e83a66013e088e7cad",
+    "s": "0x7f8731ac183263096020d3ffc7fdce562d7543316d01f9f852943b8f5bdc5353",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "84a474797065ae7570646174654c65766572616765a5617373657402a7697343726f7373c2a86c6576657261676503",
+  "kind": "l1",
+  "action_hash": "0x97dd7feebc7b3ab1bd909d6e485b24471dd7454c9cff3c2bc29839e8aa038e99",
+  "digest": "0x778f516a5179865fd6f016ff1c45e4fb6912c8f50e4162c2b064860aa106672a"
+ },
+ {
+  "name": "update_isolated_margin_add",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"updateIsolatedMargin\", \"asset\": 1, \"isBuy\": true, \"ntli\": 12500000}, \"nonce\": 1700000000024, \"signature\": {\"r\": \"0x63c324d21cfb268854e5efc1eae97746d49bad0dc6cf761ab03527929dc6fa0\", \"s\": \"0x13df43d10756cc2746baa388c03b77ae3c997315daed6a18dae398027fda4b8\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "updateIsolatedMargin",
+    "asset": 1,
+    "isBuy": true,
+    "ntli": 12500000
+   },
+   "nonce": 1700000000024,
+   "signature": {
+    "r": "0x63c324d21cfb268854e5efc1eae97746d49bad0dc6cf761ab03527929dc6fa0",
+    "s": "0x13df43d10756cc2746baa388c03b77ae3c997315daed6a18dae398027fda4b8",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "84a474797065b475706461746549736f6c617465644d617267696ea5617373657401a56973427579c3a46e746c69ce00bebc20",
+  "kind": "l1",
+  "action_hash": "0x60cdb9fa13b915616735fbe0dab7c0bdf2b7dfb411bfc5d91b10fdcf81801dff",
+  "digest": "0x627f7de04596b16b5624d6aa55be0ea2eadb25363554d27a73db88a56e6e4ba4"
+ },
+ {
+  "name": "update_isolated_margin_remove",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"updateIsolatedMargin\", \"asset\": 1, \"isBuy\": true, \"ntli\": -3000250000}, \"nonce\": 1700000000025, \"signature\": {\"r\": \"0x44a19921b710f37424955c467372e09539222360f99724d8d325312ef168d1dc\", \"s\": \"0x5ca9c5af83adda0279230c159a8e307b45a97028374adea367add64c9d03d00f\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "updateIsolatedMargin",
+    "asset": 1,
+    "isBuy": true,
+    "ntli": -3000250000
+   },
+   "nonce": 1700000000025,
+   "signature": {
+    "r": "0x44a19921b710f37424955c467372e09539222360f99724d8d325312ef168d1dc",
+    "s": "0x5ca9c5af83adda0279230c159a8e307b45a97028374adea367add64c9d03d00f",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "84a474797065b475706461746549736f6c617465644d617267696ea5617373657401a56973427579c3a46e746c69d3ffffffff4d2bd170",
+  "kind": "l1",
+  "action_hash": "0x75d9784b178777ea5b8ed54fe0767b3e75f2cd30588b4789dc67e0d331204809",
+  "digest": "0x94009dc81a29ba0c101928f9a4337b6958fdf7f7a3784bbb862c25ce3a995ca1"
+ },
+ {
+  "name": "update_isolated_margin_big",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"updateIsolatedMargin\", \"asset\": 1, \"isBuy\": true, \"ntli\": 1000000000000}, \"nonce\": 1700000000026, \"signature\": {\"r\": \"0x465d43aa7b3d6c9a64772c42e50b1c855d63645f08abe758af0ee736d45a42af\", \"s\": \"0x777192ec461e5e5e3b3a35fe0928cbc7a7d828370f3bfd917cb066b853839ce7\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "updateIsolatedMargin",
+    "asset": 1,
+    "isBuy": true,
+    "ntli": 1000000000000
+   },
+   "nonce": 1700000000026,
+   "signature": {
+    "r": "0x465d43aa7b3d6c9a64772c42e50b1c855d63645f08abe758af0ee736d45a42af",
+    "s": "0x777192ec461e5e5e3b3a35fe0928cbc7a7d828370f3bfd917cb066b853839ce7",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "84a474797065b475706461746549736f6c617465644d617267696ea5617373657401a56973427579c3a46e746c69cf000000e8d4a51000",
+  "kind": "l1",
+  "action_hash": "0x936cf09640f04a612220f348fb1d70ad169327cf96a650bfb66dafb3207696af",
+  "digest": "0x2facc177524100481ffb5a02162e065b455fc22f46c8c69f4e2f92af60f06d08"
+ },
+ {
+  "name": "set_referrer",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"setReferrer\", \"code\": \"ASDFASDF\"}, \"nonce\": 1700000000027, \"signature\": {\"r\": \"0xad48e8445c3449bbf64d0f08670284cc5fceb32dd3ca92213db832d70af0acaa\", \"s\": \"0x5051699d976629a7af49ef0bf9e6c64d2488dc1a583368a495b8893792e893cb\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "setReferrer",
+    "code": "ASDFASDF"
+   },
+   "nonce": 1700000000027,
+   "signature": {
+    "r": "0xad48e8445c3449bbf64d0f08670284cc5fceb32dd3ca92213db832d70af0acaa",
+    "s": "0x5051699d976629a7af49ef0bf9e6c64d2488dc1a583368a495b8893792e893cb",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065ab7365745265666572726572a4636f6465a84153444641534446",
+  "kind": "l1",
+  "action_hash": "0xbb21985d7146dc45d2880f9f837d9d3b7de744be9485ae4289712fb17cfba822",
+  "digest": "0x4e89b2026d77eb46e9d12a697dbfe51437866ffeea62117186722685ab58a735"
+ },
+ {
+  "name": "noop",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"noop\"}, \"nonce\": 1700000555555, \"signature\": {\"r\": \"0x958d63007414e810435879ce9fcb8f70028edf3ddc2417d31306323805ac6cdf\", \"s\": \"0x517ba43948f172c664b84de1041ed1079bc52e22bb0bcf226a24b6e5515c0133\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "noop"
+   },
+   "nonce": 1700000555555,
+   "signature": {
+    "r": "0x958d63007414e810435879ce9fcb8f70028edf3ddc2417d31306323805ac6cdf",
+    "s": "0x517ba43948f172c664b84de1041ed1079bc52e22bb0bcf226a24b6e5515c0133",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "81a474797065a46e6f6f70",
+  "kind": "l1",
+  "action_hash": "0xa00032c177cf2f0c97816a14db28cba4d7643534348b5e1e77ce724fa4d64888",
+  "digest": "0xb375172a422913ead979cdfe9074583407c795d079fe1c0a103968ff11bb56ff"
+ },
+ {
+  "name": "usd_send_int_amount",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"destination\": \"0x5E9EE1089755C3435139848E47E6635505D5A13A\", \"amount\": \"5\", \"time\": 1700000000028, \"type\": \"usdSend\", \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000028, \"signature\": {\"r\": \"0xbc17e60ed4ae416e463a25c43e411bc9993f2a0db4255151344e2d591abb1e80\", \"s\": \"0x38887bdc0434fc467104a980e628fccd2a2e6aa9d0dbfe4312abf0be73e2e187\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "destination": "0x5E9EE1089755C3435139848E47E6635505D5A13A",
+    "amount": "5",
+    "time": 1700000000028,
+    "type": "usdSend",
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000028,
+   "signature": {
+    "r": "0xbc17e60ed4ae416e463a25c43e411bc9993f2a0db4255151344e2d591abb1e80",
+    "s": "0x38887bdc0434fc467104a980e628fccd2a2e6aa9d0dbfe4312abf0be73e2e187",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86ab64657374696e6174696f6ed92a307835453945453130383937353543333433353133393834384534374536363335353035443541313341a6616d6f756e74a135a474696d65cf0000018bcfe5681ca474797065a775736453656e64b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:UsdSend",
+  "digest": "0x5e703b802cf30d233d82824f3a2daa2d83e1c709de748a9c17109f35e7bdad1b"
+ },
+ {
+  "name": "spot_send",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"destination\": \"0x5e9ee1089755c3435139848e47e6635505d5a13a\", \"amount\": \"1.25\", \"token\": \"PURR:0xc4bf3f870c0e9465323c0b6ed28096c2\", \"time\": 1700000000029, \"type\": \"spotSend\", \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000029, \"signature\": {\"r\": \"0x7242589c5cd7c98cce65a82fc973ee49ec18deff96902587a36a2407ec229e16\", \"s\": \"0x435b7f428e52101ddeb188e017c5a9f511bbb4ffb961f4f6450754afcc654e0a\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "destination": "0x5e9ee1089755c3435139848e47e6635505d5a13a",
+    "amount": "1.25",
+    "token": "PURR:0xc4bf3f870c0e9465323c0b6ed28096c2",
+    "time": 1700000000029,
+    "type": "spotSend",
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000029,
+   "signature": {
+    "r": "0x7242589c5cd7c98cce65a82fc973ee49ec18deff96902587a36a2407ec229e16",
+    "s": "0x435b7f428e52101ddeb188e017c5a9f511bbb4ffb961f4f6450754afcc654e0a",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "87ab64657374696e6174696f6ed92a307835653965653130383937353563333433353133393834386534376536363335353035643561313361a6616d6f756e74a4312e3235a5746f6b656ed927505552523a30786334626633663837306330653934363533323363306236656432383039366332a474696d65cf0000018bcfe5681da474797065a873706f7453656e64b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:SpotSend",
+  "digest": "0xeb94a928f6044d5fd65eacd89dc1cb6df3aee04d7307515dfaf17a3fda46a860"
+ },
+ {
+  "name": "spot_send_usdc",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"destination\": \"0x5e9ee1089755c3435139848e47e6635505d5a13a\", \"amount\": \"100.0\", \"token\": \"USDC:0x6d1e7cde53ba9467b783cb7c530ce054\", \"time\": 1700000000030, \"type\": \"spotSend\", \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000030, \"signature\": {\"r\": \"0xda764873183815b56e372de17e648d12dbfc8629d6e7f08bed9a78be46b34020\", \"s\": \"0x5d10c600d8d6eb94331f5afd7ceb887021b45d877c30a27ba5999fa9e94c6ed0\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "destination": "0x5e9ee1089755c3435139848e47e6635505d5a13a",
+    "amount": "100.0",
+    "token": "USDC:0x6d1e7cde53ba9467b783cb7c530ce054",
+    "time": 1700000000030,
+    "type": "spotSend",
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000030,
+   "signature": {
+    "r": "0xda764873183815b56e372de17e648d12dbfc8629d6e7f08bed9a78be46b34020",
+    "s": "0x5d10c600d8d6eb94331f5afd7ceb887021b45d877c30a27ba5999fa9e94c6ed0",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "87ab64657374696e6174696f6ed92a307835653965653130383937353563333433353133393834386534376536363335353035643561313361a6616d6f756e74a53130302e30a5746f6b656ed927555344433a30783664316537636465353362613934363762373833636237633533306365303534a474696d65cf0000018bcfe5681ea474797065a873706f7453656e64b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:SpotSend",
+  "digest": "0xffda1e6b163e7b5a16f126200581d4618f59d39e3f30db7b77cab7ca182511f8"
+ },
+ {
+  "name": "withdraw3",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"destination\": \"0x5e9ee1089755c3435139848e47e6635505d5a13a\", \"amount\": \"2.0\", \"time\": 1700000000031, \"type\": \"withdraw3\", \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000031, \"signature\": {\"r\": \"0x2dce9f86f39f1e0c9aa2524464ecac98428904736261afa567ded07d4749255b\", \"s\": \"0x64857a27f44b2a2c484f424865d516831c61b5374d68d1eeeba5fa945ce0dc65\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "destination": "0x5e9ee1089755c3435139848e47e6635505d5a13a",
+    "amount": "2.0",
+    "time": 1700000000031,
+    "type": "withdraw3",
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000031,
+   "signature": {
+    "r": "0x2dce9f86f39f1e0c9aa2524464ecac98428904736261afa567ded07d4749255b",
+    "s": "0x64857a27f44b2a2c484f424865d516831c61b5374d68d1eeeba5fa945ce0dc65",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86ab64657374696e6174696f6ed92a307835653965653130383937353563333433353133393834386534376536363335353035643561313361a6616d6f756e74a3322e30a474696d65cf0000018bcfe5681fa474797065a9776974686472617733b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:Withdraw",
+  "digest": "0x5a44fa419c4459d38011a56c9fc68c2778171367f816c5bc66a2cf54dd556755"
+ },
+ {
+  "name": "usd_class_transfer_to_perp",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"usdClassTransfer\", \"amount\": \"10.0\", \"toPerp\": true, \"nonce\": 1700000000032, \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000032, \"signature\": {\"r\": \"0xafa15c79c1a9557d795d1a2cf22c1ffa917c20b8e9a035e94e9b513c9d1b7188\", \"s\": \"0x6720c49cdff9cdf3f0db2a159c9029ddb91d2876f0e1b07ccc65423e1f2e8701\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "usdClassTransfer",
+    "amount": "10.0",
+    "toPerp": true,
+    "nonce": 1700000000032,
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000032,
+   "signature": {
+    "r": "0xafa15c79c1a9557d795d1a2cf22c1ffa917c20b8e9a035e94e9b513c9d1b7188",
+    "s": "0x6720c49cdff9cdf3f0db2a159c9029ddb91d2876f0e1b07ccc65423e1f2e8701",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86a474797065b0757364436c6173735472616e73666572a6616d6f756e74a431302e30a6746f50657270c3a56e6f6e6365cf0000018bcfe56820b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:UsdClassTransfer",
+  "digest": "0x4da2b300bae33e55b7e7f0b55635f8468f3d1f2cb837ed85bc71c90b979db8cf"
+ },
+ {
+  "name": "usd_class_transfer_to_spot",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"usdClassTransfer\", \"amount\": \"0.5\", \"toPerp\": false, \"nonce\": 1700000000033, \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000033, \"signature\": {\"r\": \"0x3e2cafc4dd0f66a1d8938dc46546740f8b8d3dcd7ea266c5c32a147b29bfeb3c\", \"s\": \"0x718f86be51122bd23ecef76240f02fc830cdd1b9ad598606cf1cc2d318d8f06b\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "usdClassTransfer",
+    "amount": "0.5",
+    "toPerp": false,
+    "nonce": 1700000000033,
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000033,
+   "signature": {
+    "r": "0x3e2cafc4dd0f66a1d8938dc46546740f8b8d3dcd7ea266c5c32a147b29bfeb3c",
+    "s": "0x718f86be51122bd23ecef76240f02fc830cdd1b9ad598606cf1cc2d318d8f06b",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86a474797065b0757364436c6173735472616e73666572a6616d6f756e74a3302e35a6746f50657270c2a56e6f6e6365cf0000018bcfe56821b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:UsdClassTransfer",
+  "digest": "0x9c50f4d06ead349e93c8aebe632312d4763f5c56d1786e4b4a5b891280c5b967"
+ },
+ {
+  "name": "approve_agent_named",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"approveAgent\", \"agentAddress\": \"0x1563915e194D8CfBA1943570603F7606A3115508\", \"agentName\": \"bot1\", \"nonce\": 1700000000034, \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000034, \"signature\": {\"r\": \"0x6fac19bb35ca9e02e77c9ea087bc642240a40efc1e006bef15eb5493ed90818b\", \"s\": \"0x6d039ed23939f2340971b8361f53621c2ac9c6f86d7b1a833c1b38679ddbde5\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "approveAgent",
+    "agentAddress": "0x1563915e194D8CfBA1943570603F7606A3115508",
+    "agentName": "bot1",
+    "nonce": 1700000000034,
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000034,
+   "signature": {
+    "r": "0x6fac19bb35ca9e02e77c9ea087bc642240a40efc1e006bef15eb5493ed90818b",
+    "s": "0x6d039ed23939f2340971b8361f53621c2ac9c6f86d7b1a833c1b38679ddbde5",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86a474797065ac617070726f76654167656e74ac6167656e7441646472657373d92a307831353633393135653139344438436642413139343335373036303346373630364133313135353038a96167656e744e616d65a4626f7431a56e6f6e6365cf0000018bcfe56822b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:ApproveAgent",
+  "digest": "0x71914da9a3b82f8a60a7a201e8eb1dcb0ea50b5e93d6b5d1762b950fd1cb0d90"
+ },
+ {
+  "name": "approve_agent_unnamed",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"approveAgent\", \"agentAddress\": \"0x1563915e194D8CfBA1943570603F7606A3115508\", \"nonce\": 1700000000035, \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000035, \"signature\": {\"r\": \"0xfb4c76690c7cf00fa3630b82d6bc131565ee52e9d460c212022f4b30e3013564\", \"s\": \"0x769b038cb0f199d526cda35dc0e1a9a64277008d4d8f3f745b03c39941edbf9c\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "approveAgent",
+    "agentAddress": "0x1563915e194D8CfBA1943570603F7606A3115508",
+    "nonce": 1700000000035,
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000035,
+   "signature": {
+    "r": "0xfb4c76690c7cf00fa3630b82d6bc131565ee52e9d460c212022f4b30e3013564",
+    "s": "0x769b038cb0f199d526cda35dc0e1a9a64277008d4d8f3f745b03c39941edbf9c",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "85a474797065ac617070726f76654167656e74ac6167656e7441646472657373d92a307831353633393135653139344438436642413139343335373036303346373630364133313135353038a56e6f6e6365cf0000018bcfe56823b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:ApproveAgent",
+  "digest": "0x6bee4a349a09f4e6f939dbc86f249d1eda83da3a0909f1b7525f37cde528668e"
+ },
+ {
+  "name": "approve_agent_mainnet",
+  "sdk": "python",
+  "is_mainnet": true,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"approveAgent\", \"agentAddress\": \"0x1563915e194D8CfBA1943570603F7606A3115508\", \"agentName\": \"m\", \"nonce\": 1700000000036, \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Mainnet\"}, \"nonce\": 1700000000036, \"signature\": {\"r\": \"0xa5dc773b3222876fabe84c932c626f411cfee0f0904a3d6fd055d2bbe82cc048\", \"s\": \"0x739b0dbd3dc2527d6e662685dfbe8a95265be9a36fcd24bd04d19becba41307d\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "approveAgent",
+    "agentAddress": "0x1563915e194D8CfBA1943570603F7606A3115508",
+    "agentName": "m",
+    "nonce": 1700000000036,
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Mainnet"
+   },
+   "nonce": 1700000000036,
+   "signature": {
+    "r": "0xa5dc773b3222876fabe84c932c626f411cfee0f0904a3d6fd055d2bbe82cc048",
+    "s": "0x739b0dbd3dc2527d6e662685dfbe8a95265be9a36fcd24bd04d19becba41307d",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86a474797065ac617070726f76654167656e74ac6167656e7441646472657373d92a307831353633393135653139344438436642413139343335373036303346373630364133313135353038a96167656e744e616d65a16da56e6f6e6365cf0000018bcfe56824b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea74d61696e6e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:ApproveAgent",
+  "digest": "0x2be3320369d4bb2075f659e102caca8ea545f01393c228418a26aed4d33b64f9"
+ },
+ {
+  "name": "order_vault",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": true, \"p\": \"30000\", \"s\": \"0.02\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000037, \"signature\": {\"r\": \"0xd6a214aca0f05b23fa3efe9bd88af5050184db398466eb8ce52624f6062025e\", \"s\": \"0x3470c90a03c293846c885d0204463205e59c8cd500249cff9abcedb37139322f\", \"v\": 28}, \"vaultAddress\": \"0x1719884eb866cb12b2287399b15f7db5e7d775ea\", \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": true,
+      "p": "30000",
+      "s": "0.02",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000037,
+   "signature": {
+    "r": "0xd6a214aca0f05b23fa3efe9bd88af5050184db398466eb8ce52624f6062025e",
+    "s": "0x3470c90a03c293846c885d0204463205e59c8cd500249cff9abcedb37139322f",
+    "v": 28
+   },
+   "vaultAddress": "0x1719884eb866cb12b2287399b15f7db5e7d775ea",
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16100a162c3a170a53330303030a173a4302e3032a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x2969ea4005ce86e300a7ddbeaa92b2900f27ea1c22b4145a80402020ddb0b33a",
+  "digest": "0xbd286c8eb461eef66db69c6086904cb15ce55f2bc7c9c095289ac0bf466a1770"
+ },
+ {
+  "name": "cancel_vault",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"cancel\", \"cancels\": [{\"a\": 0, \"o\": 9}]}, \"nonce\": 1700000000038, \"signature\": {\"r\": \"0x437992cde7903d1591878d5c782c1b052686fd979267ec58fb7ef5d48d3cb01c\", \"s\": \"0x75186656c78483ccfbf9e9bd0f69245d5007061f6d56aaee8a01b0a80bf5cbe\", \"v\": 27}, \"vaultAddress\": \"0x1719884eb866cb12b2287399b15f7db5e7d775ea\", \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "cancel",
+    "cancels": [
+     {
+      "a": 0,
+      "o": 9
+     }
+    ]
+   },
+   "nonce": 1700000000038,
+   "signature": {
+    "r": "0x437992cde7903d1591878d5c782c1b052686fd979267ec58fb7ef5d48d3cb01c",
+    "s": "0x75186656c78483ccfbf9e9bd0f69245d5007061f6d56aaee8a01b0a80bf5cbe",
+    "v": 27
+   },
+   "vaultAddress": "0x1719884eb866cb12b2287399b15f7db5e7d775ea",
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065a663616e63656ca763616e63656c739182a16100a16f09",
+  "kind": "l1",
+  "action_hash": "0xcb4d47585be4bebbd8d059c25e06f431384df01c4e4b8b0581b77bd08932366b",
+  "digest": "0xf7b8de4c398bbd2fa180ae98a172f327bdd1660b35905a8379c59a022e0eb6cc"
+ },
+ {
+  "name": "usd_class_transfer_vault_suffix",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"usdClassTransfer\", \"amount\": \"1.0 subaccount:0x1719884eb866cb12b2287399b15f7db5e7d775ea\", \"toPerp\": true, \"nonce\": 1700000000039, \"signatureChainId\": \"0x66eee\", \"hyperliquidChain\": \"Testnet\"}, \"nonce\": 1700000000039, \"signature\": {\"r\": \"0xf19441714855449b4528890a0f21bbffcaac76902fda939212910274447c2698\", \"s\": \"0xf218c739084afb0a2d3e82072cc2c4ccb015268a4f233c5889c111ae88b04e1\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "usdClassTransfer",
+    "amount": "1.0 subaccount:0x1719884eb866cb12b2287399b15f7db5e7d775ea",
+    "toPerp": true,
+    "nonce": 1700000000039,
+    "signatureChainId": "0x66eee",
+    "hyperliquidChain": "Testnet"
+   },
+   "nonce": 1700000000039,
+   "signature": {
+    "r": "0xf19441714855449b4528890a0f21bbffcaac76902fda939212910274447c2698",
+    "s": "0xf218c739084afb0a2d3e82072cc2c4ccb015268a4f233c5889c111ae88b04e1",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "86a474797065b0757364436c6173735472616e73666572a6616d6f756e74d939312e30207375626163636f756e743a307831373139383834656238363663623132623232383733393962313566376462356537643737356561a6746f50657270c3a56e6f6e6365cf0000018bcfe56827b07369676e6174757265436861696e4964a730783636656565b068797065726c6971756964436861696ea7546573746e6574",
+  "kind": "user",
+  "primary_type": "HyperliquidTransaction:UsdClassTransfer",
+  "digest": "0x10c03699a5b093bc227d02fd703d03d98801bf66ef6cabe8142a6ee7cfb4ba31"
+ },
+ {
+  "name": "order_expires",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 1, \"b\": false, \"p\": \"2500\", \"s\": \"0.1\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Ioc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000040, \"signature\": {\"r\": \"0xdf4fd589360d94b34ccef4a71ef3a427bf8f16f4d8898396117f8fcc346c048f\", \"s\": \"0x4377879ff296531eea7ff67ff4b622f3d31d05599aea9549ed346977219a35f1\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": 1800000000000}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 1,
+      "b": false,
+      "p": "2500",
+      "s": "0.1",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Ioc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000040,
+   "signature": {
+    "r": "0xdf4fd589360d94b34ccef4a71ef3a427bf8f16f4d8898396117f8fcc346c048f",
+    "s": "0x4377879ff296531eea7ff67ff4b622f3d31d05599aea9549ed346977219a35f1",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": 1800000000000
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16101a162c2a170a432353030a173a3302e31a172c2a17481a56c696d697481a3746966a3496f63a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x04cda712f25f1545716770728c5ae1734d9868ba1e74f48ae227829353b69ddb",
+  "digest": "0xb0d6f2de394b68186a5cf55d992d4335165d1017b2095e2e8d89787ffa0c5045"
+ },
+ {
+  "name": "update_leverage_expires",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"updateLeverage\", \"asset\": 1, \"isCross\": false, \"leverage\": 5}, \"nonce\": 1700000000041, \"signature\": {\"r\": \"0xb107aa6b2a28238269f0d8acf81d344d54d0c94c5ee104135ef1cd79eaa44aaa\", \"s\": \"0x2041f4cf1a6d6f677d204029f98b515d98c89e737242ebe3ea3bd365789317f5\", \"v\": 27}, \"vaultAddress\": null, \"expiresAfter\": 1800000000000}",
+  "body": {
+   "action": {
+    "type": "updateLeverage",
+    "asset": 1,
+    "isCross": false,
+    "leverage": 5
+   },
+   "nonce": 1700000000041,
+   "signature": {
+    "r": "0xb107aa6b2a28238269f0d8acf81d344d54d0c94c5ee104135ef1cd79eaa44aaa",
+    "s": "0x2041f4cf1a6d6f677d204029f98b515d98c89e737242ebe3ea3bd365789317f5",
+    "v": 27
+   },
+   "vaultAddress": null,
+   "expiresAfter": 1800000000000
+  },
+  "msgpack_hex": "84a474797065ae7570646174654c65766572616765a5617373657401a7697343726f7373c2a86c6576657261676505",
+  "kind": "l1",
+  "action_hash": "0x132efe2911cf44bf27dffbf5821f78d76348c0729545cadf16b0912a84fe61ec",
+  "digest": "0x93be413dc270032d2370174414fd7ee4471abc570a2d1246c8ac06f794392b51"
+ },
+ {
+  "name": "order_vault_expires_mainnet",
+  "sdk": "python",
+  "is_mainnet": true,
+  "signer": "0x2c7536e3605d9c16a7a3d7b1898e529396a65c23",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 2, \"b\": true, \"p\": \"150.5\", \"s\": \"10\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000042, \"signature\": {\"r\": \"0xc61e9638fd0030183b990a677144c6164f7b53d9169e3be47f7d4590fe6b9b40\", \"s\": \"0x3737cf2bcf4fa149a8003a53fec9e1a631c0a771a68d1258129bd31b6de6db45\", \"v\": 28}, \"vaultAddress\": \"0x1719884eb866cb12b2287399b15f7db5e7d775ea\", \"expiresAfter\": 1800000000001}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 2,
+      "b": true,
+      "p": "150.5",
+      "s": "10",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000042,
+   "signature": {
+    "r": "0xc61e9638fd0030183b990a677144c6164f7b53d9169e3be47f7d4590fe6b9b40",
+    "s": "0x3737cf2bcf4fa149a8003a53fec9e1a631c0a771a68d1258129bd31b6de6db45",
+    "v": 28
+   },
+   "vaultAddress": "0x1719884eb866cb12b2287399b15f7db5e7d775ea",
+   "expiresAfter": 1800000000001
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16102a162c3a170a53135302e35a173a23130a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x52bcd1d6c62ad862dc5aa5aabe0eb3bc41eff83c3b21ecaa1ec5ccff03e953f2",
+  "digest": "0x43b407e41f640fe0c97be612aca9c7fea58fca9661eeb68068afeb445a93cfd6"
+ },
+ {
+  "name": "agent_order",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+  "body_raw": "{\"action\": {\"type\": \"order\", \"orders\": [{\"a\": 0, \"b\": false, \"p\": \"35000\", \"s\": \"0.05\", \"r\": false, \"t\": {\"limit\": {\"tif\": \"Gtc\"}}}], \"grouping\": \"na\"}, \"nonce\": 1700000000043, \"signature\": {\"r\": \"0xbb8b77cd5f470f0b5d940e0b648fb672e6be7a4917934cf3ab6d7472c0a9d8a5\", \"s\": \"0x911999d20b48866f5f4c7fbaaa10ae8034504584e7f721e2f958687d93fc210\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "order",
+    "orders": [
+     {
+      "a": 0,
+      "b": false,
+      "p": "35000",
+      "s": "0.05",
+      "r": false,
+      "t": {
+       "limit": {
+        "tif": "Gtc"
+       }
+      }
+     }
+    ],
+    "grouping": "na"
+   },
+   "nonce": 1700000000043,
+   "signature": {
+    "r": "0xbb8b77cd5f470f0b5d940e0b648fb672e6be7a4917934cf3ab6d7472c0a9d8a5",
+    "s": "0x911999d20b48866f5f4c7fbaaa10ae8034504584e7f721e2f958687d93fc210",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "83a474797065a56f72646572a66f72646572739186a16100a162c2a170a53335303030a173a4302e3035a172c2a17481a56c696d697481a3746966a3477463a867726f7570696e67a26e61",
+  "kind": "l1",
+  "action_hash": "0x03aa9d40f1e111708537f58eade6bee1ac7bbd1095c875a89218ba5f4b771ea8",
+  "digest": "0xd3e79ca64d1dd988d9812656a40b4d778dc39c5e7db09bedc72d6e1aaf69d5b8"
+ },
+ {
+  "name": "agent_cancel",
+  "sdk": "python",
+  "is_mainnet": false,
+  "signer": "0x19e7e376e7c213b7e7e7e46cc70a5dd086daff2a",
+  "body_raw": "{\"action\": {\"type\": \"cancel\", \"cancels\": [{\"a\": 0, \"o\": 42}]}, \"nonce\": 1700000000044, \"signature\": {\"r\": \"0x877ade28daf0fd0476d447723fa3f7628527f4044c1267b8b33ccedad6cd6580\", \"s\": \"0x290ce549aed1f1b4425ee7b04d5888b436a92c867efc21b9fe0d789736028216\", \"v\": 28}, \"vaultAddress\": null, \"expiresAfter\": null}",
+  "body": {
+   "action": {
+    "type": "cancel",
+    "cancels": [
+     {
+      "a": 0,
+      "o": 42
+     }
+    ]
+   },
+   "nonce": 1700000000044,
+   "signature": {
+    "r": "0x877ade28daf0fd0476d447723fa3f7628527f4044c1267b8b33ccedad6cd6580",
+    "s": "0x290ce549aed1f1b4425ee7b04d5888b436a92c867efc21b9fe0d789736028216",
+    "v": 28
+   },
+   "vaultAddress": null,
+   "expiresAfter": null
+  },
+  "msgpack_hex": "82a474797065a663616e63656ca763616e63656c739182a16100a16f2a",
+  "kind": "l1",
+  "action_hash": "0xfd74147adcd5456f5092eec76d43047233e8bf26e96b47ccd52c80801fc53ac5",
+  "digest": "0x030ddd15ea2e8a66ba3153daa88bf60f846fd9025181762fa5bd122daca84e4d"
+ }
+]
