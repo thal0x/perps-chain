@@ -116,7 +116,7 @@ fn prune_remove_and_encoding() {
 }
 
 #[test]
-fn from_genesis_uses_param() {
+fn default_freshness_param() {
     let g_fresh = ChainParams::default().oracle_freshness_ms;
     let o = OracleState::new(g_fresh);
     assert_eq!(o.freshness_ms(), 10_000);

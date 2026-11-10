@@ -54,7 +54,7 @@ pub struct Submission {
 /// Lower stake-weighted median, see the crate docs. `entries` is sorted in
 /// place by `(px, address)`. Returns `None` if the total stake is zero.
 pub fn weighted_median(entries: &mut [(Px, Address, u64)]) -> Option<Px> {
-    entries.sort_unstable_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+    entries.sort_unstable_by_key(|e| (e.0, e.1));
     let total: u128 = entries.iter().map(|e| e.2 as u128).sum();
     if total == 0 {
         return None;
