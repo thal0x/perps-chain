@@ -29,7 +29,7 @@ HEAD="$(git rev-parse HEAD)"
 log "cargo build --release -p node -p chaos -p sim"
 cargo build -q --release -p node -p chaos -p sim || die "release build failed"
 TDIR="$(cargo metadata --format-version 1 --no-deps | python3 -c 'import sys,json;print(json.load(sys.stdin)["target_directory"])')"
-BIN="$ROOT/run/bin"; mkdir -p "$BIN"
+BIN="$ROOT/run/bin_ac1"; mkdir -p "$BIN"
 cp "$TDIR/release/hlnode" "$TDIR/release/hlchaos" "$TDIR/release/sim" "$BIN/"   # private copies
 WORK="$ROOT/run/ac1"; rm -rf "$WORK"; mkdir -p "$WORK"
 REPORT="$WORK/report.json"
