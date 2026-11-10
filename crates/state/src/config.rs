@@ -4,8 +4,9 @@ use interfaces::*;
 use std::sync::Arc;
 
 /// EIP-712 digest of a pending withdrawal, as signed by validators and
-/// checked by `Bridge.sol`. Provided by the bridge engineer (relayer crate);
-/// the default is a placeholder (see [`placeholder_withdrawal_digest`]).
+/// checked by `Bridge.sol`. The default is [`bridge_withdrawal_digest`], a
+/// port of `relayer::withdrawal_digest` (equality is tested); the node may
+/// inject the relayer function directly.
 pub type WithdrawalDigestFn = Arc<dyn Fn(&PendingWithdrawal, &BridgeParams) -> [u8; 32] + Send + Sync>;
 /// Recover the Ethereum address that signed a 32-byte digest.
 pub type RecoverFn = Arc<dyn Fn(&[u8; 32], &Sig65) -> Option<Address> + Send + Sync>;
@@ -18,23 +19,51 @@ pub struct BridgeHooks {
 
 impl Default for BridgeHooks {
     fn default() -> Self {
-        Self { withdrawal_digest: Arc::new(placeholder_withdrawal_digest), recover: Arc::new(crate::crypto::ecrecover) }
+        Self { withdrawal_digest: Arc::new(bridge_withdrawal_digest), recover: Arc::new(crate::crypto::ecrecover) }
     }
 }
 
-/// Placeholder digest until the bridge crate provides the real EIP-712 one:
-/// keccak256("hlbft-withdrawal" || eth_chain_id_be8 || contract || id_be8 ||
-/// destination || amount_be8).
-pub fn placeholder_withdrawal_digest(w: &PendingWithdrawal, p: &BridgeParams) -> [u8; 32] {
-    use sha3::{Digest, Keccak256};
-    let mut h = Keccak256::new();
-    h.update(b"hlbft-withdrawal");
-    h.update(p.eth_chain_id.to_be_bytes());
-    h.update(p.contract.0);
-    h.update(w.id.to_be_bytes());
-    h.update(w.destination.0);
-    h.update((w.amount.0 as u64).to_be_bytes());
-    h.finalize().into()
+fn word_u64(v: u64) -> [u8; 32] {
+    let mut w = [0u8; 32];
+    w[24..].copy_from_slice(&v.to_be_bytes());
+    w
+}
+fn word_u128(v: u128) -> [u8; 32] {
+    let mut w = [0u8; 32];
+    w[16..].copy_from_slice(&v.to_be_bytes());
+    w
+}
+fn word_address(a: &Address) -> [u8; 32] {
+    let mut w = [0u8; 32];
+    w[12..].copy_from_slice(&a.0);
+    w
+}
+
+/// EIP-712 `Withdrawal(uint64 id,address destination,uint256 amount)` digest
+/// under domain `EIP712Domain(string name,string version,uint256 chainId,address
+/// verifyingContract)` = ("HlbftBridge", "1", eth_chain_id, contract), exactly
+/// as `bridge/src/Bridge.sol` and `relayer::withdrawal_digest` compute it.
+/// `amount` is the net USDC amount (6 decimals == `Usd` raw units).
+pub fn bridge_withdrawal_digest(w: &PendingWithdrawal, p: &BridgeParams) -> [u8; 32] {
+    use crate::crypto::keccak;
+    let mut d = Vec::with_capacity(160);
+    d.extend_from_slice(&keccak(b"EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"));
+    d.extend_from_slice(&keccak(b"HlbftBridge"));
+    d.extend_from_slice(&keccak(b"1"));
+    d.extend_from_slice(&word_u64(p.eth_chain_id));
+    d.extend_from_slice(&word_address(&p.contract));
+    let domain = keccak(&d);
+    let mut s = Vec::with_capacity(128);
+    s.extend_from_slice(&keccak(b"Withdrawal(uint64 id,address destination,uint256 amount)"));
+    s.extend_from_slice(&word_u64(w.id));
+    s.extend_from_slice(&word_address(&w.destination));
+    s.extend_from_slice(&word_u128(w.amount.0.max(0) as u128));
+    let sh = keccak(&s);
+    let mut t = Vec::with_capacity(66);
+    t.extend_from_slice(&[0x19, 0x01]);
+    t.extend_from_slice(&domain);
+    t.extend_from_slice(&sh);
+    keccak(&t)
 }
 
 /// When to run the (expensive) full invariant check.

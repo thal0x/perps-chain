@@ -86,7 +86,7 @@ fn withdrawal_flow_with_real_validator_signatures() {
     assert_eq!(pw.len(), 1);
     assert_eq!((pw[0].user, pw[0].destination, pw[0].amount), (u, dest, usd("499")));
     let id = pw[0].id;
-    let digest = state::placeholder_withdrawal_digest(&pw[0], &h.chain.genesis_ref().bridge);
+    let digest = relayer::withdrawal_digest(&pw[0], &h.chain.genesis_ref().bridge);
     let sig = |i: usize| crypto::sign_digest(&keys[i], &digest);
     // wrong signer's signature is rejected; good ones stored, sorted, deduped
     h.block(vec![
@@ -109,4 +109,32 @@ fn withdrawal_flow_with_real_validator_signatures() {
     assert_eq!(h.chain.q().pending_withdrawals().len(), 1);
     h.block(vec![fin(2, 10)]);
     assert!(h.chain.q().pending_withdrawals().is_empty());
+}
+
+#[test]
+fn default_digest_matches_relayer() {
+    let p = BridgeParams { eth_chain_id: 31337, contract: Address([0xcc; 20]), min_deposit: Usd::ZERO };
+    for (id, amt) in [(0u64, 1i64), (1, 499_000_000), (77, i64::MAX)] {
+        let w = PendingWithdrawal {
+            id,
+            user: addr(1),
+            destination: addr(2 + id),
+            amount: Usd(amt),
+            created_at: 0,
+            signatures: vec![],
+        };
+        assert_eq!(state::bridge_withdrawal_digest(&w, &p), relayer::withdrawal_digest(&w, &p));
+    }
+}
+
+#[test]
+fn deposit_id_zero_is_valid() {
+    let mut h = H::new(&[]);
+    let u = addr(ALICE);
+    let txs = (0..3u64)
+        .map(|i| validator_tx(addr(1000 + i), 1, ValidatorAction::BridgeDeposit(att(0, u, "25"))))
+        .collect();
+    h.block(txs);
+    assert!(h.chain.q().processed_deposit(0));
+    assert_eq!(h.chain.q().account(&u).withdrawable, usd("25"));
 }
