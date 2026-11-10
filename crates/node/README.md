@@ -69,6 +69,21 @@ scripts/localnet.sh dev | seed | status | stop
   `{last_height, final_root, blocks_executed, invariant_checks, violations,
   first_violations, order_actions, roots_digest (= sim replay's), divergences, wall_ms}`.
 
+## Performance notes (AC3)
+* Committed txs are removed from the mempool **in the commit sink** (before the
+  in-flight entries expire), not after execution: with execution lagging commits, leaders
+  re-proposed committed txs (measured: up to 40 % of block txs were `duplicate nonce`
+  rejections, each also costing a signature recovery since the SigCache entry was taken).
+* The global rayon pool (state's parallel signature pre-pass) is sized by
+  `exec_threads` (config.toml, default 1) and named `exec-pool-*`: rayon's default (one
+  spinning worker per core, per node) burned CPU with 4 validators on 4 cores.
+* `exec stats` (info, every 10 s): blocks, txs, order actions, error receipts (top
+  messages), SigCache misses at execution, lock wait / execute / post-execute ms.
+* `fsync_commits` (config.toml): default true; replay mode default false.
+* `tests/exec_bench.rs` (ignored): per-stage single-core cost of bench traffic
+  (`cargo test --release -p node --test exec_bench -- --ignored --nocapture`).
+* `acceptance/thread_cpu.py` samples per-thread CPU (thread names above) during AC3.
+
 ## Crash safety
 * `data/` = consensus `FileStore` (blocks, committed, fsynced safety state, snapshots).
 * Restart: restore `latest_snapshot()` (root checked), the core re-emits committed

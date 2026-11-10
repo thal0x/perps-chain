@@ -20,6 +20,8 @@ use sim::app::World;
 use sim::sign::{sign_all, SignCtx};
 use std::time::Instant;
 
+type Blocks = Vec<(u64, Vec<(Tx, Vec<u8>)>, u64)>;
+
 fn env(k: &str, d: u64) -> u64 {
     std::env::var(k).ok().and_then(|v| v.parse().ok()).unwrap_or(d)
 }
@@ -45,7 +47,7 @@ fn ac3_cost_breakdown() {
     let blocks_n = secs * 1000 / block_ms;
     let per_block = rate * block_ms / 1000;
     let t = Instant::now();
-    let mut blocks: Vec<(u64, Vec<(Tx, Vec<u8>)>, u64)> = Vec::new();
+    let mut blocks: Blocks = Vec::new();
     for b in 0..blocks_n {
         let ts = start_ts + b * block_ms;
         let us = pop.step(b + 1, ts, per_block, &world, &keys);
@@ -115,7 +117,7 @@ fn ac3_cost_breakdown() {
     let ccfg = state::ChainConfig { invariants: state::InvariantMode::Never, ..Default::default() };
     let mut chain = state::HlChain::new_hl(g.clone(), ccfg);
     let cache = chain.sig_cache();
-    let prime = |blocks: &[(u64, Vec<(Tx, Vec<u8>)>, u64)]| {
+    let prime = |blocks: &Blocks| {
         for b in blocks {
             for (tx, _) in &b.1 {
                 if let Tx::User(u) = tx {
@@ -156,6 +158,9 @@ fn ac3_cost_breakdown() {
     let mut exec_s = 0.0;
     let mut per_block = Vec::new();
     let mut total_oa = 0;
+    let mut indexer = api::indexer::Indexer::default();
+    let mut index_s = 0.0;
+    let (mut n_fills, mut n_orders, mut n_events) = (0usize, 0usize, 0usize);
     for (i, (b, txs)) in blocks.iter().zip(&block_txs).enumerate() {
         let ctx = BlockContext { height: i as u64 + 1, timestamp_ms: b.0, proposer: g.validators.validators[0].address, block_id: Hash32::ZERO };
         let t = Instant::now();
@@ -164,8 +169,16 @@ fn ac3_cost_breakdown() {
         exec_s += s;
         total_oa += o.order_actions;
         per_block.push((s * 1000.0, o.order_actions, o.receipts.iter().filter(|r| r.result.is_err()).count()));
+        n_events += o.events.len();
+        n_fills += o.events.iter().filter(|e| matches!(e, Event::Fill(_))).count();
+        n_orders += o.events.iter().filter(|e| matches!(e, Event::OrderUpdate { .. })).count();
+        let t = Instant::now();
+        std::hint::black_box(indexer.ingest(&o, &|_| Rate::ZERO));
+        index_s += t.elapsed().as_secs_f64();
     }
     timings.push(("execute_block (sig cached)", exec_s));
+    timings.push(("api Indexer::ingest (every block)", index_s));
+    println!("events {n_events}: fills {n_fills}, order updates {n_orders}");
     println!("executed order actions {total_oa} of {n_oa}; first blocks (ms, order actions, err receipts): {:?}", &per_block[..per_block.len().min(5)]);
     println!("last blocks: {:?}", &per_block[per_block.len().saturating_sub(3)..]);
     let errs: Vec<String> = Vec::new();

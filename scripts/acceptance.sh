@@ -253,11 +253,19 @@ run_ac3() {
   for i in 0 1 2 3; do targets="${targets:+$targets,}http://127.0.0.1:$((api + i))"; done
   log "sim load --mode bench --rate $rate --duration $dur across 4 APIs"
   "$BIN/sim" load --targets "$targets" --rate "$rate" --duration "$dur" --mode bench \
-      --keys "$net/accounts.json" --genesis "$net/genesis.json" --sign-threads 2 \
+      --keys "$net/accounts.json" --genesis "$net/genesis.json" --sign-threads 4 --presign-s "$((dur + 5))" \
       --out "$TMP/ac3_load.json" >/dev/null 2>"$TMP/ac3_load.stderr" &
-  local load_pid=$! pids=""
+  local load_pid=$! pids="" t
   for i in 0 1 2 3; do pids="$pids $(cat "$net/node$i/hlnode.pid")"; done
-  # per-thread CPU (node threads + load generator) over the measurement window
+  # client-side signing is not the chain's cost: the whole run is pre-signed before
+  # sending starts (TEST_PLAN AC3 "pre-signs order traffic"); wait for the first
+  # committed order actions, then sample per-thread CPU over the measurement window.
+  for t in $(seq 1 600); do
+    awk '$3 > 0 {f=1} END {exit !f}' "$net/node0/roots.log" 2>/dev/null && break
+    kill -0 "$load_pid" 2>/dev/null || break
+    sleep 1
+  done
+  log "load is committing; measuring"
   sleep $((warm + 5))
   python3 acceptance/thread_cpu.py "$((win - 10))" "$TMP/ac3_threads.json" $pids $load_pid >"$TMP/ac3_threads.txt" 2>&1 || true
   wait "$load_pid" || log "sim load exited non-zero"

@@ -276,7 +276,8 @@ impl ConsensusEnv for NodeEnv {
 
 #[allow(clippy::large_enum_variant)]
 enum ExecMsg {
-    Commit(CommittedBlock),
+    /// Committed block + its tx hashes (computed once, in the commit sink).
+    Commit(CommittedBlock, Vec<TxHash>),
     Install(Snapshot),
 }
 
@@ -290,6 +291,51 @@ struct Executor {
     /// Replay mode: invariant checking (same checks as `sim replay`).
     replay_check: Option<ReplayCheck>,
     divergences: u64,
+    stats: ExecStats,
+}
+
+/// Executor cost accounting, logged every 10 s at info (`exec stats`).
+#[derive(Default)]
+struct ExecStats {
+    since_ms: u64,
+    blocks: u64,
+    txs: u64,
+    order_actions: u64,
+    err_receipts: u64,
+    sig_cache_misses: u64,
+    us_lock_wait: u64,
+    us_execute: u64,
+    us_after: u64,
+    errs: BTreeMap<String, u64>,
+}
+
+impl ExecStats {
+    fn maybe_log(&mut self) {
+        let now = now_ms();
+        if self.since_ms == 0 {
+            self.since_ms = now;
+        }
+        if now < self.since_ms + 10_000 {
+            return;
+        }
+        let mut errs: Vec<_> = std::mem::take(&mut self.errs).into_iter().collect();
+        errs.sort_by_key(|e| std::cmp::Reverse(e.1));
+        errs.truncate(5);
+        info!(
+            secs = (now - self.since_ms) / 1000,
+            blocks = self.blocks,
+            txs = self.txs,
+            order_actions = self.order_actions,
+            err_receipts = self.err_receipts,
+            sig_cache_misses = self.sig_cache_misses,
+            ms_lock_wait = self.us_lock_wait / 1000,
+            ms_execute = self.us_execute / 1000,
+            ms_after = self.us_after / 1000,
+            top_errors = ?errs,
+            "exec stats"
+        );
+        *self = ExecStats { since_ms: now, ..Default::default() };
+    }
 }
 
 /// Replay-mode invariant bookkeeping; written to `<home>/replay.json` when the
@@ -310,7 +356,7 @@ impl Executor {
     fn run(mut self, rx: Receiver<ExecMsg>) {
         while let Ok(m) = rx.recv() {
             match m {
-                ExecMsg::Commit(cb) => self.execute(cb),
+                ExecMsg::Commit(cb, hashes) => self.execute(cb, hashes),
                 ExecMsg::Install(s) => self.install(s),
             }
         }
@@ -331,11 +377,9 @@ impl Executor {
         }
     }
 
-    fn execute(&mut self, cb: CommittedBlock) {
+    fn execute(&mut self, cb: CommittedBlock, hashes: Vec<TxHash>) {
         let b = &cb.block;
         let h = b.header.height;
-        let hashes: Vec<TxHash> = b.payload.iter().map(|t| t.hash()).collect();
-        interfaces::Mempool::remove_committed(&*self.shared.pool, &hashes);
         let executed = self.shared.chain.read().executed_height();
         if h <= executed {
             return;
@@ -355,9 +399,18 @@ impl Executor {
             proposer: b.header.proposer,
             block_id: b.id(),
         };
-        let (outcome, snap) = {
+        let misses = b
+            .payload
+            .iter()
+            .zip(&hashes)
+            .filter(|(t, h)| matches!(t, Tx::User(_)) && self.shared.sig_cache.get(h).is_none())
+            .count() as u64;
+        let t_lock = std::time::Instant::now();
+        let (outcome, snap, t_locked, t_exec) = {
             let mut c = self.shared.chain.write();
+            let t_locked = std::time::Instant::now();
             let o = c.execute_block(&ctx, &b.payload);
+            let t_exec = std::time::Instant::now();
             let v = c.invariant_violations().len();
             if v > 0 && h.is_multiple_of(100) {
                 warn!(height = h, violations = v, "invariant violations recorded");
@@ -371,7 +424,7 @@ impl Executor {
             } else {
                 None
             };
-            (o, snap)
+            (o, snap, t_locked, t_exec)
         };
         let root = outcome.state_root;
         self.shared.exec.lock().set(h, root);
@@ -399,10 +452,30 @@ impl Executor {
                 rc.finish(h, &root, self.divergences);
             }
         }
+        let st = &mut self.stats;
+        st.blocks += 1;
+        st.txs += b.payload.len() as u64;
+        st.order_actions += outcome.order_actions;
+        st.sig_cache_misses += misses;
+        for r in &outcome.receipts {
+            if let Err(e) = &r.result {
+                st.err_receipts += 1;
+                if st.errs.len() < 64 || st.errs.contains_key(e) {
+                    let k: String = e.chars().take(60).collect();
+                    *st.errs.entry(k).or_default() += 1;
+                }
+            }
+        }
         let outcome = Arc::new(outcome);
         for cb in self.shared.callbacks.read().iter() {
             cb(outcome.clone());
         }
+        let us = |a: std::time::Instant, b: std::time::Instant| b.duration_since(a).as_micros() as u64;
+        let t_end = std::time::Instant::now();
+        st.us_lock_wait += us(t_lock, t_locked);
+        st.us_execute += us(t_locked, t_exec);
+        st.us_after += us(t_exec, t_end);
+        st.maybe_log();
     }
 }
 
@@ -500,6 +573,11 @@ impl Node {
         anyhow::ensure!(genesis.validators.contains(&me), "key {me} is not a genesis validator");
         let my_index = genesis.validators.validators.iter().position(|v| v.address == me).unwrap_or(0);
         info!(validator = %me, index = my_index, home = %cfg.home.display(), "starting hlnode");
+        // size + name the global rayon pool before anything uses it (see config.exec_threads)
+        let _ = rayon::ThreadPoolBuilder::new()
+            .num_threads(cfg.exec_threads)
+            .thread_name(|i| format!("exec-pool-{i}"))
+            .build_global();
 
         let replay_end = replay.as_ref().map(|r| r.last_height());
 
@@ -638,8 +716,14 @@ impl Node {
                     }
                 }
                 s2.last_commit_ms.store(now_ms(), Ordering::Relaxed);
+                // Remove committed txs from the mempool *now*, before their in-flight
+                // entries expire: doing it only after execution (which lags commits)
+                // left a window in which leaders re-proposed already-committed txs
+                // (measured: up to 40% of block txs were duplicates under AC3 load).
+                let hashes: Vec<TxHash> = cb.block.payload.iter().map(|t| t.hash()).collect();
+                interfaces::Mempool::remove_committed(&*s2.pool, &hashes);
                 s2.inflight.set_committed(h.height);
-                let _ = exec_tx.send(ExecMsg::Commit(cb));
+                let _ = exec_tx.send(ExecMsg::Commit(cb, hashes));
             }
             ConsensusOutput::InstallSnapshot(s) => {
                 let _ = exec_tx.send(ExecMsg::Install(s));
@@ -671,6 +755,7 @@ impl Node {
                     started_ms: now_ms(),
                 }),
                 divergences: 0,
+                stats: ExecStats::default(),
             };
             threads.push(std::thread::Builder::new().name("executor".into()).spawn(move || ex.run(exec_rx))?);
         }

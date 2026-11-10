@@ -28,6 +28,11 @@ pub struct NodeConfig {
     /// mode defaults to false: a replay is re-run from the log, not recovered).
     /// The consensus safety state is always fsynced before a vote leaves.
     pub fsync_commits: Option<bool>,
+    /// Threads of the process-wide rayon pool (the state machine's parallel
+    /// signature pre-pass). Default 1: signatures are normally already
+    /// recovered at admission (SigCache), and idle rayon workers spin, which
+    /// costs real CPU when 4 validators share 4 cores.
+    pub exec_threads: Option<usize>,
     pub mempool: mempool::PoolConfig,
 }
 
@@ -150,6 +155,7 @@ pub struct Resolved {
     pub log_level: String,
     pub snapshot_interval: u64,
     pub fsync_commits: bool,
+    pub exec_threads: usize,
     pub mempool: mempool::PoolConfig,
 }
 
@@ -193,6 +199,7 @@ impl Resolved {
             log_level: a.log_level.clone().or(cfg.log_level.clone()).unwrap_or_else(|| "info".into()),
             snapshot_interval: cfg.snapshot_interval.unwrap_or(1000).max(1),
             fsync_commits,
+            exec_threads: cfg.exec_threads.unwrap_or(1).max(1),
             mempool: cfg.mempool,
             home,
         })
