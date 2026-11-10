@@ -217,34 +217,40 @@ impl Hasher for PrehashedHasher {
 }
 type HMap<V> = HashMap<Hash32, V, BuildHasherDefault<PrehashedHasher>>;
 
-struct Entry {
+/// Pooled tx, stored in the FIFO order maps (so reaping needs no hash lookup).
+struct Slot {
+    hash: Hash32,
     tx: Arc<Tx>,
     size: usize,
-    seq: u64,
     inserted_ms: u64,
+}
+
+#[derive(Clone, Copy)]
+struct Loc {
+    seq: u64,
     is_val: bool,
 }
 
 #[derive(Default)]
 struct Shard {
-    map: HMap<Entry>,
-    /// seq -> hash, FIFO order of user / validator txs.
-    user_order: BTreeMap<u64, Hash32>,
-    val_order: BTreeMap<u64, Hash32>,
+    /// hash -> position in one of the order maps.
+    map: HMap<Loc>,
+    /// seq -> slot, FIFO order of user / validator txs.
+    user_order: BTreeMap<u64, Slot>,
+    val_order: BTreeMap<u64, Slot>,
     /// Recently committed: hash -> expiry ms, with FIFO for pruning.
     recent: HMap<u64>,
     recent_fifo: VecDeque<(u64, Hash32)>,
 }
 
 impl Shard {
-    fn remove(&mut self, h: &Hash32) -> Option<Entry> {
-        let e = self.map.remove(h)?;
-        if e.is_val {
-            self.val_order.remove(&e.seq);
+    fn remove(&mut self, h: &Hash32) -> Option<Slot> {
+        let l = self.map.remove(h)?;
+        if l.is_val {
+            self.val_order.remove(&l.seq)
         } else {
-            self.user_order.remove(&e.seq);
+            self.user_order.remove(&l.seq)
         }
-        Some(e)
     }
 }
 
@@ -412,12 +418,13 @@ impl Pool {
                 return Err(AdmissionError::Duplicate);
             }
             let seq = self.seq.fetch_add(1, Relaxed);
+            let slot = Slot { hash, tx: tx.clone(), size, inserted_ms: now };
             if is_val {
-                s.val_order.insert(seq, hash);
+                s.val_order.insert(seq, slot);
             } else {
-                s.user_order.insert(seq, hash);
+                s.user_order.insert(seq, slot);
             }
-            s.map.insert(hash, Entry { tx: tx.clone(), size, seq, inserted_ms: now, is_val });
+            s.map.insert(hash, Loc { seq, is_val });
         }
         self.c.admitted.fetch_add(1, Relaxed);
         match source {
@@ -448,7 +455,7 @@ impl Pool {
             }
             let Some((seq, i)) = best else { return };
             let mut s = self.shards[i].write();
-            let Some(h) = s.user_order.get(&seq).copied() else { continue };
+            let Some(h) = s.user_order.get(&seq).map(|x| x.hash) else { continue };
             if let Some(e) = s.remove(&h) {
                 self.count.fetch_sub(1, Relaxed);
                 self.bytes.fetch_sub(e.size, Relaxed);
@@ -472,15 +479,16 @@ impl Pool {
                 .iter()
                 .map(|g| if validators { g.val_order.iter() } else { g.user_order.iter() })
                 .collect();
-            let mut heap = BinaryHeap::with_capacity(iters.len());
-            for (i, it) in iters.iter_mut().enumerate() {
-                if let Some((&seq, h)) = it.next() {
-                    heap.push(std::cmp::Reverse((seq, i, *h)));
+            let mut heads: Vec<Option<(u64, &Slot)>> = iters.iter_mut().map(|it| it.next().map(|(k, v)| (*k, v))).collect();
+            let mut heap = BinaryHeap::with_capacity(heads.len());
+            for (i, h) in heads.iter().enumerate() {
+                if let Some((seq, _)) = h {
+                    heap.push(std::cmp::Reverse((*seq, i)));
                 }
             }
             let mut consecutive_skips = 0;
-            while let Some(std::cmp::Reverse((_, i, h))) = heap.pop() {
-                let e = &guards[i].map[&h];
+            while let Some(std::cmp::Reverse((_, i))) = heap.pop() {
+                let (_, e) = heads[i].expect("head present");
                 if e.size <= bytes_left {
                     bytes_left -= e.size;
                     out.push((*e.tx).clone());
@@ -494,8 +502,9 @@ impl Pool {
                         break;
                     }
                 }
-                if let Some((&seq, h)) = iters[i].next() {
-                    heap.push(std::cmp::Reverse((seq, i, *h)));
+                heads[i] = iters[i].next().map(|(k, v)| (*k, v));
+                if let Some((seq, _)) = heads[i] {
+                    heap.push(std::cmp::Reverse((seq, i)));
                 }
             }
         }
@@ -561,11 +570,11 @@ impl Pool {
             for validators in [true, false] {
                 loop {
                     let order = if validators { &s.val_order } else { &s.user_order };
-                    let Some((_, h)) = order.first_key_value() else { break };
-                    let h = *h;
-                    if s.map[&h].inserted_ms.saturating_add(ttl) > now {
+                    let Some((_, slot)) = order.first_key_value() else { break };
+                    if slot.inserted_ms.saturating_add(ttl) > now {
                         break;
                     }
+                    let h = slot.hash;
                     let e = s.remove(&h).expect("present");
                     self.count.fetch_sub(1, Relaxed);
                     self.bytes.fetch_sub(e.size, Relaxed);
@@ -588,7 +597,10 @@ impl Pool {
     pub fn retain(&self, keep: impl Fn(&Tx) -> bool) -> usize {
         let mut evicted = 0;
         for sh in &self.shards {
-            let snapshot: Vec<(Hash32, Arc<Tx>)> = sh.read().map.iter().map(|(h, e)| (*h, e.tx.clone())).collect();
+            let snapshot: Vec<(Hash32, Arc<Tx>)> = {
+                let s = sh.read();
+                s.val_order.values().chain(s.user_order.values()).map(|e| (e.hash, e.tx.clone())).collect()
+            };
             let bad: Vec<Hash32> = snapshot.into_iter().filter(|(_, tx)| !keep(tx)).map(|(h, _)| h).collect();
             if bad.is_empty() {
                 continue;
@@ -672,7 +684,7 @@ impl Pool {
             let s = sh.read();
             assert_eq!(s.map.len(), s.user_order.len() + s.val_order.len());
             n += s.map.len();
-            b += s.map.values().map(|e| e.size).sum::<usize>();
+            b += s.val_order.values().chain(s.user_order.values()).map(|e| e.size).sum::<usize>();
         }
         (n, b)
     }
