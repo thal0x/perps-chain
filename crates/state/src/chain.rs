@@ -669,6 +669,11 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
         if let Err(e) = self.validate_static(req, position_tpsl) {
             return OrderStatusResp::Error(e);
         }
+        if let Some(c) = &req.cloid {
+            if self.has_cloid(&user, c) {
+                return OrderStatusResp::Error(err_msg::DUPLICATE_CLOID.into());
+            }
+        }
         let side = Side::from_is_buy(req.is_buy);
         let now = self.core.time;
         match req.kind {
@@ -855,6 +860,14 @@ impl<E: Engines, V: TxVerifier> Chain<E, V> {
             return SimpleStatus::Success;
         }
         SimpleStatus::Error(err_msg::CANCEL_MISSING.into())
+    }
+
+    /// True if `user` has an open (resting or trigger) order with `cloid`.
+    fn has_cloid(&self, user: &Address, cloid: &Cloid) -> bool {
+        (0..self.books.len()).any(|a| {
+            self.books[a].get_by_cloid(user, cloid).is_some()
+                || self.find_trigger_by_cloid(user, a as AssetId, cloid).is_some()
+        })
     }
 
     fn find_trigger_by_cloid(&self, user: &Address, asset: AssetId, cloid: &Cloid) -> Option<Oid> {

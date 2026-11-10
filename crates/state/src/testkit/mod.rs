@@ -14,7 +14,7 @@ pub use verifier::{fake_sig, user_tx, validator_tx, FakeVerifier};
 use crate::engines::Engines;
 use interfaces::*;
 
-/// Engines bundle built from the fakes in this module.
+/// Engines bundle built only from the fakes in this module.
 pub struct FakeEngines;
 
 impl Engines for FakeEngines {
@@ -42,6 +42,38 @@ impl Engines for FakeEngines {
     }
     fn new_oracle(g: &Genesis) -> Self::Oracle {
         SimpleOracle::new(g.params.oracle_freshness_ms)
+    }
+}
+
+/// Real `::book::Book` / `::book::TriggerBook` / `::oracle::OracleState` with the
+/// fake clearinghouse (until the real clearinghouse lands).
+pub struct BookEngines;
+
+impl Engines for BookEngines {
+    type Ch = SimpleClearinghouse;
+    type Book = ::book::Book;
+    type Trig = ::book::TriggerBook;
+    type Oracle = ::oracle::OracleState;
+    fn new_clearinghouse(g: &Genesis) -> Self::Ch {
+        SimpleClearinghouse::new(g)
+    }
+    fn decode_clearinghouse(_g: &Genesis, bytes: &[u8]) -> Result<Self::Ch, String> {
+        SimpleClearinghouse::decode(bytes)
+    }
+    fn new_book(spec: &MarketSpec) -> Self::Book {
+        ::book::Book::new(spec.asset)
+    }
+    fn decode_book(_spec: &MarketSpec, bytes: &[u8]) -> Result<Self::Book, String> {
+        ::book::Book::decode(bytes).map_err(|e| e.to_string())
+    }
+    fn new_triggers(spec: &MarketSpec) -> Self::Trig {
+        ::book::TriggerBook::new(spec.asset)
+    }
+    fn decode_triggers(_spec: &MarketSpec, bytes: &[u8]) -> Result<Self::Trig, String> {
+        ::book::TriggerBook::decode(bytes).map_err(|e| e.to_string())
+    }
+    fn new_oracle(g: &Genesis) -> Self::Oracle {
+        ::oracle::OracleState::from_genesis(g)
     }
 }
 

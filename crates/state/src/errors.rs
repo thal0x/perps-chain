@@ -26,6 +26,7 @@ pub const WITHDRAW_TOO_SMALL: &str = "Withdrawal amount must be greater than the
 pub const AGENT_IN_USE: &str = "Agent address is already in use.";
 pub const AGENT_IS_SELF: &str = "Cannot approve self as agent.";
 pub const REFERRER_ALREADY_SET: &str = "Referrer already set.";
+pub const DUPLICATE_CLOID: &str = "Duplicate cloid.";
 pub const NONCE_MISMATCH: &str = "Invalid nonce: action time does not match request nonce.";
 
 pub fn post_only_crossed(bid: &str, ask: &str) -> String {

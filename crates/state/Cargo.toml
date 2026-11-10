@@ -5,6 +5,8 @@ edition.workspace = true
 
 [dependencies]
 interfaces = { workspace = true }
+book = { workspace = true }
+oracle = { workspace = true }
 borsh = { workspace = true }
 blake3 = { workspace = true }
 rayon = { workspace = true }

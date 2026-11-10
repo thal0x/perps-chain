@@ -805,9 +805,11 @@ name = "state"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "book",
  "borsh",
  "hex",
  "interfaces",
+ "oracle",
  "parking_lot",
  "proptest",
  "rand 0.8.8",
