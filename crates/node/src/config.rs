@@ -167,9 +167,11 @@ impl Resolved {
             .unwrap_or_else(|| home.join("../genesis.json"));
         let key_path =
             a.key.clone().or_else(|| cfg.key.as_deref().map(|p| resolve(&home, p))).unwrap_or_else(|| home.join("validator.key"));
-        let invariants = Invariants::parse(a.invariants.as_deref().or(cfg.invariants.as_deref()).unwrap_or("100"))?;
-        let oracle_feed = FeedSpec::parse(a.oracle_feed.as_deref().or(cfg.oracle_feed.as_deref()).unwrap_or("synthetic:0"), &home)?;
         let replay_log = a.replay_log.clone().or_else(|| cfg.replay_log.as_deref().map(|p| resolve(&home, p)));
+        // replay mode checks invariants every block unless told otherwise (AC4)
+        let inv_default = if replay_log.is_some() { "every" } else { "100" };
+        let invariants = Invariants::parse(a.invariants.as_deref().or(cfg.invariants.as_deref()).unwrap_or(inv_default))?;
+        let oracle_feed = FeedSpec::parse(a.oracle_feed.as_deref().or(cfg.oracle_feed.as_deref()).unwrap_or("synthetic:0"), &home)?;
         Ok(Resolved {
             genesis_path,
             key_path,

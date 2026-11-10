@@ -16,6 +16,8 @@ consensus = { workspace = true }
 net = { workspace = true }
 mempool = { workspace = true }
 state = { workspace = true }
+sim = { workspace = true }
+blake3 = { workspace = true }
 hlwire = { workspace = true }
 oracle = { workspace = true }
 api = { workspace = true }

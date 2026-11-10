@@ -54,9 +54,20 @@ scripts/localnet.sh dev | seed | status | stop
 * In-flight filter (`inflight.rs`): the core doesn't exclude txs of uncommitted ancestors,
   so payload() skips txs seen in proposals not yet committed (best effort; duplicates are
   harmless — rejected by nonce).
-* Replay (`--replay-log`): `ReplaySource` implements the override incl. two padding blocks
-  after the log end; **the block-log reader is a TODO until `sim::log` lands** (the flag
-  currently fails with a clear error). Heights after the log end are not executed.
+* Replay (`--replay-log`, D8): `replay.rs` streams `sim::log::LogReader` (window of
+  64 records, reads ahead on demand, rewinds by reopening for older heights). The
+  **genesis comes from the log header**; a supplied genesis (`--genesis`, or the default
+  `<home>/../genesis.json` if it exists) must equal it or the node refuses to start.
+  The override returns two empty padding blocks after the log end (+1 ms each); heights
+  after the end are not executed. Invariants default to `every` in replay mode and are
+  run by the executor with `sim replay` semantics (`check_invariants` + no negative
+  equity unless `BadDebtCovered` in the block); the chain's internal checks are off to
+  avoid doing the work twice. Oracle feeder and bridge watcher are disabled. Back-pressure:
+  `proposal_override` waits (≤ 400 ms) while the local executor is > 8 heights behind, so
+  consensus never queues the whole log in memory. A corrupt/truncated log exits the
+  process (code 4). When the last logged height executes, `<home>/replay.json` is written:
+  `{last_height, final_root, blocks_executed, invariant_checks, violations,
+  first_violations, order_actions, roots_digest (= sim replay's), divergences, wall_ms}`.
 
 ## Crash safety
 * `data/` = consensus `FileStore` (blocks, committed, fsynced safety state, snapshots).
@@ -79,8 +90,13 @@ examples' `config.json`).
 
 ## Tests
 ```
-cargo test -p node     # unit + tests/net.rs (real processes, random ports), ~15 s
+cargo test -p node     # unit + tests/net.rs + tests/replay.rs (real processes, random ports), ~30 s
 ```
+* `replay_log_four_validators_twice_matches_offline`: `sim gen` 60-block log (4k actions,
+  real HlChain), 4 validators replay it twice (half with `--genesis`, half from the log
+  header): all roots.log equal, == `sim replay` roots, run A == run B, invariants checked
+  every block, 0 violations, `replay.json` roots_digest == `sim replay`'s.
+* `replay_log_refuses_mismatching_genesis`.
 * `four_validators_orders_roots_and_crash_recovery`: 4 validators; signed `/exchange`
   order rests and shows in `openOrders` on all nodes; kill -9 node3, more blocks + an
   order, restart, catches up, sees both orders; `roots.log`/`commits.log` agree across
