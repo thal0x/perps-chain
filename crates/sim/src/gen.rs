@@ -67,16 +67,23 @@ pub struct GenSummary {
 /// Histogram key for a message: digits collapsed so ids don't explode it.
 fn norm(s: &str) -> String {
     let mut o = String::new();
-    let mut last_digit = false;
-    for c in s.chars().take(80) {
-        if c.is_ascii_digit() {
-            if !last_digit {
-                o.push('#');
+    let b: Vec<char> = s.chars().take(120).collect();
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == '0' && i + 1 < b.len() && b[i + 1] == 'x' {
+            o.push_str("0x..");
+            i += 2;
+            while i < b.len() && b[i].is_ascii_hexdigit() {
+                i += 1;
             }
-            last_digit = true;
+        } else if b[i].is_ascii_digit() {
+            o.push('#');
+            while i < b.len() && (b[i].is_ascii_digit() || b[i] == '.') {
+                i += 1;
+            }
         } else {
-            last_digit = false;
-            o.push(c);
+            o.push(b[i]);
+            i += 1;
         }
     }
     o
