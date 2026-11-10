@@ -8,3 +8,4 @@ bridge/cache
 acceptance/tmp
 __pycache__
 node_modules
+.venv
