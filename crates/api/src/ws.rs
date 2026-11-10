@@ -238,8 +238,12 @@ struct PushCache {
     asset_ctx: HashMap<AssetId, Value>,
 }
 
+/// Perp asset or tradable spot asset (10000 + pair) of a coin.
 fn coin_asset(s: &Shared, coin: &str) -> Option<AssetId> {
-    s.coins.perp(coin)
+    match s.coins.resolve(coin)? {
+        CoinRef::Perp(a) => Some(a),
+        CoinRef::Spot(p) => s.coins.tradable_spot_asset(p),
+    }
 }
 
 /// Messages to send to subscribers of `k` after block `b`.
@@ -353,12 +357,18 @@ fn update_msgs(s: &Shared, k: &SubKey, _b: &BlockOutcome, d: &BlockDelta, cache:
             }
         }
         SubKey::WebData2 { user } => out.push(msg("webData2", info::web_data2(s, user, now))),
-        SubKey::ActiveAssetCtx { coin } => {
-            if let Some(a) = coin_asset(s, coin) {
+        SubKey::ActiveAssetCtx { coin } => match coins.resolve(coin) {
+            Some(CoinRef::Perp(a)) => {
                 let ctx = cache.asset_ctx.entry(a).or_insert_with(|| info::asset_ctx_one(s, a, now)).clone();
                 out.push(msg("activeAssetCtx", json!({"coin": coin, "ctx": ctx})));
             }
-        }
+            Some(CoinRef::Spot(p)) => {
+                let key = crate::coins::SPOT_ASSET_OFFSET + p;
+                let ctx = cache.asset_ctx.entry(key).or_insert_with(|| crate::spot::ctx(s, p, now)).clone();
+                out.push(msg("activeSpotAssetCtx", json!({"coin": coin, "ctx": ctx})));
+            }
+            None => {}
+        },
         SubKey::ActiveAssetData { user, coin } => {
             if let Some(v) = info::active_asset_data(s, user, coin) {
                 out.push(msg("activeAssetData", v));
@@ -459,7 +469,7 @@ pub fn snapshot_msgs(s: &Shared, k: &SubKey) -> Vec<String> {
         SubKey::WebData2 { user } => out.push(msg("webData2", info::web_data2(s, user, now))),
         SubKey::ActiveAssetCtx { coin } => match coins.resolve(coin) {
             Some(CoinRef::Perp(a)) => out.push(msg("activeAssetCtx", json!({"coin": coin, "ctx": info::asset_ctx_one(s, a, now)}))),
-            Some(CoinRef::Spot(p)) => out.push(msg("activeSpotAssetCtx", json!({"coin": coin, "ctx": render::spot_ctx(coins, p)}))),
+            Some(CoinRef::Spot(p)) => out.push(msg("activeSpotAssetCtx", json!({"coin": coin, "ctx": crate::spot::ctx(s, p, now)}))),
             None => {}
         },
         SubKey::ActiveAssetData { user, coin } => {

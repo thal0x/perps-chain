@@ -9,10 +9,30 @@ impl<E: Engines, V: TxVerifier> StateQuery for Chain<E, V> {
     fn markets(&self) -> Vec<MarketSpec> {
         self.genesis.markets.clone()
     }
+    /// Spot (asset 10000): `mark_px` = `oracle_px` = spot mark (median of
+    /// last trade, bid, ask), `mid_px` from the spot book; volume / funding /
+    /// open interest fields are zero (the API derives spot volume from fills).
     fn market_ctx(&self, asset: AssetId) -> MarketCtx {
+        if let Some(sp) = self.spot.as_ref().filter(|s| s.pair.asset == asset) {
+            let mark = sp.mark();
+            return MarketCtx {
+                asset,
+                oracle_px: mark,
+                mark_px: mark,
+                mid_px: sp.mid(),
+                funding: Rate::ZERO,
+                premium: Rate::ZERO,
+                open_interest: Sz::ZERO,
+                day_ntl_vlm: Usd::ZERO,
+                prev_day_px: mark,
+            };
+        }
         self.ch.market_ctx(asset)
     }
     fn mid(&self, asset: AssetId) -> Option<Px> {
+        if let Some(sp) = self.spot.as_ref().filter(|s| s.pair.asset == asset) {
+            return sp.mid();
+        }
         let b = self.books.get(asset as usize)?;
         match (b.best_bid(), b.best_ask()) {
             (Some(x), Some(y)) => Some(Px((x.0 + y.0) / 2)),
@@ -20,6 +40,9 @@ impl<E: Engines, V: TxVerifier> StateQuery for Chain<E, V> {
         }
     }
     fn l2_book(&self, asset: AssetId, depth: usize) -> (Vec<(Px, Sz, u32)>, Vec<(Px, Sz, u32)>) {
+        if let Some(sp) = self.spot.as_ref().filter(|s| s.pair.asset == asset) {
+            return (sp.book.levels(Side::Bid, depth), sp.book.levels(Side::Ask, depth));
+        }
         match self.books.get(asset as usize) {
             Some(b) => (b.levels(Side::Bid, depth), b.levels(Side::Ask, depth)),
             None => (vec![], vec![]),
@@ -34,9 +57,15 @@ impl<E: Engines, V: TxVerifier> StateQuery for Chain<E, V> {
             v.extend(b.user_orders(user).into_iter().map(resting_view));
             v.extend(t.user_orders(user).into_iter().map(trigger_view));
         }
+        if let Some(sp) = &self.spot {
+            v.extend(sp.book.user_orders(user).into_iter().map(resting_view));
+        }
         v
     }
     fn order_by_oid(&self, user: &Address, oid: Oid) -> Option<RestingOrderView> {
+        if let Some(o) = self.spot.as_ref().and_then(|s| s.book.get(oid)).filter(|o| &o.user == user) {
+            return Some(resting_view(o));
+        }
         for (b, t) in self.books.iter().zip(&self.trigs) {
             if let Some(o) = b.get(oid).filter(|o| &o.user == user) {
                 return Some(resting_view(o));
@@ -48,6 +77,9 @@ impl<E: Engines, V: TxVerifier> StateQuery for Chain<E, V> {
         None
     }
     fn order_by_cloid(&self, user: &Address, cloid: &Cloid) -> Option<RestingOrderView> {
+        if let Some(o) = self.spot.as_ref().and_then(|s| s.book.get_by_cloid(user, cloid)) {
+            return Some(resting_view(o));
+        }
         for (b, t) in self.books.iter().zip(&self.trigs) {
             if let Some(o) = b.get_by_cloid(user, cloid) {
                 return Some(resting_view(o));
