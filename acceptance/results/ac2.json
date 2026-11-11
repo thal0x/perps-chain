@@ -29,56 +29,56 @@
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2703445,
+   "wall_ms": 2973503,
    "order_actions": 48469916
   },
   "A1": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2703308,
+   "wall_ms": 2973375,
    "order_actions": 48469916
   },
   "A2": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2703371,
+   "wall_ms": 2973469,
    "order_actions": 48469916
   },
   "A3": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2703371,
+   "wall_ms": 2973417,
    "order_actions": 48469916
   },
   "B0": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2699774,
+   "wall_ms": 3082405,
    "order_actions": 48469916
   },
   "B1": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2699774,
+   "wall_ms": 3082495,
    "order_actions": 48469916
   },
   "B2": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2699864,
+   "wall_ms": 3082553,
    "order_actions": 48469916
   },
   "B3": {
    "last_height": 100800,
    "invariant_checks": 100800,
    "violations": 0,
-   "wall_ms": 2699940,
+   "wall_ms": 3082337,
    "order_actions": 48469916
   }
  },
@@ -86,38 +86,38 @@
   "blocks": 100800,
   "invariant_checks": 100800,
   "order_actions": 48469916,
-  "wall_ms": 1759766,
+  "wall_ms": 2266192,
   "violations": 0
  },
  "gen": {
-  "wall_ms": 2013866,
+  "wall_ms": 2597004,
   "log_bytes": 1626711294
  },
  "phases": [
   {
    "phase": "gen",
-   "seconds": 2014,
-   "info": "log_mb=1551 peak_rss_mb=101"
+   "seconds": 2598,
+   "info": "log_mb=1551 peak_rss_mb=100"
   },
   {
    "phase": "replay_A",
-   "seconds": 2705,
-   "info": "peak_disk_mb=4748 peak_rss_mb=956,952,947,956"
+   "seconds": 2975,
+   "info": "peak_disk_mb=4742 peak_rss_mb=904,896,900,907"
   },
   {
    "phase": "replay_B",
-   "seconds": 2702,
-   "info": "peak_disk_mb=4756 peak_rss_mb=902,913,899,896"
+   "seconds": 3085,
+   "info": "peak_disk_mb=4758 peak_rss_mb=903,911,908,895"
   },
   {
    "phase": "offline",
-   "seconds": 1760,
-   "info": "peak_rss_mb=76 peak_disk_mb=1596"
+   "seconds": 2266,
+   "info": "peak_rss_mb=78 peak_disk_mb=1596"
   }
  ],
- "source_fingerprint": "3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f",
- "git_head": "e1d24731fb145905771760f5f7a9581866751e25",
+ "source_fingerprint": "b5fa40c37607:db263aa35d91:6a118c8621b7:af3525ddaf6f",
+ "git_head": "fb1da27a0c9404cdf1475f1d34d532f32377c966",
  "git_dirty": false,
- "time_utc": "2026-11-10T21:50:08Z",
+ "time_utc": "2026-11-11T17:46:30Z",
  "summary": "50000002 actions / 100800 blocks / 7 sim-days; 2 runs x 4 validators + offline sim replay + gen roots compared per height; 0 mismatches; roots_digest 47eed582adf70013"
 }
