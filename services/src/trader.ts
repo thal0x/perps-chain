@@ -67,6 +67,7 @@ export class Trader {
   private ema = new Map<string, number>();
   private ledgerSince = Date.now();
   private spotReady = false;
+  private openedAt = Date.now();
 
   constructor(
     readonly name: string,
@@ -212,7 +213,8 @@ export class Trader {
       const m = this.perps.find((x) => x.coin === p.coin);
       if (!m) return;
       const roe = num(p.returnOnEquity);
-      if (roe >= 0.15) {
+      const bored = Date.now() - this.openedAt > 10 * 60_000;
+      if (roe >= 0.15 || (bored && roe > 0.02)) {
         this.log.info(`${p.coin} up ${(roe * 100).toFixed(0)}% on margin, taking profit`);
         return this.closePosition(m, num(p.szi), num(mids[m.coin]), 1);
       }
@@ -229,6 +231,7 @@ export class Trader {
     const mid = num(mids[m.coin]);
     if (!(mid > 0) || withdrawable < stake * 1.1) return;
     const lev = await this.leverage(m);
+    this.openedAt = Date.now();
     this.log.info(`aping into ${m.coin}: ${usd(stake)} isolated margin at ${lev}x`);
     await this.place(m, chance(0.5), (stake * lev * 0.95) / mid, mid, true);
   }

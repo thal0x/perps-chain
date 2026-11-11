@@ -123,7 +123,7 @@ Defaults are meant to work as they are. To change something, use one of:
 | `mm.intervalMs` | | 1500 | how often it checks prices |
 | `mm.requoteBps` | | 4 | only move orders when the price moved this much (or an order was filled) |
 | `mm.maxPositionUsd` | `MM_MAX_POSITION` | 50000 | hard cap on the position per market |
-| `mm.maxSkewBps` | | 15 | how far it shifts prices to shed a position at the cap |
+| `mm.maxSkewBps` | | 25 | how far it shifts prices to shed a position at the cap |
 | `mm.leverage` | | 3 | cross leverage |
 | `mm.spotTargetPurr` / `spotMaxDeviationPurr` | | 20000 / 15000 | PURR it aims to hold, and how far it may drift |
 | `mm.sweepAboveUsd` | | 0 (off) | send market-maker equity above this back to the faucet every 10 min |
@@ -135,8 +135,8 @@ Every 1.5 s it reads the oracle price of each perp, its position and its open
 orders. It wants 5 bids at 5, 10, 15, 20 and 25 bp below the price and 5 asks
 the same distance above, sized $3,000, $4,500, $6,750, … (rounded to the
 market's size step, prices to 5 significant figures). If it is long, all
-prices shift down (up to 15 bp at the cap) so it sells more readily than it
-buys. The total size of its bids is limited to `cap − long position`, so even
+prices shift down (up to 25 bp at the cap) so it sells more readily than it
+buys. The total size of its bids is limited to `cap − long position` (minus 3% headroom for price moves), so even
 if all of them fill, the position stays within the cap; same for asks. It only
 sends anything when the price moved at least 4 bp or one of its orders was
 filled, and then moves its existing orders with one `batchModify` for all
@@ -171,3 +171,9 @@ status line every minute (equity, PnL since start, inventory per market).
   ETH). With the localnet's synthetic oracle (about 80% annual volatility, a
   small jump about once an hour), that happens on the order of once or twice an
   hour, not every few minutes.
+* `localnet.sh seed` rests a fixed ladder of large orders (test account #0) at
+  the prices of the moment. After a sudden oracle move these stale orders can
+  hold the book's mid away from the oracle until traders eat through them. The
+  market maker trades against them up to its position cap and then waits, so
+  for a while the UI can show mid/mark a fraction of a percent off the oracle.
+  This fades over time, and it does not happen if you don't seed.

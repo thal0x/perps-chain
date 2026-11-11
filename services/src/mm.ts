@@ -162,8 +162,10 @@ export class MarketMaker {
         ref = oracle.get(m.coin) ?? NaN;
         inv = pos.get(m.coin) ?? 0;
         const invUsd = inv * ref;
-        bidCapUsd = Math.max(0, c.maxPositionUsd - invUsd);
-        askCapUsd = Math.max(0, c.maxPositionUsd + invUsd);
+        // 3% headroom so a price move after a fill doesn't push the position value over the cap.
+        const cap = c.maxPositionUsd * 0.97;
+        bidCapUsd = Math.max(0, cap - invUsd);
+        askCapUsd = Math.max(0, cap + invUsd);
       } else {
         const base = m.coin.split("/")[0];
         const prev = this.spotRef.get(m.coin);

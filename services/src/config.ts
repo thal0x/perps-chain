@@ -129,7 +129,7 @@ const DEFAULTS: Config = {
     intervalMs: 1_500,
     requoteBps: 4,
     maxPositionUsd: 50_000,
-    maxSkewBps: 15,
+    maxSkewBps: 25,
     leverage: 3,
     spotTargetPurr: 20_000,
     spotMaxDeviationPurr: 15_000,
