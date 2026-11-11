@@ -3,10 +3,13 @@
 #   scripts/localnet.sh start N [--bench] [--release] [--fund-sdk-examples] [-- extra hlnode run flags]
 #   scripts/localnet.sh dev          # = start 4 --fund-sdk-examples (API on 3001..3004)
 #   scripts/localnet.sh seed         # rest a liquidity ladder on every market (dev does this)
-#   scripts/localnet.sh stop
+#   scripts/localnet.sh dev --bots   # also start services/ (faucet + market maker + traders) after seeding
+#   scripts/localnet.sh seed --bots  # same, against an already running localnet
+#   scripts/localnet.sh stop         # stops the services too, if running
 #   scripts/localnet.sh status
 # Env: LOCALNET_DIR (default <repo>/run/localnet), BASE_P2P (26600), BASE_API (3001),
 #      SEED (42), ACCOUNTS (10), WAIT_S (60), HLNODE (path to a prebuilt binary).
+#      With --bots: FAUCET_PORT (3100) and the other services/ env knobs (services/README.md).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,8 +31,46 @@ try: print(json.load(sys.stdin)["committed_height"])
 except Exception: print(-1)' 2>/dev/null || echo -1
 }
 
+# services/ (faucet + bots), started by --bots. SIGTERM lets the market maker
+# cancel its orders, so this runs before the nodes are stopped.
+services_stop() {
+  local pf="$DIR/services/services.pid"
+  [ -f "$pf" ] || return 0
+  local pid; pid="$(cat "$pf")"
+  if kill -0 "$pid" 2>/dev/null; then
+    kill -TERM "$pid" 2>/dev/null || true
+    for _ in $(seq 1 250); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+    kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null || true
+    echo "stopped services (pid $pid)"
+  fi
+  rm -f "$pf"
+}
+
+services_start() {
+  local sdir="$ROOT/services" out="$DIR/services"
+  command -v npm >/dev/null 2>&1 || { echo "localnet: npm not found; not starting the bots (needs Node 22)" >&2; return 0; }
+  if [ ! -x "$sdir/node_modules/.bin/tsx" ]; then
+    echo "installing services/ dependencies (npm ci)..."
+    (cd "$sdir" && npm ci --no-audit --no-fund >/dev/null) || die "npm ci failed in $sdir"
+  fi
+  services_stop >/dev/null
+  mkdir -p "$out"
+  # exec: the pid file names node itself, and nothing keeps our stdout open.
+  ( cd "$sdir" && exec nohup node --import tsx src/main.ts --localnet "$DIR" --api "http://127.0.0.1:$BASE_API" ) \
+      </dev/null >"$out/stdout.log" 2>&1 &
+  echo $! >"$out/services.pid"
+  local furl="http://127.0.0.1:${FAUCET_PORT:-3100}"
+  for _ in $(seq 1 60); do
+    curl -s -m 1 "$furl/status" >/dev/null 2>&1 && break
+    kill -0 "$(cat "$out/services.pid")" 2>/dev/null || { tail -n 20 "$out/stdout.log" >&2; die "services exited"; }
+    sleep 0.5
+  done
+  echo "services running (pid $(cat "$out/services.pid")): faucet $furl, market maker + traders; logs in $out/"
+}
+
 cmd_stop() {
   [ -d "$DIR" ] || { echo "nothing to stop"; return 0; }
+  services_stop
   local any=0
   for pf in "$DIR"/node*/hlnode.pid; do
     [ -f "$pf" ] || continue
@@ -177,11 +218,31 @@ EOF
   "$py" "$ROOT/crates/api/tests/python/spot_seed.py" "$DIR" "http://127.0.0.1:$BASE_API"
 }
 
+# Split --bots off the arguments (up to a "--"); the rest go to cmd_start.
+BOTS=""
+REST=()
+NREST=0
+split_bots() {
+  local passthru=""
+  for a in "$@"; do
+    if [ -z "$passthru" ] && [ "$a" = "--bots" ]; then BOTS=1; continue; fi
+    [ "$a" = "--" ] && passthru=1
+    REST+=("$a"); NREST=$((NREST + 1))
+  done
+}
+
 case "${1:-}" in
   start) shift; cmd_start "$@" ;;
-  seed) cmd_seed ;;
-  dev) shift; BASE_API=3001 cmd_start 4 --fund-sdk-examples "$@"; BASE_API=3001 cmd_seed ;;
+  seed)
+    shift; split_bots "$@"
+    [ "$NREST" -eq 0 ] || die "usage: seed [--bots]"
+    cmd_seed
+    if [ -n "$BOTS" ]; then services_start; fi ;;
+  dev)
+    shift; split_bots "$@"
+    BASE_API=3001 cmd_start 4 --fund-sdk-examples ${REST[@]+"${REST[@]}"}; BASE_API=3001 cmd_seed
+    if [ -n "$BOTS" ]; then BASE_API=3001 services_start; fi ;;
   stop) cmd_stop ;;
   status) cmd_status ;;
-  *) die "usage: $0 start N [--bench] [--release] [--fund-sdk-examples] | dev | seed | stop | status" ;;
+  *) die "usage: $0 start N [--bench] [--release] [--fund-sdk-examples] | dev [--bots] | seed [--bots] | stop | status" ;;
 esac

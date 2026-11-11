@@ -304,7 +304,7 @@ export class MarketMaker {
       .map(([k, v]) => `${k} ${v >= 0 ? "+" : ""}${+v.toFixed(5)}`)
       .join(", ");
     const pnl = this.stats.accountValue - this.startValue;
-    log.info(`status: perp equity ${usd(this.stats.accountValue)} (${pnl >= 0 ? "+" : ""}${usd(pnl)} since start) · inventory ${p}`);
+    log.info(`status: perp equity ${usd(this.stats.accountValue)} (${pnl >= 0 ? "+" : "-"}${usd(Math.abs(pnl))} since start) · inventory ${p}`);
     void this.maybeSweep();
   }
 

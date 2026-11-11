@@ -53,6 +53,17 @@ Click **Connect key** in the top right corner:
 The key is kept in the page's memory. It is saved to this browser's localStorage only if you tick
 "Remember key". The only place it is used is to sign the actions you submit. This is a dev tool, so never paste a key that holds real funds.
 
+## Get test funds (faucet)
+
+The **Get test funds** button in the *Perps account* panel asks the localnet faucet
+([`services/`](../services/README.md)) to send 10,000 USDC (and 100 PURR to the spot balance)
+to the connected address. The result, or the faucet's rate-limit message (one drip per address
+every 10 minutes), shows as a toast. Start the faucet with `scripts/localnet.sh dev --bots`
+or `cd services && npm start`.
+
+The button calls http://127.0.0.1:3100 by default. Use `?faucet=http://host:port` on the page URL,
+or `VITE_FAUCET_URL=http://host:port npm run dev`, to point it elsewhere.
+
 ## Point it at another node
 
 Change **API base URL** in the settings. The WebSocket URL is derived from it as `ws://host:port/ws`. You can also:

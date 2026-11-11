@@ -5,9 +5,9 @@
   "type": "module",
   "engines": { "node": ">=20" },
   "scripts": {
-    "start": "tsx src/main.ts",
-    "faucet": "tsx src/main.ts --only faucet",
-    "bots": "tsx src/main.ts --only bots",
+    "start": "node --import tsx src/main.ts",
+    "faucet": "node --import tsx src/main.ts --only faucet",
+    "bots": "node --import tsx src/main.ts --only bots",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

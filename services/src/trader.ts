@@ -6,7 +6,7 @@
 //   bear      leans to selling, mostly market orders
 //   reverter  buys dips and sells rips relative to a moving average, often
 //             with resting limit orders that it cancels if they go stale
-//   degen     small isolated stakes at max leverage on BTC/ETH/SOL, never
+//   degen     small isolated stakes at max leverage on BTC/ETH, never
 //             cuts a loss, takes small profits: gets liquidated now and then
 //
 // Every wallet asks the faucet for USDC at start and whenever its
@@ -85,8 +85,9 @@ export class Trader {
   private get perps() {
     const p = this.markets.filter((m) => m.kind === "perp");
     if (this.kind === "degen") {
-      const top = p.filter((m) => ["BTC", "ETH", "SOL"].includes(m.coin));
-      return top.length ? top : p;
+      // Highest-leverage markets (BTC, ETH at 50x): liquidation is ~1% away.
+      const max = Math.max(...p.map((m) => m.maxLeverage));
+      return p.filter((m) => m.maxLeverage === max);
     }
     return p;
   }

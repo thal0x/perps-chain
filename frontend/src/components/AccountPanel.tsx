@@ -4,6 +4,8 @@ import type { Signer } from "../lib/hl";
 import type { Market, MarketCtx, OpenOrder } from "../lib/types";
 import { dateTime, num, pct, px, sigPx, slippagePx, usd } from "../lib/format";
 import { describeStatuses, useAction } from "../lib/actions";
+import { requestFunds } from "../lib/faucet";
+import { useToasts } from "../lib/toasts";
 
 type Tab = "positions" | "orders" | "fills" | "history" | "balances";
 
@@ -305,7 +307,35 @@ export function AccountPanel({ acct, markets, ctxs, mids, signer, onSelect }: Pr
   );
 }
 
-export function MarginSummary({ acct }: { acct: AccountData }) {
+/** Asks the localnet faucet for test USDC/PURR for `user`. */
+export function FaucetButton({ user, onFunded }: { user: string | null; onFunded: () => void }) {
+  const { push } = useToasts();
+  const [busy, setBusy] = useState(false);
+  const click = async () => {
+    if (!user) return;
+    setBusy(true);
+    try {
+      const r = await requestFunds(user);
+      push(r.ok ? { kind: "ok", title: "Test funds sent", body: r.text } : { kind: "err", title: "Faucet", body: r.text });
+      if (r.ok) onFunded();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      className="btn btn-small"
+      data-testid="faucet-button"
+      disabled={busy || !user}
+      title={user ? "Ask the localnet faucet for test USDC (and a little PURR)" : "Connect a key first"}
+      onClick={click}
+    >
+      {busy ? "Requesting…" : "Get test funds"}
+    </button>
+  );
+}
+
+export function MarginSummary({ acct, user }: { acct: AccountData & { refresh?: () => Promise<void> }; user?: string | null }) {
   const ch = acct.ch;
   const ms = ch?.marginSummary;
   const rows: [string, string][] = [
@@ -323,6 +353,13 @@ export function MarginSummary({ acct }: { acct: AccountData }) {
     <div className="panel margin" data-testid="margin-summary">
       <div className="panel-head">
         <span>Perps account</span>
+        <FaucetButton
+          user={user ?? null}
+          onFunded={() => {
+            // The transfer lands in the next block; refresh twice to catch it.
+            for (const ms of [800, 2500]) setTimeout(() => void acct.refresh?.().catch(() => {}), ms);
+          }}
+        />
       </div>
       {rows.map(([k, v]) => (
         <div key={k} className="kv">
