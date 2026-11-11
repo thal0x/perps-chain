@@ -123,7 +123,7 @@ function Terminal() {
             onLevChanged={() => void reloadLev().catch(() => {})}
             onOpenSettings={() => setShowSettings(true)}
           />
-          <MarginSummary acct={acct} />
+          <MarginSummary acct={acct} user={user} />
         </div>
         <AccountPanel acct={acct} markets={mk.markets} ctxs={mk.ctxs} mids={mk.mids} signer={signer} onSelect={setCoin} />
       </main>
