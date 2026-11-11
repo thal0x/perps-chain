@@ -1,4 +1,4 @@
-# STATUS  (commit bf87e52, 2026-11-10 22:11 UTC)
+# STATUS  (commit 86d06f0, 2026-11-11 18:08 UTC)
 
 | kind | suite | passed | failed | result |
 |---|---|---:|---:|---|
@@ -27,7 +27,7 @@
 |---|---|---|---|---|
 | AC1 | consensus safety 12h/7 validators | ok | missing | FAIL |
 | AC2 | determinism 50M-action week | ok | 50000002 actions / 100800 blocks / 7 sim-days; 2 runs x 4 validators + offline sim replay + gen roots compared per height; 0 mismatches; roots_digest 47eed582adf70013 | PASS |
-| AC3 | throughput 100k/s, block<1s | ok | 110481 order actions/s over 120s (min 10s window 109953), median block 200 ms, 4 validators | PASS |
-| AC4 | clearinghouse invariants | ok | proptests 4 tests / 2056 cases (0 failed); invariants every block of 100800 blocks (50000002 actions): offline sim replay + 8 node replays; 0 violations | PASS |
+| AC3 | throughput 100k/s, block<1s | ok | 110389 order actions/s over 120s (min 10s window 101089), median block 200.0 ms, 4 validators | PASS |
+| AC4 | clearinghouse invariants | ok | proptests 4 tests / 40000 cases (0 failed); invariants every block of 100800 blocks (50000002 actions): offline sim replay + 8 node replays; 0 violations | PASS |
 | AC5 | SDK compatibility | ok | python 15/15, ts 6/6 | PASS |
 | AC6 | bridge e2e + foundry | ok | e2e ok; anvil delta 499 USDC; forge 41 passed / 0 failed | PASS |

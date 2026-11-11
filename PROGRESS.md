@@ -5,8 +5,9 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 ## Completed milestones
 - M0 Plan — docs, interfaces crate, status tooling.
 - M1–M8 — all components merged; all unit suites + forge green (STATUS.md, bf87e52).
-- AC2, AC3, AC4, AC5, AC6 PASS with full evidence on the D30-frozen tree (fingerprint 3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f). AC1 smoke passes.
+- D33 re-freeze (chaos builds on macOS; proptests honour `PROPTEST_CASES`, AC4 full = 10,000 cases/test). AC2, AC3, AC4, AC5, AC6 PASS with full evidence on that tree (fingerprint b5fa40c37607:db263aa35d91:6a118c8621b7:af3525ddaf6f). AC1 smoke passes. STATUS.md regenerated.
 - Extra (user request): `frontend/` trading UI (Vite/React, @nktkas/hyperliquid), Playwright e2e passes. Mac portability fixes (D31).
+- Extra (user request): `services/` faucet (:3100), market maker, 4 trader bots; `scripts/localnet.sh dev --bots`.
 
 ## In progress
 Nothing running. All agents finished; worktrees under /home/user/wt are idle.
@@ -14,10 +15,10 @@ Nothing running. All agents finished; worktrees under /home/user/wt are idle.
 ## Currently failing
 - AC1: full 12 h run waived by the user (D32); status.sh reports it as missing evidence, by design.
 
-## Next actions (when the user asks for AC1)
-1. Pre-AC1 cleanup (changes the fingerprint, so a re-freeze D32): gate `crates/chaos` prctl/PDEATHSIG behind `cfg(target_os = "linux")` (macOS build); make clearinghouse/state proptest configs honour `PROPTEST_CASES`.
-2. Rerun AC3, AC5, AC6, AC2 (50M), AC4 on the new frozen tree (~5 h).
-3. `scripts/acceptance.sh ac1` (12 h), then `scripts/status.sh --md` on a clean clone, commit M9 "Done".
+## Next actions
+1. Only if the user asks: `scripts/acceptance.sh ac1` (12 h), then `scripts/status.sh --md`.
+2. Confirm on the user's Mac that `cargo build --release` works without `--exclude chaos`, then drop that README note.
+3. Bot caveats: degen liquidation rare (~1–2/h); stale seed ladder can pin mid after oracle jumps; localnet.sh `--bots` untested on bash 3.2.
 Optional node API gaps found by the frontend: WS `spotState` and `webData3` subscriptions missing.
 
 ## Known risks
