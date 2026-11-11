@@ -2,37 +2,35 @@
  "ac": "ac4",
  "mode": "full",
  "pass": true,
- "proptest_cases": 2056,
+ "proptest_cases": 40000,
  "proptest_tests": 4,
  "proptest_failed": 0,
  "proptest_cases_per_test": [
-  24,
-  32,
-  1000
+  10000
  ],
  "proptest_breakdown": [
   {
    "file": "crates/clearinghouse/tests/prop_invariants.rs",
    "test": "invariants_hold_under_random_ops",
-   "cases": 1000,
+   "cases": 10000,
    "passed": true
   },
   {
    "file": "crates/clearinghouse/tests/prop_invariants.rs",
    "test": "invariants_hold_in_liquidation_storms",
-   "cases": 1000,
+   "cases": 10000,
    "passed": true
   },
   {
    "file": "crates/state/tests/determinism.rs",
    "test": "invariants_hold_every_block",
-   "cases": 32,
+   "cases": 10000,
    "passed": true
   },
   {
    "file": "crates/state/tests/spot.rs",
    "test": "spot_conservation",
-   "cases": 24,
+   "cases": 10000,
    "passed": true
   }
  ],
@@ -53,9 +51,9 @@
  "violations": 0,
  "first_violations": [],
  "node_first_violations": {},
- "source_fingerprint": "3ffba2b27be4:db263aa35d91:6a118c8621b7:af3525ddaf6f",
- "git_head": "a2cb6ea0bd7b0ddf57d3907d74d07b4d892ba3b3",
+ "source_fingerprint": "b5fa40c37607:db263aa35d91:6a118c8621b7:af3525ddaf6f",
+ "git_head": "98bfce7a8abf4a80e729f46ab962417cf624abb3",
  "git_dirty": false,
- "time_utc": "2026-11-10T21:50:55Z",
- "summary": "proptests 4 tests / 2056 cases (0 failed); invariants every block of 100800 blocks (50000002 actions): offline sim replay + 8 node replays; 0 violations"
+ "time_utc": "2026-11-11T17:51:30Z",
+ "summary": "proptests 4 tests / 40000 cases (0 failed); invariants every block of 100800 blocks (50000002 actions): offline sim replay + 8 node replays; 0 violations"
 }
