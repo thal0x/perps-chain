@@ -9,6 +9,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
+#[cfg(target_os = "linux")]
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
@@ -271,6 +272,7 @@ pub fn spawn_sim(sim: &Path, template: &str, rate: f64, apis: &[String], log: &P
     let f = std::fs::OpenOptions::new().create(true).append(true).open(log)?;
     let mut cmd = Command::new(sim);
     cmd.args(&args).stdin(Stdio::null()).stdout(f.try_clone()?).stderr(f);
+    #[cfg(target_os = "linux")]
     unsafe {
         cmd.pre_exec(|| {
             libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);

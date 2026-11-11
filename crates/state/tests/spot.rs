@@ -345,7 +345,7 @@ fn random_spot_flow_is_deterministic_and_restorable() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 24, .. ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig { cases: env_cases(24), .. ProptestConfig::default() })]
     /// Spot conservation: USDC (incl. fee account) and PURR totals are
     /// exact, holds == Σ order holds <= balances, every block.
     #[test]

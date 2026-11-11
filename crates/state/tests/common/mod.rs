@@ -125,3 +125,10 @@ impl QueryExt for TestChain {
         self.query()
     }
 }
+
+/// Case count for a proptest block: `$PROPTEST_CASES` if set (lets AC4 and
+/// local runs scale the search up), else the block's default (D33).
+#[allow(dead_code)]
+pub fn env_cases(default: u32) -> u32 {
+    std::env::var("PROPTEST_CASES").ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+}

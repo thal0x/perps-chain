@@ -6,6 +6,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use serde_json::Value;
 use std::fs::OpenOptions;
 use std::net::TcpListener;
+#[cfg(target_os = "linux")]
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Stdio};
@@ -245,9 +246,11 @@ impl Cluster {
         }
         cmd.args(&self.extra_args);
         cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+        // Die with the harness even if it is SIGKILLed. Linux-only; elsewhere
+        // nodes are still stopped on normal exit and signals (D33).
+        #[cfg(target_os = "linux")]
         unsafe {
             cmd.pre_exec(|| {
-                // die with the harness even if it is SIGKILLed
                 libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGKILL);
                 Ok(())
             });

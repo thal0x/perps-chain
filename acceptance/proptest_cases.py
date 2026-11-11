@@ -42,8 +42,11 @@ for d in dirs:
                 cfg = re.search(r"#!\[proptest_config\((.*?)\)\]\s*$", b, re.M | re.S)
                 cases = default_cases
                 if cfg:
+                    e = re.search(r"env_cases\(\s*([0-9_]+)\s*\)", cfg.group(1))
                     c = re.search(r"cases\s*:\s*([0-9_]+)", cfg.group(1)) or re.search(r"with_cases\(\s*([0-9_]+)", cfg.group(1))
-                    if c:
+                    if e:  # env_cases(N): $PROPTEST_CASES if set, else N (D33)
+                        cases = int(os.environ.get("PROPTEST_CASES", e.group(1).replace("_", "")))
+                    elif c:
                         cases = int(c.group(1).replace("_", ""))
                 for t in re.finditer(r"#\[test\]\s*(?:#\[[^\]]*\]\s*)*fn\s+(\w+)", b):
                     name = t.group(1)

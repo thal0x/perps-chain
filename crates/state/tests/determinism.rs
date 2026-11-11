@@ -319,7 +319,7 @@ fn root_changes_with_state() {
 }
 
 proptest! {
-    #![proptest_config(ProptestConfig { cases: 32, .. ProptestConfig::default() })]
+    #![proptest_config(ProptestConfig { cases: env_cases(32), .. ProptestConfig::default() })]
     /// Invariants (conservation, book uncrossed, OI nets to zero, bridge
     /// accounting) checked after every block of random multi-account flow.
     #[test]

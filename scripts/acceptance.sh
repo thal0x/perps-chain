@@ -216,6 +216,8 @@ run_ac4() {
   build_release
   trap 'replay_kill' EXIT
   local plog="$TMP/ac4_cargo_test.log" pjson="$TMP/ac4_proptest.json" rc=0
+  # Full runs search 10,000 cases per property test (~5 min on 4 cores, D33).
+  [ "$MODE" = full ] && export PROPTEST_CASES="${PROPTEST_CASES:-10000}"
   log "cargo test -p clearinghouse -p state (PROPTEST_CASES=${PROPTEST_CASES:-default})"
   cargo test -p clearinghouse -p state --no-fail-fast >"$plog" 2>&1 || rc=$?
   python3 acceptance/proptest_cases.py "$plog" "$pjson" crates/clearinghouse crates/state || die "proptest count failed"

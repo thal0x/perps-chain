@@ -219,3 +219,13 @@ consensus safety/liveness: consensus unit/property tests, the AC1 smoke run
 liveness fixes). status.sh still reports AC1 as FAIL (evidence missing):
 the criterion is not claimed as met. Run `scripts/acceptance.sh ac1` if the
 chain is ever used with untrusted validators or real value.
+
+**D33 [process] Pre-final cleanup + re-freeze.** (1) `crates/chaos`: the
+`prctl(PR_SET_PDEATHSIG)` child-death hook is gated to `target_os = "linux"`, so
+the workspace builds on macOS; elsewhere nodes are still stopped on normal
+exit/signals. (2) Property tests in clearinghouse/state read `PROPTEST_CASES`
+via `env_cases(default)` (their old literal counts are the defaults), the AC4
+case counter understands it, and full AC4 runs use 10,000 cases per property
+test (4 tests, 40,000 cases, ~5 min) instead of the fixed 2,056. No test was
+weakened. These touch `crates/`, so the tree is re-frozen at this commit and
+AC2–AC6 are rerun on it (AC1 waived, D32).

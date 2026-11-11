@@ -39,7 +39,7 @@ evidence). `AC3_KEEP=1` keeps `run/ac3`.
 ## AC4 — invariants (`run_ac4`, `proptest_cases.py`)
 `cargo test -p clearinghouse -p state`; proptest case counts come from each
 `proptest!` block's `cases` (proptest prints none) and count only if the test passed.
-Note: the blocks set `cases` explicitly, so `PROPTEST_CASES` has no effect. Replay part:
+Blocks use `env_cases(N)`: `PROPTEST_CASES` overrides every block's count (D33). Replay part:
 reuses `AC2_DIR/invariants.json` when produced with the same fingerprint and mode
 (offline + 8 node replays, every block), else runs gen + replay A + offline itself.
 `replay_blocks_checked` = min over offline and node checks; must equal the log length.
