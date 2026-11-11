@@ -210,3 +210,12 @@ evidence stays valid. Known remaining non-Linux gap: `crates/chaos` uses
 `prctl(PR_SET_PDEATHSIG)` (Linux-only); build elsewhere with
 `--workspace --exclude chaos` until it is gated behind `cfg(target_os = "linux")`,
 which is deferred to the pre-AC1 refreeze because it changes the fingerprint.
+
+**D32 [scope] AC1 full run waived by the user** (2026-11-11). The 12 h,
+7-validator fault-injection run is not performed. Remaining evidence for
+consensus safety/liveness: consensus unit/property tests, the AC1 smoke run
+(7 validators, 3 min, 5 fault episodes, 0 safety violations, worst resume
+852 ms), and the D29 sweep (2,400 fault schedules, 0 failures after the
+liveness fixes). status.sh still reports AC1 as FAIL (evidence missing):
+the criterion is not claimed as met. Run `scripts/acceptance.sh ac1` if the
+chain is ever used with untrusted validators or real value.

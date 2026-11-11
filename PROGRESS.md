@@ -12,7 +12,7 @@ _Read this, DECISIONS.md and `scripts/status.sh --quick` output first after any 
 Nothing running. All agents finished; worktrees under /home/user/wt are idle.
 
 ## Currently failing
-- AC1: no full evidence. **ON HOLD by the user** — do NOT start the 12 h run until the user explicitly asks.
+- AC1: full 12 h run waived by the user (D32); status.sh reports it as missing evidence, by design.
 
 ## Next actions (when the user asks for AC1)
 1. Pre-AC1 cleanup (changes the fingerprint, so a re-freeze D32): gate `crates/chaos` prctl/PDEATHSIG behind `cfg(target_os = "linux")` (macOS build); make clearinghouse/state proptest configs honour `PROPTEST_CASES`.
